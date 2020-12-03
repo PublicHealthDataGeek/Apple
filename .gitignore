@@ -1,0 +1,9 @@
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+.RProj.user
+.gpkg
+.pbf
+data/greater-london-200101.gpkg
+*.pbf
