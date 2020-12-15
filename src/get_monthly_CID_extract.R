@@ -20,6 +20,8 @@ traffic_calming = get_cid_points(type = "traffic_calming")
 mypath = "/home/bananafan/Downloads/"
 dataset_names = c("asl", "crossings", "cycle_lane_track", "restricted_route", "signals", "cycle_parking",
                   "restricted_point", "signage", "traffic_calming")
+#date = paste0(Sys.Date(),"-CID")
+
 date = "2020_12_02_CID_"
 
 for(i in 1:length(dataset_names)) {
