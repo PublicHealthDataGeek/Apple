@@ -12,9 +12,9 @@ library(sf)
 #library(tmap)
 library(mapview)
 #library(leafsync)
-library(summarytools)
+#library(summarytools)
 library(forcats)
-library(geojsonsf)
+#library(geojsonsf)
 
 #########################################
 # Advanced Stop Lines #
@@ -47,16 +47,16 @@ count_photo2 =  advanced_stop_line %>%
 
 # convert character columns to factors
 f_variables = c("ASL_FDR", "ASL_FDRLFT", "ASL_FDCENT", "ASL_FDRIGH", 
-                "ASL_SHARED", "ASL_COLOUR", "BOROUGH")
+                "ASL_SHARED", "ASL_COLOUR")
 
-# convert columns to factors (, CLT_ACCESS not converted as 721 different values)
+# convert columns to factors (CLT_ACCESS not converted as 721 different values)
 f_advanced_stop_line = advanced_stop_line %>%
   mutate_at(f_variables, as.factor)
 anyNA(f_advanced_stop_line$BOROUGH) # = TRUE
 
 # identify missing Borough details
-borough_NA = x %>%
-  filter(is.na(BOROUGH))
+borough_NA = f_advanced_stop_line %>%
+  filter(is.na(BOROUGH)) # 1 observation ie 1 ASL has no Borough
 
 boroughs <- st_read("./map_data/London_Borough_Excluding_MHW.shp")
 boroughs = rename(boroughs, BOROUGH = NAME)
@@ -65,31 +65,30 @@ boroughs$BOROUGH = fct_recode(boroughs$BOROUGH, "Kensington & Chelsea" = "Kensin
                               "Hammersmith & Fulham" = "Hammersmith and Fulham")
 
 mapview(borough_NA$geometry, color = "red") + mapview(boroughs, alpha.regions = 0.05, zcol = "BOROUGH") 
-# The ASL starts in Greenwich & finishes in Lewsiham so code it as Greenwich 
+# Visual inspection shows that this ASL starts in Greenwich & finishes in Lewisham so code it as Greenwich 
+
+# Count number of ASLs by Borough
+count= f_advanced_stop_line %>%
+  group_by(BOROUGH) %>%
+  summarise(Count = n()) # 112 Greenwich, 1 NA
+
+# Recode this NA as Greenwich and factor the BOROUGH variable
+f_advanced_stop_line$BOROUGH = factor(f_advanced_stop_line$BOROUGH) %>%
+  fct_explicit_na(na_level = "Greenwich")
+anyNA(f_advanced_stop_line$BOROUGH) # = FALSE so no NAs
+
+# Recount to check coded properly
+recount= f_advanced_stop_line %>%
+  group_by(BOROUGH) %>%
+  summarise(Count = n()) # 113 Greenwich, no NA
 
 
-# Attempting to get the NA changed!!!  really struggling - may have to do before factoring? 
-f_advanced_stop_line$BOROUGH %>% replace_na(Greenwich)
-anyNA(f_advanced_stop_line$BOROUGH)
-unique(f_advanced_stop_line$BOROUGH)
-#mutate(BOROUGH = replace_na(BOROUGH, "Greenwich"))
+##### Final admin steps on ASL dataset #####
+# check all variables in correct format
+glimpse(f_advanced_stop_line) 
 
-fct_explicit_na(x$BOROUGH, na_level = "Greenwich")
-anyNA(x$BOROUGH)
-unique(x$BOROUGH)
-
-
-glimpse(f_advanced_stop_line) # check converted ok
-levels(f_advanced_stop_line$BOROUGH) # check have 34 (33 actual boroughs plus 1 NA value)
-
-
-
-# create new df without geommetry that enables faster analysis of data
+# create new df without geometry that enables faster analysis of data
 non_geom_f_advanced_stop_line = st_drop_geometry(f_advanced_stop_line)
-str(non_geom_f_advanced_stop_line)
-count_borough = non_geom_f_advanced_stop_line %>%
-  count(BOROUGH)  # => 1 NA  NB will need to add Borough to it at some point
-
 
 # create summary of df
 view(dfSummary(non_geom_f_advanced_stop_line))
