@@ -28,6 +28,11 @@ advanced_stop_line = get_cid_lines(type = "advanced_stop_line")
 class(advanced_stop_line) # "sf"         "tbl_df"     "tbl"        "data.frame"
 str(advanced_stop_line)
 
+# check and convert CRS so matches ONS boundary data CRS
+st_crs(advanced_stop_line) # CRS = WGS 84
+advanced_stop_line = st_transform(advanced_stop_line, crs=27700) 
+st_crs(advanced_stop_line) # PROJCRS["OSGB 1936 / British National Grid",
+
 # check completeness of variables
 unique(advanced_stop_line$FEATURE_ID) # 3775 unique variables
 unique(advanced_stop_line$BOROUGH) # 33 Boroughs plus a NA group
@@ -60,17 +65,17 @@ anyNA(f_advanced_stop_line$BOROUGH) # = TRUE
 borough_NA = f_advanced_stop_line %>%
   filter(is.na(BOROUGH)) # 1 observation ie 1 ASL has no Borough
 
-boroughs <- st_read("./map_data/London_Borough_Excluding_MHW.shp")
-boroughs = rename(boroughs, BOROUGH = NAME)
-boroughs$BOROUGH = fct_recode(boroughs$BOROUGH, "Kensington & Chelsea" = "Kensington and Chelsea", 
-                              "Barking & Dagenham" = "Barking and Dagenham",
-                              "Hammersmith & Fulham" = "Hammersmith and Fulham")
+# import May 2020 ONS LA boundary data
+lon_lad_2020 = readRDS(file = "./map_data/lon_LAD_boundaries_May_2020.Rds")
 
-mapview(borough_NA$geometry, color = "red") + mapview(boroughs, alpha.regions = 0.05, zcol = "BOROUGH") 
-# Visual inspection shows that this ASL starts in Greenwich & finishes in Lewisham so code it as Greenwich 
+# Map ASL observation that does not have a Borough with Borough boundaries
+mapview(borough_NA$geometry, color = "red") + mapview(lon_lad_2020, alpha.regions = 0.05, zcol = "BOROUGH") 
+# Visual inspection shows that this ASL starts in Greenwich & finishes in Lewisham (direction of travel is towards Greenwich)
+# so let's code it as Greenwich 
 
 # Count number of ASLs by Borough
 count= f_advanced_stop_line %>%
+  st_drop_geometry() %>%
   group_by(BOROUGH) %>%
   summarise(Count = n()) # 112 Greenwich, 1 NA
 
@@ -81,9 +86,12 @@ anyNA(f_advanced_stop_line$BOROUGH) # = FALSE so no NAs
 
 # Recount to check coded properly
 recount= f_advanced_stop_line %>%
+  st_drop_geometry() %>%
   group_by(BOROUGH) %>%
-  summarise(Count = n()) # 113 Greenwich, no NA
+  summarise(recount = n()) # 113 Greenwich, no NA
 
+# Combine count/recount tables so can check recoding
+na_coding_check = left_join(count, recount) # CORRECT
 
 ##### Final admin steps on ASL dataset #####
 # check all variables in correct format
@@ -138,30 +146,26 @@ anyNA(f_crossings$BOROUGH) # = TRUE
 borough_NA = f_crossings %>%
   filter(is.na(BOROUGH)) # 28 observations ie 28 crossings have no Borough
 
-mapview(borough_NA, color = "red")
-mapview(boroughs, alpha.regions = 0.05) 
-#create map of Crossings with NAs and label them with the feature ID
-mNA = mapview(borough_NA, color = "red") + mapview(boroughs, alpha.regions = 0.05)
+# import May 2020 ONS LA boundary data
+lon_lad_2020 = readRDS(file = "./map_data/lon_LAD_boundaries_May_2020.Rds")
+
+#create map of Crossings with missing Boroughs and label them with the feature ID
+mNA = mapview(borough_NA, color = "red") + mapview(lon_lad_2020, alpha.regions = 0.05, zcol = "BOROUGH")
 leafem::addStaticLabels(mNA, label = borough_NA$FEATURE_ID) # plot mNA with the FEATURE_IDs labelled so can identify
 
+# Examination performed - visual inspection of asset photos 1 and 2, Open Street Map
+# Decisions made according to......
+# Decision added to excel spreadsheet, where a crossing is in:
+##### one borough only then it is given that borough e.g RWG236647 # n= 7
+##### two boroughs but the road (or the majority of the road) it is crossing is in one borough (ie where the crossing is, is on a road that is in one borough) 
+#       it is coded as that borough e.g. RWG273946 # n = 16
+##### two boroughs but the boundary between the boroughs goes through the centre of the road 
+#       and that crossing then it is coded as ? both eg RWG293100  # n = 5
+# excel spreadsheet imported and then processed below....
 
-mapview(boroughs, alpha.regions = 0.05) 
-# Visual inspection shows that this ASL starts in Greenwich & finishes in Lewisham so code it as Greenwich 
-leaflet() %>%
-  addTiles() %>%
-  leafem::addStaticLabels(borough_NA$FEATURE_ID, colour = 'blue')
 
-# changing individual values by row name and column name
-
-myDataFrame["rowName", "columnName"] <- value
-#replace all 
-
-borough_NA[FEATURE_ID = "RWG236647", "BOROUGH"] = "Hillingdon"
-
-borough_NA %>% mutate_at()
-
-borough_NA$BOROUGH = replace(borough_NA$BOROUGH, 13, 'Hillingdon') # this code works to replace an NA value - need to do it so dont specify ros
-borough_NA$BOROUGH = replace(borough_NA$BOROUGH, which(borough_NA$FEATURE_ID == "RWG236647"), values = 'Hillingdon')
+# RWG065992 and RWG150947 - seem to be duplicates - ? need to check definition of what is measured by a crossing
+ 
 
 
 
@@ -173,6 +177,8 @@ count= f_crossings %>%
 
 # Code Borough NAs with Borough decided by researcher utilising unique FEATURE_ID to ensure correct obs is coded
 f_crossings$BOROUGH = replace(f_crossings$BOROUGH, which(f_crossings$FEATURE_ID == "RWG236647"), values = 'Hillingdon')
+# ? wite code to loop through xls spreadsheet changing 
+
 
 # recount Boroughs after transformation
 recount= f_crossings %>%

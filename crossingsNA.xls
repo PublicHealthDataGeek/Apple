@@ -1,29 +1,35 @@
-RWG293100,2018-05-21,NA,https://cycleassetimages.data.tfl.gov.uk/RWG293100_1.jpg,https://cycleassetimages.data.tfl.gov.uk/RWG293100_2.jpg
-RWG273946,2018-03-05,?,https://cycleassetimages.data.tfl.gov.uk/RWG273946_1.jpg,https://cycleassetimages.data.tfl.gov.uk/RWG273946_2.jpg
-RWG273940,2018-02-21,NA,https://cycleassetimages.data.tfl.gov.uk/RWG273940_1.jpg,https://cycleassetimages.data.tfl.gov.uk/RWG273940_2.jpg
-RWG244675,2018-03-08,NA,https://cycleassetimages.data.tfl.gov.uk/RWG244675_1.jpg,https://cycleassetimages.data.tfl.gov.uk/RWG244675_2.jpg
-RWG236647,2018-01-26,Hillingdon,https://cycleassetimages.data.tfl.gov.uk/RWG236647_1.jpg,https://cycleassetimages.data.tfl.gov.uk/RWG236647_2.jpg
-RWG205317,2018-01-31,NA,https://cycleassetimages.data.tfl.gov.uk/RWG205317_1.jpg,https://cycleassetimages.data.tfl.gov.uk/RWG205317_2.jpg
-RWG199197,2018-01-25,NA,https://cycleassetimages.data.tfl.gov.uk/RWG199197_1.jpg,https://cycleassetimages.data.tfl.gov.uk/RWG199197_2.jpg
-RWG199184,2017-11-22,NA,https://cycleassetimages.data.tfl.gov.uk/RWG199184_1.jpg,https://cycleassetimages.data.tfl.gov.uk/RWG199184_2.jpg
-RWG187249,2018-01-22,NA,https://cycleassetimages.data.tfl.gov.uk/RWG187249_1.jpg,https://cycleassetimages.data.tfl.gov.uk/RWG187249_2.jpg
-RWG184365,2017-10-31,NA,https://cycleassetimages.data.tfl.gov.uk/RWG184365_1.jpg,https://cycleassetimages.data.tfl.gov.uk/RWG184365_2.jpg
-RWG154512,2017-10-26,NA,https://cycleassetimages.data.tfl.gov.uk/RWG154512_1.jpg,https://cycleassetimages.data.tfl.gov.uk/RWG154512_2.jpg
-RWG154511,2017-10-26,NA,https://cycleassetimages.data.tfl.gov.uk/RWG154511_1.jpg,https://cycleassetimages.data.tfl.gov.uk/RWG154511_2.jpg
-RWG154508,2017-10-25,NA,https://cycleassetimages.data.tfl.gov.uk/RWG154508_1.jpg,https://cycleassetimages.data.tfl.gov.uk/RWG154508_2.jpg
-RWG153061,2018-01-10,NA,https://cycleassetimages.data.tfl.gov.uk/RWG153061_1.jpg,https://cycleassetimages.data.tfl.gov.uk/RWG153061_2.jpg
-RWG150947,2017-12-08,NA,https://cycleassetimages.data.tfl.gov.uk/RWG150947_1.jpg,https://cycleassetimages.data.tfl.gov.uk/RWG150947_2.jpg
-RWG135349,2017-11-29,NA,https://cycleassetimages.data.tfl.gov.uk/RWG135349_1.jpg,https://cycleassetimages.data.tfl.gov.uk/RWG135349_2.jpg
-RWG108005,2017-10-30,NA,https://cycleassetimages.data.tfl.gov.uk/RWG108005_1.jpg,https://cycleassetimages.data.tfl.gov.uk/RWG108005_2.jpg
-RWG108004,2017-10-30,NA,https://cycleassetimages.data.tfl.gov.uk/RWG108004_1.jpg,https://cycleassetimages.data.tfl.gov.uk/RWG108004_2.jpg
-RWG107385,2017-11-02,NA,https://cycleassetimages.data.tfl.gov.uk/RWG107385_1.jpg,https://cycleassetimages.data.tfl.gov.uk/RWG107385_2.jpg
-RWG073152,2017-09-06,NA,https://cycleassetimages.data.tfl.gov.uk/RWG073152_1.jpg,https://cycleassetimages.data.tfl.gov.uk/RWG073152_2.jpg
-RWG065992,2017-09-26,NA,https://cycleassetimages.data.tfl.gov.uk/RWG065992_1.jpg,https://cycleassetimages.data.tfl.gov.uk/RWG065992_2.jpg
-RWG055869,2017-07-20,NA,https://cycleassetimages.data.tfl.gov.uk/RWG055869_1.jpg,https://cycleassetimages.data.tfl.gov.uk/RWG055869_2.jpg
-RWG049417,2017-08-31,NA,https://cycleassetimages.data.tfl.gov.uk/RWG049417_1.jpg,https://cycleassetimages.data.tfl.gov.uk/RWG049417_2.jpg
-RWG042145,2017-08-28,NA,https://cycleassetimages.data.tfl.gov.uk/RWG042145_1.jpg,https://cycleassetimages.data.tfl.gov.uk/RWG042145_2.jpg
-RWG025515,2017-06-07,NA,https://cycleassetimages.data.tfl.gov.uk/RWG025515_1.jpg,https://cycleassetimages.data.tfl.gov.uk/RWG025515_2.jpg
-RWG025510,2017-07-04,NA,https://cycleassetimages.data.tfl.gov.uk/RWG025510_1.jpg,https://cycleassetimages.data.tfl.gov.uk/RWG025510_2.jpg
-RWG003326,2017-06-06,NA,https://cycleassetimages.data.tfl.gov.uk/RWG003326_1.jpg,https://cycleassetimages.data.tfl.gov.uk/RWG003326_2.jpg
-RWG003325,2017-06-06,NA,https://cycleassetimages.data.tfl.gov.uk/RWG003325_1.jpg,https://cycleassetimages.data.tfl.gov.uk/RWG003325_2.jpg
-FEATURE_ID,SVDATE,BOROUGH,PHOTO1_URL,PHOTO2_URL
+FEATURE_ID,SVDATE,Decision mode,BOROUGH 1 ,BOROUGH 2,PHOTO1_URL,PHOTO2_URL
+RWG293100,2018-05-21,3,Barnet,Harrow,https://cycleassetimages.data.tfl.gov.uk/RWG293100_1.jpg,https://cycleassetimages.data.tfl.gov.uk/RWG293100_2.jpg
+RWG273946,2018-03-05,2,Brent,,https://cycleassetimages.data.tfl.gov.uk/RWG273946_1.jpg,https://cycleassetimages.data.tfl.gov.uk/RWG273946_2.jpg
+RWG273940,2018-02-21,1,Brent,,https://cycleassetimages.data.tfl.gov.uk/RWG273940_1.jpg,https://cycleassetimages.data.tfl.gov.uk/RWG273940_2.jpg
+RWG244675,2018-03-08,2,Hackney,,https://cycleassetimages.data.tfl.gov.uk/RWG244675_1.jpg,https://cycleassetimages.data.tfl.gov.uk/RWG244675_2.jpg
+RWG236647,2018-01-26,1,Hillingdon,,https://cycleassetimages.data.tfl.gov.uk/RWG236647_1.jpg,https://cycleassetimages.data.tfl.gov.uk/RWG236647_2.jpg
+RWG205317,2018-01-31,1,Lewisham,,https://cycleassetimages.data.tfl.gov.uk/RWG205317_1.jpg,https://cycleassetimages.data.tfl.gov.uk/RWG205317_2.jpg
+RWG199197,2018-01-25,3,Greenwich,Lewisham,https://cycleassetimages.data.tfl.gov.uk/RWG199197_1.jpg,https://cycleassetimages.data.tfl.gov.uk/RWG199197_2.jpg
+RWG199184,2017-11-22,2,Lewisham,,https://cycleassetimages.data.tfl.gov.uk/RWG199184_1.jpg,https://cycleassetimages.data.tfl.gov.uk/RWG199184_2.jpg
+RWG187249,2018-01-22,2,Enfield,,https://cycleassetimages.data.tfl.gov.uk/RWG187249_1.jpg,https://cycleassetimages.data.tfl.gov.uk/RWG187249_2.jpg
+RWG184365,2017-10-31,2,Bexley,,https://cycleassetimages.data.tfl.gov.uk/RWG184365_1.jpg,https://cycleassetimages.data.tfl.gov.uk/RWG184365_2.jpg
+RWG154512,2017-10-26,1,Newham,,https://cycleassetimages.data.tfl.gov.uk/RWG154512_1.jpg,https://cycleassetimages.data.tfl.gov.uk/RWG154512_2.jpg
+RWG154511,2017-10-26,1,Newham,,https://cycleassetimages.data.tfl.gov.uk/RWG154511_1.jpg,https://cycleassetimages.data.tfl.gov.uk/RWG154511_2.jpg
+RWG154508,2017-10-25,1,Barking & Dagenham,,https://cycleassetimages.data.tfl.gov.uk/RWG154508_1.jpg,https://cycleassetimages.data.tfl.gov.uk/RWG154508_2.jpg
+RWG153061,2018-01-10,3,Camden,City of London,https://cycleassetimages.data.tfl.gov.uk/RWG153061_1.jpg,https://cycleassetimages.data.tfl.gov.uk/RWG153061_2.jpg
+RWG150947,2017-12-08,2,Camden,,https://cycleassetimages.data.tfl.gov.uk/RWG150947_1.jpg,https://cycleassetimages.data.tfl.gov.uk/RWG150947_2.jpg
+RWG135349,2017-11-29,1,Lambeth,,https://cycleassetimages.data.tfl.gov.uk/RWG135349_1.jpg,https://cycleassetimages.data.tfl.gov.uk/RWG135349_2.jpg
+RWG108005,2017-10-30,2,Southwark,,https://cycleassetimages.data.tfl.gov.uk/RWG108005_1.jpg,https://cycleassetimages.data.tfl.gov.uk/RWG108005_2.jpg
+RWG108004,2017-10-30,2,Lambeth,,https://cycleassetimages.data.tfl.gov.uk/RWG108004_1.jpg,https://cycleassetimages.data.tfl.gov.uk/RWG108004_2.jpg
+RWG107385,2017-11-02,2,Southwark,,https://cycleassetimages.data.tfl.gov.uk/RWG107385_1.jpg,https://cycleassetimages.data.tfl.gov.uk/RWG107385_2.jpg
+RWG073152,2017-09-06,2,Hackney,,https://cycleassetimages.data.tfl.gov.uk/RWG073152_1.jpg,https://cycleassetimages.data.tfl.gov.uk/RWG073152_2.jpg
+RWG065992,2017-09-26,2,Camden,,https://cycleassetimages.data.tfl.gov.uk/RWG065992_1.jpg,https://cycleassetimages.data.tfl.gov.uk/RWG065992_2.jpg
+RWG055869,2017-07-20,3,Southwark,Lambeth,https://cycleassetimages.data.tfl.gov.uk/RWG055869_1.jpg,https://cycleassetimages.data.tfl.gov.uk/RWG055869_2.jpg
+RWG049417,2017-08-31,3,Ealing,Hammersmith & Fulham,https://cycleassetimages.data.tfl.gov.uk/RWG049417_1.jpg,https://cycleassetimages.data.tfl.gov.uk/RWG049417_2.jpg
+RWG042145,2017-08-28,2,Hackney,,https://cycleassetimages.data.tfl.gov.uk/RWG042145_1.jpg,https://cycleassetimages.data.tfl.gov.uk/RWG042145_2.jpg
+RWG025515,2017-06-07,2,Haringey,,https://cycleassetimages.data.tfl.gov.uk/RWG025515_1.jpg,https://cycleassetimages.data.tfl.gov.uk/RWG025515_2.jpg
+RWG025510,2017-07-04,2,Haringey,,https://cycleassetimages.data.tfl.gov.uk/RWG025510_1.jpg,https://cycleassetimages.data.tfl.gov.uk/RWG025510_2.jpg
+RWG003326,2017-06-06,2,Islington,,https://cycleassetimages.data.tfl.gov.uk/RWG003326_1.jpg,https://cycleassetimages.data.tfl.gov.uk/RWG003326_2.jpg
+RWG003325,2017-06-06,2,Islington,,https://cycleassetimages.data.tfl.gov.uk/RWG003325_1.jpg,https://cycleassetimages.data.tfl.gov.uk/RWG003325_2.jpg
+,,,,,,
+,,,,,,
+Decision mode,,,,,,
+1,one borough only then it is given that borough e.g RWG236647,,,,,
+2,"two boroughs but the road (or the majority of the road) it is crossing is in one borough (ie where the crossing is, is on a road that is in one borough) it is coded as that borough e.g. RWG273946",,,,,
+32,two boroughs but the boundary between the boroughs goes through the centre of the road and that crossing then it is coded as ? both eg RWG293100,,,,,
