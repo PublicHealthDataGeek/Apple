@@ -12,9 +12,11 @@ library(tidyverse)
 # Import all May 2020 Local Authority District Boundaries (ONS dataset)
 lad_2020 <- st_read("/home/bananafan/Downloads/Local_Authority_Districts__May_2020__Boundaries_UK_BFC.shp")
 
+# check CRS
+st_crs(lad_2020) # PROJCRS["OSGB 1936 / British National Grid",
+
 # rename column name so can join
 lad_2020 = lad_2020 %>% rename(BOROUGH = LAD20NM)
-# crs = OSGB 1936
 
 # create df of London Borough names
 lon_lad_names = data.frame(BOROUGH = c("Barking and Dagenham",
@@ -52,7 +54,7 @@ lon_lad_names = data.frame(BOROUGH = c("Barking and Dagenham",
                  "Westminster"))
                            
 # Join London LA names to the LA boundaries so that only keep London LA details
-lon_lad_2020 = left_join(lon_lad_names, lad_2020, "BOROUGH")              
+lon_lad_2020 = st_as_sf(left_join(lon_lad_names, lad_2020, "BOROUGH"))              
                            
 # Convert Borough names to factors and recode so that Borough names match characters used in TFL CID
 lon_lad_2020$BOROUGH = as.factor(lon_lad_2020$BOROUGH) 
