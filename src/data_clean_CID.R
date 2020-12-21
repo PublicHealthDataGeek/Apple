@@ -197,3 +197,126 @@ non_geom_f_crossings = st_drop_geometry(f_crossings)
 str(non_geom_f_crossings)
 count_borough = non_geom_f_crossings %>%
   count(BOROUGH)  
+
+
+
+
+
+
+
+#######################
+# Cycle Lanes and Tracks #
+#######################
+
+# download CID data using the Cycle Infra Lnd package
+cycle_lane_track = get_cid_lines(type = "cycle_lane_track") # n = 24976
+
+class(cycle_lane_track)
+str(cycle_lane_track)
+
+# check and convert CRS so matches ONS boundary data CRS
+st_crs(cycle_lane_track) # CRS = WGS 84
+cycle_lane_track = st_transform(cycle_lane_track, crs=27700) 
+st_crs(cycle_lane_track) # PROJCRS["OSGB 1936 / British National Grid",
+
+# check completeness of variables
+unique(cycle_lane_track$FEATURE_ID) # 24976 unique variables
+unique(cycle_lane_track$BOROUGH) # 33 Boroughs plus a NA group
+unique(cycle_lane_track$SVDATE) # 345 unique survey dates, and 1 "6482-04-01" date
+count= cycle_lane_track %>% 
+  st_drop_geometry() %>%
+  group_by(SVDATE) %>% 
+  summarise(Count = n()) 
+
+# the below all have just true and false except where stated
+unique(cycle_lane_track$CLT_CARR)
+unique(cycle_lane_track$CLT_SEGREG)
+unique(cycle_lane_track$CLT_STEPP)
+unique(cycle_lane_track$CLT_PARSEG)
+unique(cycle_lane_track$CLT_SHARED) # "FALSE" "TRUE"  "TCB" 
+unique(cycle_lane_track$CLT_MANDAT) # "FALSE" "TRUE"  "TCB" 
+unique(cycle_lane_track$CLT_ADVIS)
+unique(cycle_lane_track$CLT_PRIORI) # FALSE" "TRUE"  "TRE"
+unique(cycle_lane_track$CLT_CONTRA)
+unique(cycle_lane_track$CLT_BIDIRE)
+unique(cycle_lane_track$CLT_CBYPAS)
+unique(cycle_lane_track$CLT_BBYPAS)
+unique(cycle_lane_track$CLT_PARKR)
+unique(cycle_lane_track$CLT_WATERR)
+unique(cycle_lane_track$CLT_PTIME)
+unique(cycle_lane_track$CLT_ACCESS) # NA plus 724 other unique text responses 
+unique(cycle_lane_track$CLT_COLOUR) # "NONE"        "GREEN"       "RED"         "BUFF/YELLOW" "BLUE"        "OTHER"       "BUFF" 
+
+# examine URL data
+count_photo1 =  cycle_lane_track %>%
+  count(PHOTO1_URL) # 588 have no asset photo 1
+count_photo2 =  cycle_lane_track %>%
+  count(PHOTO2_URL) # 605 have no asset photo 2
+
+# convert certain columns to factors (CLT_ACCESS and BOROUGH not done)
+f_variables = c("CLT_CARR", "CLT_SEGREG", "CLT_STEPP", "CLT_PARSEG", "CLT_SHARED", "CLT_MANDAT", 
+                "CLT_ADVIS", "CLT_PRIORI", "CLT_CONTRA", "CLT_BIDIRE", "CLT_CBYPAS", "CLT_BBYPAS",
+                "CLT_PARKR", "CLT_WATERR", "CLT_PTIME", "CLT_COLOUR")
+
+# convert columns to factors (BOROUGH needs doing separately as it has some NAs in, CLT_ACCESS not converted as 721 different values)
+f_cycle_lane_track = cycle_lane_track %>%
+  mutate_at(f_variables, as.factor)
+
+
+# Tidy up variables 
+
+#a) CLT_SHARED and CLT_MANDAT have factor levels of TRUE, FALSE and TCB
+#- ? bother or ? ignore - only 5 observations, all in greenwhich
+
+tidy_TCB = f_cycle_lane_track %>%
+  filter(CLT_SHARED == "TCB" | CLT_MANDAT == "TCB")
+# NB all this infrastructure is in GReenwich
+# so RWG999509 is on carriageway but CLT_MANDAT == TCB ie not true or false - photos suggest it is parallel to carriageway and separate
+
+# import May 2020 ONS LA boundary data
+#lon_lad_2020 = readRDS(file = "./map_data/lon_LAD_boundaries_May_2020.Rds")
+
+#create map of cycle lanes/tracks with TCB and label them with the feature ID
+mNA = mapview(tidy_TCB, color = "red") + mapview(lon_lad_2020, alpha.regions = 0.05, zcol = "BOROUGH")
+leafem::addStaticLabels(mNA, label = tidy_TCB$FEATURE_ID) # plot mNA with the FEATURE_IDs labelled so can identify
+
+# b) correct TRE to TRUE in CLT_PRIORI
+fct_count(f_cycle_lane_track$CLT_PRIORI) # TRE = 1, TRUE = 2264
+f_cycle_lane_track$CLT_PRIORI = fct_recode(f_cycle_lane_track$CLT_PRIORI, "TRUE" = "TRE") # convert TRE to TRUE
+fct_count(f_cycle_lane_track$CLT_PRIORI) # levels are only True and False with 2265 TRUE
+
+# c) look at cycle_lanes/tracks with NA Boroughs
+
+anyNA(f_cycle_lane_track$BOROUGH) # = TRUE
+
+# identify missing Borough details
+borough_NA = f_cycle_lane_track %>%
+  filter(is.na(BOROUGH)) # 354 observations ie 354 cycle lanes/tracks have no Borough
+
+# import May 2020 ONS LA boundary data
+#lon_lad_2020 = readRDS(file = "./map_data/lon_LAD_boundaries_May_2020.Rds")
+
+#create map of cycle_lane/tracks  with missing Boroughs and label them with the feature ID
+mNA = mapview(borough_NA, color = "red") + mapview(lon_lad_2020, alpha.regions = 0.05, zcol = "BOROUGH")
+leafem::addStaticLabels(mNA, label = borough_NA$FEATURE_ID) # plot mNA with the FEATURE_IDs labelled so can identify
+#looks like similar issue to ASL - the cycle lanes and tracks have been measured end to end but cross a borough boundary
+# some cross multiple boundaries, some cross into non greater london areas
+# some only just cross - others are 50/50
+
+f_cycle_lane_track$length = st_length(f_cycle_lane_track$geometry)
+length_cycle_lanesBYborough = f_cycle_lane_track %>%
+  group_by(BOROUGH) %>%
+  summarise(length = sum(length)) 
+# total length of those observations without a Borough is 197374.84 [m]
+sum(length_cycle_lanesBYborough$length) # = 2905876
+p = 197374.84/sum(length_cycle_lanesBYborough$length)  *100
+# p = 6.79% so although only 1.4% of assets dont have a Borough, these observations account for nearly 7% of the total length 
+# of cycle lanes and tracks so probably worth sorting out. 
+
+
+
+
+
+
+
+
