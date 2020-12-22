@@ -73,6 +73,13 @@ mapview(borough_NA$geometry, color = "red") + mapview(lon_lad_2020, alpha.region
 # Visual inspection shows that this ASL starts in Greenwich & finishes in Lewisham (direction of travel is towards Greenwich)
 # so let's code it as Greenwich 
 
+# code written using st_intersection to produce two objects of the ASL, one composing of the LEwisham section and the other the Greenwich
+i = st_intersection(borough_NA, lon_lad_2020)
+names(i)
+mapview(i, zcol = "BOROUGH.1") + mapview(lon_lad_2020, alpha.regions = 0.05, zcol = "BOROUGH")
+#can see that the Greenwich section is longer than lewisham.  
+
+
 # Count number of ASLs by Borough
 count= f_advanced_stop_line %>%
   st_drop_geometry() %>%
@@ -115,6 +122,12 @@ crossings = get_cid_lines(type = "crossing")
 
 class(crossings) # => "sf"         "tbl_df"     "tbl"        "data.frame"
 str(crossings) # 1687 obs, 11 variables
+
+# check and convert CRS so matches ONS boundary data CRS
+st_crs(crossings) # CRS = WGS 84
+crossings = st_transform(crossings, crs=27700) 
+st_crs(crossings) # PROJCRS["OSGB 1936 / British National Grid",
+
 
 # check completeness of variables
 unique(crossings$FEATURE_ID) # 1687 unique variables
@@ -168,6 +181,17 @@ leafem::addStaticLabels(mNA, label = borough_NA$FEATURE_ID) # plot mNA with the 
  
 
 
+# attempt to code above using st_intersection to produce ?two objects for the crossings
+NA_i = st_intersection(borough_NA, lon_lad_2020) # 49 observations
+names(NA_i) # BOROUGH.1 is the column for the lon_lad_2020 Borough that the crossing is in
+mapview(NA_i, zcol = "BOROUGH.1") + mapview(lon_lad_2020, alpha.regions = 0.05, zcol = "BOROUGH")
+
+borough_NA_length = NA_i %>% 
+  group_by(FEATURE_ID) %>%
+  slice(which.max(Shape__Len)) # keep observations for each feature with the longest length
+
+# compare borough_NA_length with my visual check => on 7 observations where BOROUGH.1 doesnt match my propose Borough
+# THEREFORE NEED TO DECIDE WHICH APPROACH I AM GOING TO USE
 
 #count Boroughs before transformation
 count= f_crossings %>%
@@ -313,7 +337,37 @@ p = 197374.84/sum(length_cycle_lanesBYborough$length)  *100
 # p = 6.79% so although only 1.4% of assets dont have a Borough, these observations account for nearly 7% of the total length 
 # of cycle lanes and tracks so probably worth sorting out. 
 
+# Try to sort out using st_intersection and then length
+NA_i = st_intersection(borough_NA, lon_lad_2020) # 607 observations
+names(NA_i) # BOROUGH.1 is the column for the lon_lad_2020 Borough that the crossing is in
+mapview(NA_i, zcol = "BOROUGH.1") + mapview(lon_lad_2020, alpha.regions = 0.05, zcol = "BOROUGH")
 
+x = NA_i %>% 
+  group_by(FEATURE_ID) %>%
+  count() %>% # this works but then wanted to know how many FEATURE_IDs have different more than one BOROUGH
+  summarise(n_distinct(n))
+
+x = x %>% 
+  mutate(count = n_distinct(n))
+    summarise(n_distinct(n))      
+
+    
+NA_i %>% 
+    group_by(FEATURE_ID) %>%
+    summarise(num_boroughs = n()) %>%
+    group_by(num_boroughs) %>%
+    count() 
+# so 96 cycle lanes only have 1 London borough, 254 intersect with 2, 1 intersects with 3      
+
+#which boroughs are these?
+NA_i_num_boroughs = NA_i %>% 
+  group_by(FEATURE_ID) %>%
+  summarise(num_boroughs = n())
+
+# RWG150143 is the 3
+
+# RWG030533 and RWG038383 are examples of 1
+# RWG008791 and RWG008822 are examples of 2
 
 
 
