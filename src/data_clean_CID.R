@@ -61,44 +61,11 @@ f_advanced_stop_line = advanced_stop_line %>%
   mutate_at(f_variables, as.factor)
 anyNA(f_advanced_stop_line$BOROUGH) # = TRUE
 
-# identify missing Borough details
-borough_NA = f_advanced_stop_line %>%
-  filter(is.na(BOROUGH)) # 1 observation ie 1 ASL has no Borough
-
-# import May 2020 ONS LA boundary data
-lon_lad_2020 = readRDS(file = "./map_data/lon_LAD_boundaries_May_2020.Rds")
-
-# Map ASL observation that does not have a Borough with Borough boundaries
-mapview(borough_NA$geometry, color = "red") + mapview(lon_lad_2020, alpha.regions = 0.05, zcol = "BOROUGH") 
-# Visual inspection shows that this ASL starts in Greenwich & finishes in Lewisham (direction of travel is towards Greenwich)
-# so let's code it as Greenwich 
-
-# code written using st_intersection to produce two objects of the ASL, one composing of the LEwisham section and the other the Greenwich
-i = st_intersection(borough_NA, lon_lad_2020)
-names(i)
-mapview(i, zcol = "BOROUGH.1") + mapview(lon_lad_2020, alpha.regions = 0.05, zcol = "BOROUGH")
-#can see that the Greenwich section is longer than lewisham.  
-
-
 # Count number of ASLs by Borough
 count= f_advanced_stop_line %>%
   st_drop_geometry() %>%
   group_by(BOROUGH) %>%
-  summarise(Count = n()) # 112 Greenwich, 1 NA
-
-# Recode this NA as Greenwich and factor the BOROUGH variable
-f_advanced_stop_line$BOROUGH = factor(f_advanced_stop_line$BOROUGH) %>%
-  fct_explicit_na(na_level = "Greenwich")
-anyNA(f_advanced_stop_line$BOROUGH) # = FALSE so no NAs
-
-# Recount to check coded properly
-recount= f_advanced_stop_line %>%
-  st_drop_geometry() %>%
-  group_by(BOROUGH) %>%
-  summarise(recount = n()) # 113 Greenwich, no NA
-
-# Combine count/recount tables so can check recoding
-na_coding_check = left_join(count, recount) # CORRECT
+  summarise(Count = n()) # 33 boroughs plus 1 NA
 
 ##### Final admin steps on ASL dataset #####
 # check all variables in correct format
