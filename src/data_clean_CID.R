@@ -16,6 +16,7 @@ library(leafem)
 #library(leafsync)
 #library(summarytools)
 library(forcats)
+library(units)
 #library(geojsonsf)
 
 #######################
@@ -62,10 +63,10 @@ f_advanced_stop_line = advanced_stop_line %>%
 anyNA(f_advanced_stop_line$BOROUGH) # = TRUE
 
 # Count number of ASLs by Borough
-count= f_advanced_stop_line %>%
+asl_borough_count= f_advanced_stop_line %>%
   st_drop_geometry() %>%
   group_by(BOROUGH) %>%
-  summarise(Count = n()) # 33 boroughs plus 1 NA
+  summarise(ASL = n()) # 33 boroughs plus 1 asl with no borough assigned
 
 ##### Final admin steps on ASL dataset #####
 # check all variables in correct format
@@ -79,9 +80,9 @@ view(dfSummary(non_geom_f_advanced_stop_line))
 
 
 
-#######################
+#############
 # Crossings #
-#######################
+#############
 
 # download crossings CID data using the Cycle Infra Lnd package
 crossings = get_cid_lines(type = "crossing")
@@ -122,82 +123,22 @@ f_crossings = crossings %>%
   mutate_at(f_v, as.factor)
 anyNA(f_crossings$BOROUGH) # = TRUE
 
-# identify missing Borough details
-borough_NA = f_crossings %>%
-  filter(is.na(BOROUGH)) # 28 observations ie 28 crossings have no Borough
-
-# import May 2020 ONS LA boundary data
-lon_lad_2020 = readRDS(file = "./map_data/lon_LAD_boundaries_May_2020.Rds")
-
-#create map of Crossings with missing Boroughs and label them with the feature ID
-mNA = mapview(borough_NA, color = "red") + mapview(lon_lad_2020, alpha.regions = 0.05, zcol = "BOROUGH")
-leafem::addStaticLabels(mNA, label = borough_NA$FEATURE_ID) # plot mNA with the FEATURE_IDs labelled so can identify
-
-# Examination performed - visual inspection of asset photos 1 and 2, Open Street Map
-# Decisions made according to......
-# Decision added to excel spreadsheet, where a crossing is in:
-##### one borough only then it is given that borough e.g RWG236647 # n= 7
-##### two boroughs but the road (or the majority of the road) it is crossing is in one borough (ie where the crossing is, is on a road that is in one borough) 
-#       it is coded as that borough e.g. RWG273946 # n = 16
-##### two boroughs but the boundary between the boroughs goes through the centre of the road 
-#       and that crossing then it is coded as ? both eg RWG293100  # n = 5
-# excel spreadsheet imported and then processed below....
-
-
-# RWG065992 and RWG150947 - seem to be duplicates - ? need to check definition of what is measured by a crossing
- 
-
-
-# attempt to code above using st_intersection to produce ?two objects for the crossings
-NA_i = st_intersection(borough_NA, lon_lad_2020) # 49 observations
-names(NA_i) # BOROUGH.1 is the column for the lon_lad_2020 Borough that the crossing is in
-mapview(NA_i, zcol = "BOROUGH.1") + mapview(lon_lad_2020, alpha.regions = 0.05, zcol = "BOROUGH")
-
-borough_NA_length = NA_i %>% 
-  group_by(FEATURE_ID) %>%
-  slice(which.max(Shape__Len)) # keep observations for each feature with the longest length
-
-# compare borough_NA_length with my visual check => on 7 observations where BOROUGH.1 doesnt match my propose Borough
-# THEREFORE NEED TO DECIDE WHICH APPROACH I AM GOING TO USE
-
-#count Boroughs before transformation
-count= f_crossings %>%
+# Count number of Crossings by Borough
+crossings_borough_count = f_crossings %>%
   st_drop_geometry() %>%
   group_by(BOROUGH) %>%
-  summarise(Count = n()) # 28 NA, 99 Hillingdon
+  summarise(Crossings = n()) # 33 boroughs plus 28 crossings with no borough
 
-# Code Borough NAs with Borough decided by researcher utilising unique FEATURE_ID to ensure correct obs is coded
-f_crossings$BOROUGH = replace(f_crossings$BOROUGH, which(f_crossings$FEATURE_ID == "RWG236647"), values = 'Hillingdon')
-# ? wite code to loop through xls spreadsheet changing 
-
-
-# recount Boroughs after transformation
-recount= f_crossings %>%
-  st_drop_geometry() %>%
-  group_by(BOROUGH) %>%
-  summarise(Recount = n()) # 27 NA, 100 Hillingdon
-
-# join borough counts together to check done correctly
-crossing_boroughs = left_join(count, recount)
-
-
-
-
-# create new df without geommetry that enables faster analysis of data
+# create new df without geometry that enables faster analysis of data
 non_geom_f_crossings = st_drop_geometry(f_crossings)
 str(non_geom_f_crossings)
 count_borough = non_geom_f_crossings %>%
   count(BOROUGH)  
 
 
-
-
-
-
-
-#######################
+##########################
 # Cycle Lanes and Tracks #
-#######################
+##########################
 
 # download CID data using the Cycle Infra Lnd package
 cycle_lane_track = get_cid_lines(type = "cycle_lane_track") # n = 24976
@@ -276,67 +217,102 @@ fct_count(f_cycle_lane_track$CLT_PRIORI) # TRE = 1, TRUE = 2264
 f_cycle_lane_track$CLT_PRIORI = fct_recode(f_cycle_lane_track$CLT_PRIORI, "TRUE" = "TRE") # convert TRE to TRUE
 fct_count(f_cycle_lane_track$CLT_PRIORI) # levels are only True and False with 2265 TRUE
 
-# c) look at cycle_lanes/tracks with NA Boroughs
-
-anyNA(f_cycle_lane_track$BOROUGH) # = TRUE
-
-# identify missing Borough details
-borough_NA = f_cycle_lane_track %>%
-  filter(is.na(BOROUGH)) # 354 observations ie 354 cycle lanes/tracks have no Borough
-
-# import May 2020 ONS LA boundary data
-#lon_lad_2020 = readRDS(file = "./map_data/lon_LAD_boundaries_May_2020.Rds")
-
-#create map of cycle_lane/tracks  with missing Boroughs and label them with the feature ID
-mNA = mapview(borough_NA, color = "red") + mapview(lon_lad_2020, alpha.regions = 0.05, zcol = "BOROUGH")
-leafem::addStaticLabels(mNA, label = borough_NA$FEATURE_ID) # plot mNA with the FEATURE_IDs labelled so can identify
-#looks like similar issue to ASL - the cycle lanes and tracks have been measured end to end but cross a borough boundary
-# some cross multiple boundaries, some cross into non greater london areas
-# some only just cross - others are 50/50
-
-f_cycle_lane_track$length = st_length(f_cycle_lane_track$geometry)
-length_cycle_lanesBYborough = f_cycle_lane_track %>%
+# Borough level analysis
+#####
+# Count number of Crossings by Borough
+cycle_lane_track_borough_count = f_cycle_lane_track %>%
+  st_drop_geometry() %>%
   group_by(BOROUGH) %>%
-  summarise(length = sum(length)) 
-# total length of those observations without a Borough is 197374.84 [m]
-sum(length_cycle_lanesBYborough$length) # = 2905876
-p = 197374.84/sum(length_cycle_lanesBYborough$length)  *100
-# p = 6.79% so although only 1.4% of assets dont have a Borough, these observations account for nearly 7% of the total length 
-# of cycle lanes and tracks so probably worth sorting out. 
+  summarise(CycleLanesAndTracks = n()) # 33 boroughs plus 28 crossings with no borough
 
-# Try to sort out using st_intersection and then length
-NA_i = st_intersection(borough_NA, lon_lad_2020) # 607 observations
-names(NA_i) # BOROUGH.1 is the column for the lon_lad_2020 Borough that the crossing is in
-mapview(NA_i, zcol = "BOROUGH.1") + mapview(lon_lad_2020, alpha.regions = 0.05, zcol = "BOROUGH")
+# Length of cycle lanes and tracks by Borough
+f_cycle_lane_track$length_m = st_length(f_cycle_lane_track$geometry)
+f_cycle_lane_track$length_km = set_units(st_length(f_cycle_lane_track$geometry), km)
 
-x = NA_i %>% 
-  group_by(FEATURE_ID) %>%
-  count() %>% # this works but then wanted to know how many FEATURE_IDs have different more than one BOROUGH
-  summarise(n_distinct(n))
-
-x = x %>% 
-  mutate(count = n_distinct(n))
-    summarise(n_distinct(n))      
-
-    
-NA_i %>% 
-    group_by(FEATURE_ID) %>%
-    summarise(num_boroughs = n()) %>%
-    group_by(num_boroughs) %>%
-    count() 
-# so 96 cycle lanes only have 1 London borough, 254 intersect with 2, 1 intersects with 3      
-
-#which boroughs are these?
-NA_i_num_boroughs = NA_i %>% 
-  group_by(FEATURE_ID) %>%
-  summarise(num_boroughs = n())
-
-# RWG150143 is the 3
-
-# RWG030533 and RWG038383 are examples of 1
-# RWG008791 and RWG008822 are examples of 2
+cycle_lane_track_borough_length = f_cycle_lane_track %>%
+  group_by(BOROUGH) %>%
+  summarise(across(c(length_m, length_km), sum))
+# drop geometry cant be done within the pipe as it causes weirdness in the measurements (see issue 1)
+# it needs to be dropped to make dataset manageable
+cycle_lane_track_borough_length = st_drop_geometry(cycle_lane_track_borough_length) 
 
 
+# length of cycle lanes and tracks by on/off road by Borough ???
+# ??? other questions
+
+# create new df without geometry that enables faster analysis of data
+non_geom_f_cycle_lane_track = st_drop_geometry(f_cycle_lane_track)
+str(non_geom_f_cycle_lane_track)
+
+#####################
+# Restricted Routes #
+#####################
+
+# download CID data using the Cycle Infra Lnd packages
+restricted_route = get_cid_lines(type = "restricted_route")
+
+class(restricted_route)
+str(restricted_route)
+
+# check and convert CRS so matches ONS boundary data CRS
+st_crs(restricted_route) # CRS = WGS 84
+restricted_route = st_transform(restricted_route, crs=27700) 
+st_crs(restricted_route) # PROJCRS["OSGB 1936 / British National Grid",
+
+unique(restricted_route$FEATURE_ID) # 1378 unique variables
+unique(restricted_route$BOROUGH) # 33 Boroughs plus a NA group
+unique(restricted_route$SVDATE) # 196 unique survey dates, all of which are valid date
+
+# the below all have just true and false 
+unique(restricted_route$RES_PEDEST)
+unique(restricted_route$RES_BRIDGE)
+unique(restricted_route$RES_TUNNEL)
+unique(restricted_route$RES_STEPS)
+unique(restricted_route$RES_LIFT)
+
+# examine URL data
+count_photo1 =  restricted_route %>%
+  count(PHOTO1_URL) # 71 have no asset photo 1
+count_photo2 =  restricted_route %>%
+  count(PHOTO2_URL) # 52 have no asset photo 2
+
+# convert certain columns to factors
+levels(restricted_route$RES_PEDEST) # => NULL
+
+f_variables = c("RES_PEDEST", "RES_BRIDGE", "RES_TUNNEL", "RES_STEPS", "RES_LIFT")
+
+# convert columns to factors (BOROUGH needs doing separately as it has some NAs in, CLT_ACCESS not converted as 721 different values)
+f_restricted_route = restricted_route %>%
+  mutate_at(f_variables, as.factor)
+f_restricted_route$BOROUGH = factor(restricted_route$BOROUGH, exclude = NULL)
+
+glimpse(f_restricted_route) # check converted ok
+levels(f_restricted_route$BOROUGH) # check have 34 (33 actual boroughs plus 1 NA value)
+
+
+
+
+
+
+# create new df without geommetry that enables faster analysis of data
+non_geom_f_restricted_route = st_drop_geometry(f_restricted_route)
+str(non_geom_f_restricted_route)
+non_geom_f_restricted_route %>%
+  count(BOROUGH)  
+
+# create summary of df
+view(dfSummary(non_geom_f_restricted_route))
+
+
+
+
+
+
+############
+# Join all datasets to give numbers by Borough
+
+CID_by_borough = list(asl_borough_count, crossings_borough_count, cycle_lane_track_borough_count) %>%
+  reduce(left_join, by = "BOROUGH")
 
 
 

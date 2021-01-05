@@ -22,7 +22,7 @@ dataset_names = c("asl", "crossings", "cycle_lane_track", "restricted_route", "s
                   "restricted_point", "signage", "traffic_calming")
 #date = paste0(Sys.Date(),"-CID")
 
-date = "2020_12_02_CID_"
+date = "2021_01_03_CID_"
 
 for(i in 1:length(dataset_names)) {
   saveRDS(get(dataset_names[i]),
