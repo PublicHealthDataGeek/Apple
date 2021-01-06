@@ -206,7 +206,7 @@ tidy_TCB = f_cycle_lane_track %>%
 # so RWG999509 is on carriageway but CLT_MANDAT == TCB ie not true or false - photos suggest it is parallel to carriageway and separate
 
 # import May 2020 ONS LA boundary data
-#lon_lad_2020 = readRDS(file = "./map_data/lon_LAD_boundaries_May_2020.Rds")
+#lon_lad_2020 = readRDS(file = "./map_data/lon_LAD_boundaries_May_2020_BFE.Rds"))
 
 #create map of cycle lanes/tracks with TCB and label them with the feature ID
 mNA = mapview(tidy_TCB, color = "red") + mapview(lon_lad_2020, alpha.regions = 0.05, zcol = "BOROUGH")
@@ -219,11 +219,11 @@ fct_count(f_cycle_lane_track$CLT_PRIORI) # levels are only True and False with 2
 
 # Borough level analysis
 #####
-# Count number of Crossings by Borough
+# Count number of cycle lanes by Borough
 cycle_lane_track_borough_count = f_cycle_lane_track %>%
   st_drop_geometry() %>%
   group_by(BOROUGH) %>%
-  summarise(CycleLanesAndTracks = n()) # 33 boroughs plus 28 crossings with no borough
+  summarise(CycleLanesAndTracks = n()) # 33 boroughs plus 354 cycle lanes/tracks with no borough
 
 # Length of cycle lanes and tracks by Borough
 f_cycle_lane_track$length_m = st_length(f_cycle_lane_track$geometry)
@@ -289,12 +289,27 @@ f_restricted_route$BOROUGH = factor(restricted_route$BOROUGH, exclude = NULL)
 glimpse(f_restricted_route) # check converted ok
 levels(f_restricted_route$BOROUGH) # check have 34 (33 actual boroughs plus 1 NA value)
 
+# Borough level analysis
+# Count number of restricted routes by Borough
+restricted_route_borough_count = f_restricted_route %>%
+  st_drop_geometry() %>%
+  group_by(BOROUGH) %>%
+  summarise(RestrictedRoutes = n()) # 33 boroughs plus 18 restricted routes with no borough
+
+# Length of restricted routes by Borough
+f_restricted_route$length_m = st_length(f_restricted_route$geometry)
+f_restricted_route$length_km = set_units(st_length(f_restricted_route$geometry), km)
+
+restricted_route_borough_length = f_restricted_route %>%
+  group_by(BOROUGH) %>%
+  summarise(across(c(length_m, length_km), sum))
+# drop geometry cant be done within the pipe as it causes weirdness in the measurements (see issue 1)
+# it needs to be dropped to make dataset manageable
+restricted_route_borough_length = st_drop_geometry(restricted_route_borough_length) 
 
 
 
-
-
-# create new df without geommetry that enables faster analysis of data
+# create new df without geometry that enables faster analysis of data
 non_geom_f_restricted_route = st_drop_geometry(f_restricted_route)
 str(non_geom_f_restricted_route)
 non_geom_f_restricted_route %>%
@@ -305,15 +320,392 @@ view(dfSummary(non_geom_f_restricted_route))
 
 
 
+#####################
+# Cycle Parking     #
+#####################
+
+# download CID data using the Cycle Infra Lnd package
+cycle_parking = get_cid_points(type = "cycle_parking")
+class(cycle_parking)
+str(cycle_parking)
+
+# check and convert CRS so matches ONS boundary data CRS
+st_crs(cycle_parking) # CRS = WGS 84
+cycle_parking = st_transform(cycle_parking, crs=27700) 
+st_crs(cycle_parking) # PROJCRS["OSGB 1936 / British National Grid",
+
+# check completeness of variables
+unique(cycle_parking$FEATURE_ID) # 23758 unique variables
+unique(cycle_parking$BOROUGH) # 33 Boroughs no NAS
+unique(cycle_parking$SVDATE) # 331 unique survey dates, all of which are valid date
+# the below all have just true and false unless stated
+unique(cycle_parking$PRK_CARR)
+unique(cycle_parking$PRK_COVER)
+unique(cycle_parking$PRK_SECURE)
+unique(cycle_parking$PRK_LOCKER)
+unique(cycle_parking$PRK_SHEFF)
+unique(cycle_parking$PRK_MSTAND)
+unique(cycle_parking$PRK_PSTAND)
+unique(cycle_parking$PRK_HOOP)
+unique(cycle_parking$PRK_POST)
+unique(cycle_parking$PRK_BUTERF)
+unique(cycle_parking$PRK_WHEEL)
+unique(cycle_parking$PRK_HANGAR)
+unique(cycle_parking$PRK_TIER)
+unique(cycle_parking$PRK_OTHER)
+unique(cycle_parking$PRK_CPT) # contains NA
+unique(cycle_parking$PRK_PROVIS) # contains NA
+
+sum(is.na(cycle_parking$PRK_PROVIS)) # 2 NAs
+sum(is.na(cycle_parking$PRK_CPT)) # 2 NAs
+
+
+# examine URL data
+count_photo1 =  cycle_parking %>%
+  count(PHOTO1_URL) # 299 have no asset photo 1
+count_photo2 =  cycle_parking %>%
+  count(PHOTO2_URL) # 298 have no asset photo 2
+
+# convert certain columns to factors
+f_variables = c("PRK_CARR", "PRK_COVER", "PRK_SECURE", "PRK_LOCKER", "PRK_SHEFF", "PRK_MSTAND",
+                "PRK_PSTAND", "PRK_HOOP", "PRK_POST", "PRK_BUTERF", "PRK_WHEEL", "PRK_HANGAR",
+                "PRK_TIER", "PRK_OTHER", "BOROUGH")
+
+# convert columns to factors (BOROUGH done too as no NAs)
+f_cycle_parking = cycle_parking %>%
+  mutate_at(f_variables, as.factor)
+
+glimpse(f_cycle_parking) # check converted ok
+levels(f_cycle_parking$BOROUGH) # have 33 and no NA value
+
+
+# Borough level analysis
+cycle_parking_borough_count = f_cycle_parking %>%
+  st_drop_geometry() %>%
+  group_by(BOROUGH) %>%
+  summarise(CycleParking = n())
+
+
+# create new df without geommetry that enables faster analysis of data
+non_geom_f_cycle_parking = st_drop_geometry(f_cycle_parking)
+str(non_geom_f_cycle_parking)
+
+###########
+# Signals #
+###########
+
+# download CID data using the Cycle Infra Lnd package
+
+signal = get_cid_points(type = "signal") #n = 443
+class(signal)
+str(signal)
+
+# check and convert CRS so matches ONS boundary data CRS
+st_crs(signal) # CRS = WGS 84
+signal = st_transform(signal, crs=27700) 
+st_crs(signal) # PROJCRS["OSGB 1936 / British National Grid",
+
+
+# check completeness of variables
+unique(signal$FEATURE_ID) # 443 unique variables
+unique(signal$BOROUGH) # 23 Boroughs, no NAS
+unique(signal$SVDATE) # 111 unique survey dates, all of which are valid dates
+
+# the below all have just true and false
+unique(signal$SIG_HEAD)
+unique(signal$SIG_SEPARA)
+unique(signal$SIG_EARLY)
+unique(signal$SIG_TWOSTG)
+unique(signal$SIG_GATE)
+
+# examine URL data
+count_photo1 =  f_signal %>%
+  count(PHOTO1_URL) # 8 have no asset photo 1
+count_photo2 =  signal %>%
+  count(PHOTO2_URL) # 8 have no asset photo 2
+
+# convert certain columns to factors
+f_variables = c("SIG_HEAD", "SIG_SEPARA", "SIG_EARLY", "SIG_TWOSTG", "SIG_GATE", "BOROUGH")
+
+# convert columns to factors
+f_signal = signal %>%
+  mutate_at(f_variables, as.factor)
+
+glimpse(f_signal) # check converted ok
+levels(f_signal$BOROUGH) # only have 23 and no NA value
+
+# Borough level analysis
+signal_borough_count = f_signal %>%
+  st_drop_geometry() %>%
+  group_by(BOROUGH) %>%
+  summarise(Signals = n())
+
+# create new df without geommetry that enables faster analysis of data
+non_geom_f_signal = st_drop_geometry(f_signal)
+str(non_geom_f_signal)
+
+
+# create summary of df
+view(dfSummary(non_geom_f_signal))
+
+
+###################
+# Traffic calming #
+###################
+
+# download CID data using the Cycle Infra Lnd package
+traffic_calming = get_cid_points(type = "traffic_calming")
+class(traffic_calming)
+str(traffic_calming)
+
+# check and convert CRS so matches ONS boundary data CRS
+st_crs(traffic_calming) # CRS = WGS 84
+traffic_calming = st_transform(traffic_calming, crs=27700) 
+st_crs(traffic_calming) # PROJCRS["OSGB 1936 / British National Grid",
+
+# check completeness of variables
+unique(traffic_calming$FEATURE_ID) # 58565 unique variables
+unique(traffic_calming$BOROUGH) # 33 Boroughs, no NAs
+unique(traffic_calming$SVDATE) # 334 unique survey dates, all of which are valid date
+# the below all have just true and false
+unique(traffic_calming$TRF_RAISED)
+unique(traffic_calming$TRF_ENTRY)
+unique(traffic_calming$TRF_CUSHI)
+unique(traffic_calming$TRF_HUMP)
+unique(traffic_calming$TRF_SINUSO)
+unique(traffic_calming$TRF_BARIER)
+unique(traffic_calming$TRF_NAROW)
+unique(traffic_calming$TRF_CALM)
+
+# convert certain columns to factors
+f_variables = c("TRF_RAISED", "TRF_ENTRY", "TRF_CUSHI", "TRF_HUMP", "TRF_SINUSO",
+                "TRF_BARIER", "TRF_NAROW", "TRF_CALM", "BOROUGH")
+
+# convert columns to factors 
+f_traffic_calming = traffic_calming %>%
+  mutate_at(f_variables, as.factor)
+
+glimpse(f_traffic_calming) # check converted ok
+levels(f_traffic_calming$BOROUGH) # have 33 and no NA value
+
+count_photo1 =  f_traffic_calming %>%
+  count(PHOTO1_URL) # 805 have no asset photo 1
+count_photo2 =  f_traffic_calming %>%
+  count(PHOTO2_URL) # 810 have no asset photo 2
+
+# Borough level analysis
+traffic_calming_borough_count = f_traffic_calming %>%
+  st_drop_geometry() %>%
+  group_by(BOROUGH) %>%
+  summarise(TrafficCalming = n())
 
 
 
-############
-# Join all datasets to give numbers by Borough
+# create new df without geometry that enables faster analysis of data
+non_geom_f_traffic_calming = st_drop_geometry(f_traffic_calming)
+str(non_geom_f_traffic_calming)
 
-CID_by_borough = list(asl_borough_count, crossings_borough_count, cycle_lane_track_borough_count) %>%
+# create summary of df
+view(dfSummary(non_geom_f_traffic_calming))
+
+
+###########
+# Signage #
+###########
+
+# download CID data using the Cycle Infra Lnd package
+
+signage = get_cid_points(type = "signage")
+class(signage)
+str(signage)
+
+# check and convert CRS so matches ONS boundary data CRS
+st_crs(signage) # CRS = WGS 84
+signage = st_transform(signage, crs=27700) 
+st_crs(signage) # PROJCRS["OSGB 1936 / British National Grid",
+
+# check completeness of variables
+unique(signage$FEATURE_ID) # 118833 unique variables RWG999275 is present twice. 
+unique(signage$BOROUGH) # 33 Boroughs plus a NA group, 2 observation have NA for Borough x = f_signage %>% count(BOROUGH) %>% st_drop_geometry()
+unique(signage$SVDATE) # 349 unique survey dates, all of which are valid date
+# the below all have just true and false except where specified:
+unique(signage$SS_ROAD) # TRUE FALSE NA - 1 observations has NA
+unique(signage$SS_PATCH)
+unique(signage$SS_FACING)
+unique(signage$SS_NOCYC)
+unique(signage$SS_NOVEH)
+unique(signage$SS_CIRC)
+unique(signage$SS_EXEMPT)
+unique(signage$SS_NOLEFT)
+unique(signage$SS_NORIGH)
+unique(signage$SS_LEFT)
+unique(signage$SS_RIGHT)
+unique(signage$SS_NOEXCE)
+unique(signage$SS_DISMOU)
+unique(signage$SS_END)
+unique(signage$SS_CYCSMB) # TRUE FALSE FASLE
+unique(signage$SS_PEDSMB)
+unique(signage$SS_BUSSMB)
+unique(signage$SS_SMB)
+unique(signage$SS_LNSIGN)
+unique(signage$SS_ARROW)
+unique(signage$SS_NRCOL)
+unique(signage$SS_NCN)
+unique(signage$SS_LCN)
+unique(signage$SS_SUPERH)
+unique(signage$SS_QUIETW)
+unique(signage$SS_GREENW)
+unique(signage$SS_ROUTEN)  # 429 different names including 105883 observations with NA and 3 wih no data
+unique(signage$SS_DESTN)
+unique(signage$SS_ACCESS) # 802 different names including 115602 observations with NA and 5 with no data
+unique(signage$SS_NAME) # 65 unique labels including 3156 NA plus 2648 obs with no data
+unique(signage$SS_COLOUR) #  NONE GREEN RED BLUE NA <Null> BUFF/YELLOW: 3 NA, 2 <NULL>, 117188 NONE
+
+# examine URL data
+count_photo1 =  signage %>%
+  count(PHOTO1_URL) # 1347 have no asset photo 1
+count_photo2 =  signage %>%
+  count(PHOTO2_URL) # 1336 have no asset photo 2
+
+# examine RWG999275
+RWG_duplicate = signage %>%
+  filter(FEATURE_ID == "RWG999275")
+mapview(RWG_duplicate)
+
+
+# convert certain columns to factors
+f_variables = c("SS_ROAD", "SS_PATCH", "SS_FACING", "SS_NOCYC", "SS_NOVEH",
+                "SS_NOLEFT", "SS_NORIGH", "SS_LEFT", "SS_RIGHT", "SS_NOEXCE",
+                "SS_DISMOU", "SS_END", "SS_CYCSMB", "SS_PEDSMB", "SS_BUSSMB",
+                "SS_SMB", "SS_LNSIGN", "SS_ARROW", "SS_NRCOL", "SS_NCN",
+                "SS_LCN", "SS_SUPERH", "SS_QUIETW", "SS_GREENW",
+                "SS_DESTN", "SS_CIRC", "SS_EXEMPT")
+
+# convert columns to factors 
+f_signage = signage %>%
+  mutate_at(f_variables, as.factor)
+
+f_signage$BOROUGH = factor(signage$BOROUGH, exclude = NULL) # these variables are categorical done separately as have NAs
+f_signage$SS_ROAD = factor(signage$SS_ROAD, exclude = NULL) 
+f_signage$SS_COLOUR = factor(signage$SS_COLOUR, exclude = NULL)
+
+
+# recode SS_CYCSMB where values include "FALSE" and "FASLE"
+f_signage$SS_CYCSMB= fct_collapse(f_signage$SS_CYCSMB, 
+                                           "FALSE" = c("FALSE", "FASLE"))
+
+# Borough level analysis
+signage_borough_count = f_signage %>%
+  st_drop_geometry() %>%
+  group_by(BOROUGH) %>%
+  summarise(Signage = n())
+
+glimpse(f_signage) # check converted ok
+
+# recode SS_CYCSMB where values include "FALSE" and "FASLE"
+non_geom_f_signage$SS_COLOUR = fct_collapse(non_geom_f_signage$SS_COLOUR, 
+                                            "NONE" = NA) 
+
+
+#####################
+# Restricted points #
+#####################
+
+# download CID data using the Cycle Infra Lnd package
+restricted_points = get_cid_points(type = "restricted_point")
+class(restricted_points)
+str(restricted_points)
+
+# check and convert CRS so matches ONS boundary data CRS
+st_crs(restricted_points) # CRS = WGS 84
+restricted_points = st_transform(restricted_points, crs=27700) 
+st_crs(signage) # PROJCRS["OSGB 1936 / British National Grid",
+
+
+# check completeness of variables
+unique(restricted_points$FEATURE_ID) # 180 unique variables
+unique(restricted_points$BOROUGH) # 27 Boroughs, no NAS
+unique(restricted_points$SVDATE) # 73 unique survey dates, all of which are valid dates
+
+# the below all have just true and false
+unique(restricted_points$RST_STEPS)
+unique(restricted_points$RST_LIFT)
+
+# examine URL data
+count_photo1 =  restricted_points %>%
+  count(PHOTO1_URL) # 12 have no asset photo 1
+count_photo2 =  restricted_points %>%
+  count(PHOTO2_URL) # 12 have no asset photo 2
+
+# convert certain columns to factors
+f_variables = c("RST_STEPS", "RST_LIFT", "BOROUGH")
+
+# convert columns to factors (BOROUGH needs doing separately as it has some NAs in, CLT_ACCESS not converted as 721 different values)
+f_restricted_points = restricted_points %>%
+  mutate_at(f_variables, as.factor)
+
+glimpse(f_restricted_points) # check converted ok
+
+# Borough level analysis
+restricted_points_borough_count = f_restricted_points %>%
+  st_drop_geometry() %>%
+  group_by(BOROUGH) %>%
+  summarise(RestrictedPoints = n())
+
+
+# create new df without geommetry that enables faster analysis of data
+non_geom_f_restricted_points = st_drop_geometry(f_restricted_points)
+str(non_geom_f_restricted_points)
+
+# create summary of df
+view(dfSummary(non_geom_f_restricted_points))
+
+
+
+
+
+
+
+
+
+
+##################################################################################
+# Borough level analysis of assets by type
+#
+# ? group by inner/outer london at some point ?
+# ? do some form of calculation - by population, by working population, by area?
+# 
+
+####### Count of assets by Borough
+CID_by_borough = list(asl_borough_count, crossings_borough_count, 
+                      cycle_lane_track_borough_count, 
+                      restricted_route_borough_count,
+                      cycle_parking_borough_count,
+                      signal_borough_count,
+                      traffic_calming_borough_count,
+                      signage_borough_count,
+                      restricted_points_borough_count) %>%
   reduce(left_join, by = "BOROUGH")
 
+# need to replace NA in Borough with 'Borough not stated' and NAs in other columns with 0
+sum(is.na(CID_by_borough)) # = 21
 
+# Replace 'Borough NA' with text and count NAs with 0
+CID_by_borough = CID_by_borough %>% 
+  replace_na(list(BOROUGH = "No Borough stated in CID")) %>%
+  replace(is.na(.), 0)
+sum(is.na(CID_by_borough)) # checks that no NAs now exist (= 0)
 
+saveRDS(CID_by_borough, file = "/home/bananafan/Documents/PhD/Paper1/output/CID_count_by_borough")
+
+###### Length of line assets by Borough
+length_CID_by_borough = list(cycle_lane_track_borough_length,
+                             restricted_route_borough_length) %>%
+  reduce(left_join, by = "BOROUGH") %>%
+  mutate(across(2:5, round, 1)) %>%
+  rename(c(CycleLaneTrack_km = length_km.x, RestrictedRoute_km = length_km.y,
+           CycleLaneTrack_m = length_m.x, RestrictedRoute_m = length_m.y)) %>%
+  replace_na(list(BOROUGH = "No Borough stated in CID")) # Correct NA in Borough column
+
+saveRDS(length_CID_by_borough, file = "/home/bananafan/Documents/PhD/Paper1/output/CID_length_by_borough")
 
