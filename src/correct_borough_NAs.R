@@ -171,11 +171,43 @@ crossings_borough_NA_length = crossings_borough_NA_i %>%
   group_by(FEATURE_ID) %>%
   slice(which.max(borough_length)) # keep observations for each feature with the longest length
 
-# compare borough_NA_length with my visual check => only q observations where BOROUGH doesnt match my propose Borough
+# compare borough_NA_length with my visual check => only 2 observations where BOROUGH doesnt match my proposed Borough
 # RWG153061 city of london Type 3
 # RWG049417 Hammersmith & fulham type 3
 # type 3 =  two boroughs but the boundary between the boroughs goes through the centre of the road 
+# d/w RB on 7/1/21 - to create two observations (duplicates) for these feature_Ids and assign one to each of the boroughs
+# so create:
+# RWG153061 city of london Type 3
+# RWG049417 Hammersmith & fulham type 3
 
+# Create final dataset that gives the propose Borough for each observation based on the above rules 
+# create congruent dataset where visual check and st_length check matches
+congruent = crossings_borough_NA_i %>%
+  filter(!FEATURE_ID %in% c("RWG153061", "RWG049417"))
+
+congruent = congruent %>% 
+  group_by(FEATURE_ID) %>%
+  slice(which.max(borough_length)) # keep the observation (borough) which has the longest length
+
+# create incongruent dataset where visual check and st_length check does not match
+# ie observations "RWG153061", "RWG049417" 
+# recode Feature_ID with 'a' and 'b'
+# crosschecked that a/b corresponds with the right borough
+incongruent = crossings_borough_NA_i %>%
+  filter(FEATURE_ID %in% c("RWG153061", "RWG049417")) %>%
+  group_by(FEATURE_ID) %>%
+  arrange(desc(borough_length)) %>%
+  ungroup()
+incongruent$FEATURE_ID= replace(incongruent$FEATURE_ID, which(incongruent$FEATURE_ID == "RWG153061"), values = c("RWG153061a", "RWG153061b"))
+incongruent$FEATURE_ID= replace(incongruent$FEATURE_ID, which(incongruent$FEATURE_ID == "RWG049417"), values = c("RWG049417a", "RWG049417b"))
+
+# Join the two dataframes together
+crossings_borough_NA_final = rbind(congruent, incongruent)
+
+
+
+
+# VAlidating that have corrected NAs
 #count Boroughs before transformation
 count_crossings_borough = f_crossings %>%
   st_drop_geometry() %>%
@@ -192,7 +224,7 @@ f_crossings$BOROUGH = replace(f_crossings$BOROUGH, which(f_crossings$FEATURE_ID 
 
 
 # recount Boroughs after transformation
-recount_crossings_borough = f_crossings %>%
+recount_crossings_borough = f_crossings %>%  #####EWILL NEED TO CHANGE THIS TO A DIFFERENT NAME (POST CHANGE)
   st_drop_geometry() %>%
   group_by(BOROUGH) %>%
   summarise(Recount = n()) # 27 NA, 100 Hillingdon
