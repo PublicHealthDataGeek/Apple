@@ -17,7 +17,7 @@ library(GGally) # parallel coordinate extension of ggplot
 
 # Load datasets
 # CID asset data
-count_CID_by_borough = readRDS(file = "/home/bananafan/Documents/PhD/Paper1/output/CID_count_by_borough")
+count_CID_by_borough = readRDS(file = "/home/bananafan/Documents/PhD/Paper1/output/CID_count_by_borough")  #11 variables
 length_CID_by_borough = readRDS(file = "/home/bananafan/Documents/PhD/Paper1/output/CID_length_by_borough")
 
 # b) ONS Borough area 
@@ -56,7 +56,7 @@ lon_pop_estimates_2019$BOROUGH[lon_pop_estimates_2019$BOROUGH == "Hammersmith an
 # Join ???? to CID asset data
 count_CID_by_borough = count_CID_by_borough %>%
   left_join(borough_area) %>%
-  left_join(lon_pop_estimates_2019)
+  left_join(lon_pop_estimates_2019)  # 13 variables as area and pop are added
 
 # add column for inner/outer london
 Inner = c("City of London", "Camden", "Greenwich", "Hackney", "Hammersmith & Fulham", 
@@ -65,7 +65,7 @@ Inner = c("City of London", "Camden", "Greenwich", "Hackney", "Hammersmith & Ful
 
 count_CID_by_borough = count_CID_by_borough %>%
   mutate(London = ifelse(BOROUGH %in% Inner, "Inner", 
-                         ifelse(BOROUGH %in% "No Borough stated in CID", "Unknown", "Outer")))
+                         ifelse(BOROUGH %in% "No Borough stated in CID", "Unknown", "Outer"))) # 14 variables
 
           
 # produce counts by area and per head population (NB may want to consider per 100,000 pop at some point)
@@ -79,7 +79,7 @@ count_CID_by_borough_denom <- count_CID_by_borough %>%
                           "CycleParkingSites", "CycleParkingSpaces",
                           "Signals", "TrafficCalming", "Signage", "RestrictedPoints"),
                 .fns = ~.x/Population,
-                .names = "{.col}_count_per_head"))  
+                .names = "{.col}_count_per_head"))  # now 34 variables (20 onto the 14)
 
 
 # rank each borough
@@ -95,7 +95,7 @@ count_CID_by_borough_rank = count_CID_by_borough_denom %>%
                  .names = "{.col}_rank")) %>%
   mutate(across(.cols = c("ASL_count_per_head", "Crossings_count_per_head", 
                           "CycleLanesAndTracks_count_per_head", "RestrictedRoutes_count_per_head", 
-                          "CycleParkingSites_count_by_area", "CycleParkingSpaces_count_by_area",
+                          "CycleParkingSites_count_per_head", "CycleParkingSpaces_count_per_head",
                           "Signals_count_per_head", 
                           "TrafficCalming_count_per_head", "Signage_count_per_head", 
                           "RestrictedPoints_count_per_head"),
@@ -107,7 +107,7 @@ count_CID_by_borough_rank = count_CID_by_borough_denom %>%
                           "Signals", "TrafficCalming", "Signage", 
                           "RestrictedPoints"),
                 .fns = ~round(rank(-.x)), 
-                .names = "{.col}_count_rank")) 
+                .names = "{.col}_count_rank")) # now 64 variables -another 30 onto the 34
 
 
 # Validate ranking by comparing ranking with assets, used one example (ASL)
@@ -134,17 +134,6 @@ cba2 = ggplot(data = count_CID_by_borough_rank) +
 gridExtra::grid.arrange(cba1, cba2)
 
 # NEXT STEPS _ DRAW GRAPHS
-
-
-
-
-
-
-
-
-
-
-
 
 #########################
 # Work with length data #
@@ -402,12 +391,14 @@ ggsave(file = "/home/bananafan/Documents/PhD/Paper1/output/3lengths_by_2assets.p
 ######################################################
 
 
-# NB no cycle parking numbers data
+# NEED TO UPDATE ALL THIS CODE NOW HAVE correct cycle parking data set included
+# also is reverse ok...??? in the columns - not sure it is...
 
 # relevent columns in dataset
 
-#[1] "BOROUGH"                                
-# [13] "London"                                 
+# [1] "BOROUGH"                                
+# [14] "London"                                 
+        
 # [35] "ASL_count_by_area_rank"                 
 # [36] "Crossings_count_by_area_rank"           
 # [37] "CycleLanesAndTracks_count_by_area_rank" 
@@ -417,32 +408,36 @@ ggsave(file = "/home/bananafan/Documents/PhD/Paper1/output/3lengths_by_2assets.p
 # [41] "Signals_count_by_area_rank"             
 # [42] "TrafficCalming_count_by_area_rank"      
 # [43] "Signage_count_by_area_rank"             
-# [44] "RestrictedPoints_count_by_area_rank"    
+# [44] "RestrictedPoints_count_by_area_rank" 
+
 # [45] "ASL_count_per_head_rank"                
 # [46] "Crossings_count_per_head_rank"          
 # [47] "CycleLanesAndTracks_count_per_head_rank"
 # [48] "RestrictedRoutes_count_per_head_rank"   
-# [49] "Signals_count_per_head_rank"            
-# [50] "TrafficCalming_count_per_head_rank"     
-# [51] "Signage_count_per_head_rank"            
-# [52] "RestrictedPoints_count_per_head_rank"   
-# [53] "ASL_count_rank"                         
-# [54] "Crossings_count_rank"                   
-# [55] "CycleLanesAndTracks_count_rank"         
-# [56] "RestrictedRoutes_count_rank"            
-# [57] "CycleParkingSites_count_rank"           
-# [58] "CycleParkingSpaces_count_rank"          
-# [59] "Signals_count_rank"                     
-# [60] "TrafficCalming_count_rank"              
-# [61] "Signage_count_rank"                     
-# [62] "RestrictedPoints_count_rank"              
+# [49] "CycleParkingSites_count_per_head_rank"  
+# [50] "CycleParkingSpaces_count_per_head_rank" 
+# [51] "Signals_count_per_head_rank"            
+# [52] "TrafficCalming_count_per_head_rank"     
+# [53] "Signage_count_per_head_rank"            
+# [54] "RestrictedPoints_count_per_head_rank"
+
+# [55] "ASL_count_rank"                         
+# [56] "Crossings_count_rank"                   
+# [57] "CycleLanesAndTracks_count_rank"         
+# [58] "RestrictedRoutes_count_rank"            
+# [59] "CycleParkingSites_count_rank"           
+# [60] "CycleParkingSpaces_count_rank"          
+# [61] "Signals_count_rank"                     
+# [62] "TrafficCalming_count_rank"              
+# [63] "Signage_count_rank"                     
+# [64] "RestrictedPoints_count_rank"     
 
 
 
 # Borough level data
 # example plot
 brgh_count_plot = ggparcoord(count_CID_by_borough_rank, 
-           columns = rev(53:62), 
+           columns = rev(55:64), 
            scale = "globalminmax",    # uses the rank rather that scaling to something else
            groupColumn = 14,  # inner outer etc
            alphaLines = 0.8,
@@ -464,7 +459,7 @@ ggsave(file = "/home/bananafan/Documents/PhD/Paper1/output/brgh_count_plot.png",
 
 
 cr = ggparcoord(count_CID_by_borough_rank, 
-                columns = rev(53:62),  # count rank columns
+                columns = rev(55:64),  # count rank columns
                 scale = "globalminmax", 
                 groupColumn =14, # london columns
                 alphaLines = 0.8,
@@ -528,18 +523,100 @@ ggsave(file = "/home/bananafan/Documents/PhD/Paper1/output/7assets_by_3counts.pn
 ##########################################################
 # Visualised by cycle lanes/restricted routes across top #
 ##########################################################
-# one chart for each type of asset - code below needs amending
-clt_leng = ggparcoord(length_CID_by_borough_rank, 
-                      columns= c(15, 13, 17), 
-                      scale = "globalminmax", 
-                      groupColumn = 8,
-                      alphaLines = 0.8,
-                      title = "Cycle lanes and tracks") +
+
+test_chart = ggparcoord(count_CID_by_borough_rank, 
+                  columns= c(45, 35, 53), 
+                  scale = "globalminmax", 
+                  groupColumn = 14,
+                  alphaLines = 0.8,
+                  title = "ASL") +
   scale_color_manual(values =c("forest green", "dark gray", "black")) +
   coord_flip()  +
   ylab("Rank") +
   xlab(NULL) +
   scale_y_continuous(breaks = c(0, 11, 22, 33)) +
-  scale_x_discrete(labels = c("Length per head", "Length by km^2", "Total length"), 
+  scale_x_discrete(expand = c(0.01,0.01)) +
+  theme_minimal()
+
+gridExtra::grid.arrange(test_chart, asl_counts)
+
+# asl
+asl_counts = ggparcoord(count_CID_by_borough_rank, 
+                      columns= c(45, 35, 53), 
+                      scale = "globalminmax", 
+                      groupColumn = 14,
+                      alphaLines = 0.8,
+                      title = "ASL") +
+  scale_color_manual(values =c("forest green", "dark gray", "black")) +
+  coord_flip()  +
+  ylab("Rank") +
+  xlab(NULL) +
+  scale_y_continuous(breaks = c(0, 11, 22, 33)) +
+  scale_x_discrete(labels = c("Count per head", "Count by km^2", "Total count"), 
                    expand = c(0.01,0.01)) +
   theme_minimal()
+
+# crossings
+crossing_counts = ggparcoord(count_CID_by_borough_rank, 
+                       columns= c(46, 36, 54), 
+                       scale = "globalminmax", 
+                       groupColumn = 14,
+                       alphaLines = 0.8,
+                       title = "Crossings") +
+  scale_color_manual(values =c("forest green", "dark gray", "black")) +
+  coord_flip()  +
+  ylab("Rank") +
+  xlab(NULL) +
+  scale_y_continuous(breaks = c(0, 11, 22, 33)) +
+  scale_x_discrete(labels = c("Count per head", "Count by km^2", "Total count"), 
+                  expand = c(0.01,0.01)) +
+  theme_minimal()
+ 
+# cycle lanes and tracks
+clt_counts = ggparcoord(count_CID_by_borough_rank, 
+                             columns= c(47, 37, 55), 
+                             scale = "globalminmax", 
+                             groupColumn = 14,
+                             alphaLines = 0.8,
+                             title = "Cycle lanes and tracks") +
+  scale_color_manual(values =c("forest green", "dark gray", "black")) +
+  coord_flip()  +
+  ylab("Rank") +
+  xlab(NULL) +
+  scale_y_continuous(breaks = c(0, 11, 22, 33)) +
+  scale_x_discrete(labels = c("Count per head", "Count by km^2", "Total count"), 
+                   expand = c(0.01,0.01)) +
+  theme_minimal()
+
+# restricted_routes
+rr_counts = ggparcoord(count_CID_by_borough_rank, 
+                        columns= c(48, 38, 56), 
+                        scale = "globalminmax", 
+                        groupColumn = 14,
+                        alphaLines = 0.8,
+                        title = "Restricted routes") +
+  scale_color_manual(values =c("forest green", "dark gray", "black")) +
+  coord_flip()  +
+  ylab("Rank") +
+  xlab(NULL) +
+  scale_y_continuous(breaks = c(0, 11, 22, 33)) +
+  scale_x_discrete(labels = c("Count per head", "Count by km^2", "Total count"), 
+                   expand = c(0.01,0.01)) +
+  theme_minimal() 
+ 
+
+# cycle park sites
+cp_sites_counts = ggparcoord(count_CID_by_borough_rank, 
+                       columns= c(48, 38, 56), 
+                       scale = "globalminmax", 
+                       groupColumn = 14,
+                       alphaLines = 0.8,
+                       title = "Cycle parking sites") +
+  scale_color_manual(values =c("forest green", "dark gray", "black")) +
+  coord_flip()  +
+  ylab("Rank") +
+  xlab(NULL) +
+  scale_y_continuous(breaks = c(0, 11, 22, 33)) +
+  scale_x_discrete(labels = c("Count per head", "Count by km^2", "Total count"), 
+                   expand = c(0.01,0.01)) +
+  theme_minimal() 
