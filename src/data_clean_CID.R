@@ -14,10 +14,10 @@ library(mapview)
 library(leaflet)
 library(leafem)
 #library(leafsync)
-#library(summarytools)
+library(summarytools)
 library(forcats)
 library(units)
-#library(geojsonsf)
+
 
 #######################
 # Advanced Stop Lines #
@@ -380,11 +380,43 @@ levels(f_cycle_parking$BOROUGH) # have 33 and no NA value
 
 
 # Borough level analysis
-cycle_parking_borough_count = f_cycle_parking %>%
+# a) Number of cycle parking locations/sites
+cycle_parking_sites_borough_count = f_cycle_parking %>%
   st_drop_geometry() %>%
   group_by(BOROUGH) %>%
-  summarise(CycleParking = n())
+  summarise(CycleParkingSites = n())
 
+
+# b) Number of cycling parking spaces (capacity)
+# PRK_PROVIS (number of stands etc) and PRK_CPT (number of bikes that can be 
+# parked) have NAs.  These need correcting before can calculate no of 
+# bikes that can be parked per borough
+
+# NEEDS TO ADD CODE FOR CYCLE PARKING SPACES
+# PRK_CPT = number of bikes that can be easily parked
+sum(is.na(cycle_parking$PRK_PROVIS)) # 2 NA
+sum(is.na(cycle_parking$PRK_CPT)) # 2 NAs
+CPcount_borough_NA = f_cycle_parking %>% # identify which observations are NA
+  st_drop_geometry() %>%
+  filter(is.na(PRK_CPT)) # 2 observations have NA - both for PROVIS & CPT
+
+# Asset images reviewed - able to see how many stands and spaces each have
+# RWG999580 4 stands (PROVIS) 8 spaces (CPT)
+# RWG999458 3 stands, 6 spaces
+# therefore can correct missing data
+f_cycle_parking$PRK_PROVIS[f_cycle_parking$FEATURE_ID == "RWG999580"] = 4
+f_cycle_parking$PRK_CPT[f_cycle_parking$FEATURE_ID == "RWG999580"] = 8
+f_cycle_parking$PRK_PROVIS[f_cycle_parking$FEATURE_ID == "RWG999458"] = 3
+f_cycle_parking$PRK_CPT[f_cycle_parking$FEATURE_ID == "RWG999458"] = 6
+
+# check coded correctly
+x = f_cycle_parking %>%
+  filter(FEATURE_ID == "RWG999580" | FEATURE_ID == "RWG999458") # = yes coded correctly
+# now calculate number of cycle parking spaces by borough
+cycle_parking_spaces_borough_count = f_cycle_parking %>%
+  st_drop_geometry() %>%
+  group_by(BOROUGH) %>%
+  summarise(CycleParkingSpaces = sum(PRK_CPT))
 
 # create new df without geommetry that enables faster analysis of data
 non_geom_f_cycle_parking = st_drop_geometry(f_cycle_parking)
@@ -571,7 +603,9 @@ count_photo2 =  signage %>%
 RWG_duplicate = signage %>%
   filter(FEATURE_ID == "RWG999275")
 mapview(RWG_duplicate)
-
+# create new FEATURE_IDs so that observations can be differentiated
+signage$FEATURE_ID[signage$BOROUGH == "Barnet"] = "RWG999275a"
+signage$FEATURE_ID[signage$BOROUGH == "Haringey"] = "RWG999275b"
 
 # convert certain columns to factors
 f_variables = c("SS_ROAD", "SS_PATCH", "SS_FACING", "SS_NOCYC", "SS_NOVEH",
@@ -670,17 +704,17 @@ view(dfSummary(non_geom_f_restricted_points))
 
 
 ##################################################################################
-# Borough level analysis of assets by type
+# Create data frames for Borough level analysis of assets by type
 #
-# ? group by inner/outer london at some point ?
-# ? do some form of calculation - by population, by working population, by area?
+# 
 # 
 
 ####### Count of assets by Borough
 CID_by_borough = list(asl_borough_count, crossings_borough_count, 
                       cycle_lane_track_borough_count, 
                       restricted_route_borough_count,
-                      cycle_parking_borough_count,
+                      cycle_parking_sites_borough_count,
+                      cycle_parking_space_borough_count
                       signal_borough_count,
                       traffic_calming_borough_count,
                       signage_borough_count,

@@ -1,5 +1,5 @@
-#########################################
-# Address Borough NAs #
+####################################################
+# Address assests that have no Borough stated      #
 #     
 # This script takes the data cleansed CID files
 # and then addresses the NAs in the Borough by:
@@ -470,7 +470,7 @@ mapview(signage_borough_NA$geometry, color = "red") + mapview(lon_lad_2020, alph
 
 
 ##################
-# No NAS:
+# No Borough NAS:
 # cycle_parking
 # signals
 # traffic calming
