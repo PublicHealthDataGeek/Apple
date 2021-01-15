@@ -3,10 +3,23 @@
 ####################################
 # Date created: 11/1/21
 #                                    
-# This code takes the Borough level asset data by count and length and visualises
-# the raw numbers and numbers per various denominators such as population, 
-# borough area etc
+# This code takes the Borough level asset data by count and length, ranks these by Borough
+# for the raw numbers and numbers per various denominators such as population, 
+# borough area etc.  It then ranks the Boroughs within each category.  Finally it visualises
+# the ranks using parallel coordinate plots
 #
+# Due to way paracord draws, it uses column index so I subsetted the dataframes to
+# ensure that correct columns selected for plots (can't select by name)
+#
+# ACTIONS STILL REQUIRED
+# - rerun once have NAs sorted
+#
+# Code improvements:
+# - to automate graph construction to reduce risk of errors
+# - ? grey background may improve ability to distinguish between boroughs
+# - ? tall and think better at doing the comparison
+# - ? worth highlighting one or two boroughs by name
+# - ? other denominators?
 ####################################################################################
 
 # Load packages
@@ -14,6 +27,13 @@ library(tidyverse)
 library(mapview)
 library(GGally) # parallel coordinate extension of ggplot
 
+# create function for legend
+get_legend<-function(myggplot){
+  tmp <- ggplot_gtable(ggplot_build(myggplot))
+  leg <- which(sapply(tmp$grobs, function(x) x$name) == "guide-box")
+  legend <- tmp$grobs[[leg]]
+  return(legend)
+}
 
 # Load datasets
 # CID asset data
@@ -361,13 +381,7 @@ rr_leng = ggparcoord(length_CID_by_borough_rank,
   scale_x_discrete(expand = c(0.01,0.01), labels = NULL) + # remove labels so can do grid arrange
   theme_minimal()
 
-# get legend
-get_legend<-function(myggplot){
-  tmp <- ggplot_gtable(ggplot_build(myggplot))
-  leg <- which(sapply(tmp$grobs, function(x) x$name) == "guide-box")
-  legend <- tmp$grobs[[leg]]
-  return(legend)
-}
+
 
 legend2 <- get_legend(clt_leng) # create legend for the  plots
 clt_leng = clt_leng + theme(legend.position="none") # remove legends from plots
@@ -390,51 +404,6 @@ ggsave(file = "/home/bananafan/Documents/PhD/Paper1/output/3lengths_by_2assets.p
 # Visualise count data in parallel coordinate plots #
 ######################################################
 
-
-# NEED TO UPDATE ALL THIS CODE NOW HAVE correct cycle parking data set included
-# also is reverse ok...??? in the columns - not sure it is...
-
-# relevent columns in dataset
-
-# [1] "BOROUGH"                                
-# [14] "London"                                 
-        
-# [35] "ASL_count_by_area_rank"                 
-# [36] "Crossings_count_by_area_rank"           
-# [37] "CycleLanesAndTracks_count_by_area_rank" 
-# [38] "RestrictedRoutes_count_by_area_rank"    
-# [39] "CycleParkingSites_count_by_area_rank"   
-# [40] "CycleParkingSpaces_count_by_area_rank"  
-# [41] "Signals_count_by_area_rank"             
-# [42] "TrafficCalming_count_by_area_rank"      
-# [43] "Signage_count_by_area_rank"             
-# [44] "RestrictedPoints_count_by_area_rank" 
-
-# [45] "ASL_count_per_head_rank"                
-# [46] "Crossings_count_per_head_rank"          
-# [47] "CycleLanesAndTracks_count_per_head_rank"
-# [48] "RestrictedRoutes_count_per_head_rank"   
-# [49] "CycleParkingSites_count_per_head_rank"  
-# [50] "CycleParkingSpaces_count_per_head_rank" 
-# [51] "Signals_count_per_head_rank"            
-# [52] "TrafficCalming_count_per_head_rank"     
-# [53] "Signage_count_per_head_rank"            
-# [54] "RestrictedPoints_count_per_head_rank"
-
-# [55] "ASL_count_rank"                         
-# [56] "Crossings_count_rank"                   
-# [57] "CycleLanesAndTracks_count_rank"         
-# [58] "RestrictedRoutes_count_rank"            
-# [59] "CycleParkingSites_count_rank"           
-# [60] "CycleParkingSpaces_count_rank"          
-# [61] "Signals_count_rank"                     
-# [62] "TrafficCalming_count_rank"              
-# [63] "Signage_count_rank"                     
-# [64] "RestrictedPoints_count_rank"     
-
-
-
-# Borough level data
 # example plot
 brgh_count_plot = ggparcoord(count_CID_by_borough_rank, 
            columns = rev(55:64), 
@@ -449,6 +418,9 @@ brgh_count_plot = ggparcoord(count_CID_by_borough_rank,
 ggsave(file = "/home/bananafan/Documents/PhD/Paper1/output/brgh_count_plot.png", 
        brgh_count_plot, width = 95 * (14/5), height = 53 * (14/5), units = "mm")
 
+# As ggparcoord requires to give column by index and can be hard to ensure picked 
+# correct column and name plan is to subset data before drawing plots
+
 
 ###########################################
 # Visualised by count options across top #
@@ -457,31 +429,126 @@ ggsave(file = "/home/bananafan/Documents/PhD/Paper1/output/brgh_count_plot.png",
 # each chart validated by comparing the pattern seen with an equivalent version
 # of the chart above so make sure I have labelled the columns properly. 
 
+# TOTAL COUNT 
+# subset df
+total_count_rank = count_CID_by_borough_rank %>%
+  select(c(1, 14,55:64))
+names(total_count_rank)
+# [1] "BOROUGH"                        "London"                        
+# [3] "ASL_count_rank"                 "Crossings_count_rank"          
+# [5] "CycleLanesAndTracks_count_rank" "RestrictedRoutes_count_rank"   
+# [7] "CycleParkingSites_count_rank"   "CycleParkingSpaces_count_rank" 
+# [9] "Signals_count_rank"             "TrafficCalming_count_rank"     
+# [11] "Signage_count_rank"             "RestrictedPoints_count_rank" 
 
-cr = ggparcoord(count_CID_by_borough_rank, 
-                columns = rev(55:64),  # count rank columns
-                scale = "globalminmax", 
-                groupColumn =14, # london columns
-                alphaLines = 0.8,
-                title = "Total count") +
+# test = ggparcoord(total_count_rank, 
+#                 columns = rev(3:12),  # this puts ASL at the top and RP at bottom
+#                 scale = "globalminmax", 
+#                 groupColumn = 2, # london columns
+#                 alphaLines = 0.8,
+#                 title = "Total count") +
+#   scale_color_manual(values =c("maroon", "dark gray", "black")) +
+#   coord_flip()  +
+#   ylab("Rank") +
+#   xlab(NULL) +
+#   scale_y_continuous(breaks = c(0, 11, 22, 33)) +
+#   scale_x_discrete(expand = c(0.01,0.01)) +
+#   theme_minimal()
+
+# test_2 = ggparcoord(total_count_rank, 
+#                   columns = rev(3:12),  # this puts ASL at the top and RP at bottom
+#                   scale = "globalminmax", 
+#                   groupColumn = 2, # london columns
+#                   alphaLines = 0.8,
+#                   title = "Total count") +
+#   scale_color_manual(values =c("maroon", "dark gray", "black")) +
+#   coord_flip()  +
+#   ylab("Rank") +
+#   xlab(NULL) +
+#   scale_y_continuous(breaks = c(0, 11, 22, 33)) +
+#   scale_x_discrete(expand = c(0.01,0.01), labels = c("Restricted Points", "Signage", "Traffic calming", 
+#                                                     "Signals", "Cycle parking spaces", "Cycle parking sites",
+#                                                     "Restricted routes", "Cycle Lanes and Tracks", 
+#                                                     "Crossings", "ASL")) +
+#   theme_minimal()
+
+
+
+# check correctly plotted and labelled
+# gridExtra::grid.arrange(test, test_2, nrow=1) # ->  Yes correct
+
+# do actual plot 
+tc_plot = ggparcoord(total_count_rank, 
+                    columns = rev(3:12),  # this puts ASL at the top and RP at bottom
+                    scale = "globalminmax", 
+                    groupColumn = 2, # london columns
+                    alphaLines = 0.8,
+                    title = "Total count") +
   scale_color_manual(values =c("maroon", "dark gray", "black")) +
   coord_flip()  +
   ylab("Rank") +
   xlab(NULL) +
   scale_y_continuous(breaks = c(0, 11, 22, 33)) +
-  scale_x_discrete(labels = c("Restricted Points", "Signage", "Traffic calming", 
-                              "Signals", "Cycle parking spaces", "Cycle parking sites",
-                              "Restricted routes", "Cycle Lanes and Tracks", 
-                              "Crossings", "ASL"), expand = c(0.01,0.01)) +
+  scale_x_discrete(expand = c(0.01,0.01), labels = c("Restricted Points", "Signage", "Traffic calming", 
+                                                     "Signals", "Cycle parking spaces", "Cycle parking sites",
+                                                     "Restricted routes", "Cycle Lanes and Tracks", 
+                                                     "Crossings", "ASL")) +
   theme_minimal()
-# can check correct by comparing to brgh_count_plot (gridExtra::grid.arrange(brgh_count_plot, cr)
 
-cpa = ggparcoord(count_CID_by_borough_rank, 
-                columns= rev(44:35),   # count by area ranks
-                scale = "globalminmax", 
-                groupColumn = 14,  # london
-                alphaLines = 0.8,
-                title = "Count per km^2") +
+
+
+# COUNT BY AREA
+# subset df
+count_by_area_rank = count_CID_by_borough_rank %>%
+  select(c(1, 14,35:44))
+names(count_by_area_rank)
+# [1] "BOROUGH"                               
+# [2] "London"                                
+# [3] "ASL_count_by_area_rank"                
+# [4] "Crossings_count_by_area_rank"          
+# [5] "CycleLanesAndTracks_count_by_area_rank"
+# [6] "RestrictedRoutes_count_by_area_rank"   
+# [7] "CycleParkingSites_count_by_area_rank"  
+# [8] "CycleParkingSpaces_count_by_area_rank" 
+# [9] "Signals_count_by_area_rank"            
+# [10] "TrafficCalming_count_by_area_rank"     
+# [11] "Signage_count_by_area_rank"            
+# [12] "RestrictedPoints_count_by_area_rank"  
+
+# test = ggparcoord(count_by_area_rank,
+#                       columns = rev(3:12),  # this puts ASL at the top and RP at bottom
+#                       scale = "globalminmax",
+#                       groupColumn = 2, # london columns) +
+#   scale_color_manual(values =c("maroon", "dark gray", "black"))) +
+#   coord_flip()
+# 
+# test_2 = ggparcoord(count_by_area_rank, 
+#                      columns = rev(3:12),  # this puts ASL at the top and RP at bottom
+#                      scale = "globalminmax", 
+#                      groupColumn = 2, # london columns
+#                      alphaLines = 0.8,
+#                      title = "Count by km^2") +
+#   scale_color_manual(values =c("maroon", "dark gray", "black")) +
+#   coord_flip()  +
+#   ylab("Rank") +
+#   xlab(NULL) +
+#   scale_y_continuous(breaks = c(0, 11, 22, 33)) +
+#   scale_x_discrete(expand = c(0.01,0.01), labels = c("Restricted Points", "Signage", "Traffic calming", 
+#                                                      "Signals", "Cycle parking spaces", "Cycle parking sites",
+#                                                      "Restricted routes", "Cycle Lanes and Tracks", 
+#                                                      "Crossings", "ASL")) +
+#   theme_minimal()
+# 
+# # check correctly plotted and labelled
+# gridExtra::grid.arrange(test, test_2, nrow=1) # ->  Yes correct
+
+#NOw do actual plot with labels removed so can do the 3 plots together
+cba_plot = ggparcoord(count_by_area_rank, 
+                    columns = rev(3:12),  # this puts ASL at the top and RP at bottom
+                    scale = "globalminmax", 
+                    groupColumn = 2, # london columns
+                    alphaLines = 0.8,
+                    title = "Count by km^2") +
   scale_color_manual(values =c("maroon", "dark gray", "black")) +
   coord_flip()  +
   ylab("Rank") +
@@ -490,12 +557,60 @@ cpa = ggparcoord(count_CID_by_borough_rank,
   scale_x_discrete(expand = c(0.01,0.01), labels = NULL) +
   theme_minimal()
 
-cph = ggparcoord(count_CID_by_borough_rank, 
-                 columns= rev(52:45), # count per head ranks
-                 scale = "globalminmax", 
-                 groupColumn = 14,  # london
-                 alphaLines = 0.8,
-                 title = "Count per head") +
+
+# COUNT PER HEAD
+# subset df
+count_per_head_rank = count_CID_by_borough_rank %>%
+  select(c(1, 14,45:54))
+names(count_per_head_rank)
+# [1] "BOROUGH"                                
+# [2] "London"                                 
+# [3] "ASL_count_per_head_rank"                
+# [4] "Crossings_count_per_head_rank"          
+# [5] "CycleLanesAndTracks_count_per_head_rank"
+# [6] "RestrictedRoutes_count_per_head_rank"   
+# [7] "CycleParkingSites_count_per_head_rank"  
+# [8] "CycleParkingSpaces_count_per_head_rank" 
+# [9] "Signals_count_per_head_rank"            
+# [10] "TrafficCalming_count_per_head_rank"     
+# [11] "Signage_count_per_head_rank"            
+# [12] "RestrictedPoints_count_per_head_rank" 
+
+# test = ggparcoord(count_per_head_rank,
+#                        columns = rev(3:12),  # this puts ASL at the top and RP at bottom
+#                        scale = "globalminmax",
+#                        groupColumn = 2, # london columns) +
+#    scale_color_manual(values =c("maroon", "dark gray", "black"))) +
+#    coord_flip()
+
+# test_2 = ggparcoord(count_per_head_rank, 
+#                       columns = rev(3:12),  # this puts ASL at the top and RP at bottom
+#                       scale = "globalminmax", 
+#                       groupColumn = 2, # london columns
+#                       alphaLines = 0.8,
+#                       title = "Count per head") +
+#   scale_color_manual(values =c("maroon", "dark gray", "black")) +
+#   coord_flip()  +
+#   ylab("Rank") +
+#   xlab(NULL) +
+#   scale_y_continuous(breaks = c(0, 11, 22, 33)) +
+#   scale_x_discrete(expand = c(0.01,0.01), labels = c("Restricted Points", "Signage", "Traffic calming", 
+#                                                      "Signals", "Cycle parking spaces", "Cycle parking sites",
+#                                                      "Restricted routes", "Cycle Lanes and Tracks", 
+#                                                      "Crossings", "ASL")) +
+#   theme_minimal()
+# 
+# # check correctly plotted and labelled
+# gridExtra::grid.arrange(test, test_2, nrow=1) # ->  Yes correct
+
+#NOw do actual plot with labels removed so can do the 3 plots together
+
+cph_plot = ggparcoord(count_per_head_rank, 
+                    columns = rev(3:12),  # this puts ASL at the top and RP at bottom
+                    scale = "globalminmax", 
+                    groupColumn = 2, # london columns
+                    alphaLines = 0.8,
+                    title = "Count per head") +
   scale_color_manual(values =c("maroon", "dark gray", "black")) +
   coord_flip()  +
   ylab("Rank") +
@@ -504,16 +619,18 @@ cph = ggparcoord(count_CID_by_borough_rank,
   scale_x_discrete(expand = c(0.01,0.01), labels = NULL) +
   theme_minimal()
 
-legend3 <- get_legend(cr) # create legend for the 3 plots
-cr = cr + theme(legend.position="none") # remove legends from plots
-cpa = cpa + theme(legend.position="none")
-cph = cph + theme(legend.position="none")
 
-# plot all three plots together
-gridExtra::grid.arrange(cr, cpa, cph, legend3, nrow=1, widths= c(1.5, 1, 1, 0.5))
+
+# create plot of all 3 count rank plots
+legend3 <- get_legend(tc_plot) # create legend for the 3 plots
+tc_plot = tc_plot + theme(legend.position="none") # remove legends from plots
+cba_plot = cba_plot + theme(legend.position="none")
+cph_plot = cph_plot + theme(legend.position="none")
+
+gridExtra::grid.arrange(tc_plot, cba_plot, cph_plot, legend3, nrow=1, widths= c(0.8, 0.5, 0.5, 0.2))
 
 # save count plot
-plot_count1 = gridExtra::grid.arrange(cr, cpa, cph, legend3, nrow=1, widths= c(0.8, 0.5, 0.5, 0.2))
+plot_count1 = gridExtra::grid.arrange(tc_plot, cba_plot, cph_plot, legend3, nrow=1, widths= c(0.8, 0.5, 0.5, 0.2))
 ggsave(file = "/home/bananafan/Documents/PhD/Paper1/output/7assets_by_3counts.png", 
        plot_count1, width = 75 * (14/5), height = 53 * (14/5), units = "mm")
 #the above seems to give perfect size for these 3 plots
@@ -523,100 +640,523 @@ ggsave(file = "/home/bananafan/Documents/PhD/Paper1/output/7assets_by_3counts.pn
 ##########################################################
 # Visualised by cycle lanes/restricted routes across top #
 ##########################################################
+# each chart validated by comparing the pattern seen with an equivalent version
+# of the chart above so make sure I have labelled the columns properly. 
 
-test_chart = ggparcoord(count_CID_by_borough_rank, 
-                  columns= c(45, 35, 53), 
-                  scale = "globalminmax", 
-                  groupColumn = 14,
-                  alphaLines = 0.8,
-                  title = "ASL") +
+#### ASL
+# subset df
+asl_rank = count_CID_by_borough_rank %>%
+  select(c(1, 14, 35, 45, 55))
+names(asl_rank)
+# [1] "BOROUGH"                 "London"                 
+# [3] "ASL_count_by_area_rank"  "ASL_count_per_head_rank"
+# [5] "ASL_count_rank"  
+# test = ggparcoord(asl_rank, 
+#                   columns= c(3, 4, 5), 
+#                   scale = "globalminmax", 
+#                   groupColumn = 2) +
+#   scale_color_manual(values =c("forest green", "dark gray", "black")) +
+#   coord_flip()
+# 
+# test_2 = ggparcoord(asl_rank, columns= c(3, 4, 5),
+#                     scale = "globalminmax",
+#                     groupColumn = 2, # london columns
+#                     alphaLines = 0.8,
+#                     title = "ASL") +
+#    scale_color_manual(values =c("forest green", "dark gray", "black")) +
+#    coord_flip()  +
+#    ylab("Rank") +
+#    xlab(NULL) +
+#    scale_y_continuous(breaks = c(0, 11, 22, 33)) +
+#    scale_x_discrete(expand = c(0.01,0.01), labels = c("Count by km^2", "Count per head", "Count")) +
+#    theme_minimal()
+# 
+# # check correctly plotted and labelled
+# gridExtra::grid.arrange(test, test_2, nrow=1) # ->  Yes correct
+
+asl_plot = ggparcoord(asl_rank, columns= c(3, 4, 5),
+                    scale = "globalminmax",
+                    groupColumn = 2, # london columns
+                    alphaLines = 0.8,
+                    title = "ASL") +
+   scale_color_manual(values =c("forest green", "dark gray", "black")) +
+   coord_flip()  +
+   ylab("Rank") +
+   xlab(NULL) +
+   scale_y_continuous(breaks = c(0, 11, 22, 33)) +
+   scale_x_discrete(expand = c(0.01,0.01), labels = c("Count by km^2", "Count per head", "Count")) +
+   theme_minimal()
+
+#######CROSSINGS
+# subset df
+crossings_rank = count_CID_by_borough_rank %>%
+  select(c(1, 14, 36, 46, 56))
+names(crossings_rank)
+# 1] "BOROUGH"                       "London"                       
+# [3] "Crossings_count_by_area_rank"  "Crossings_count_per_head_rank"
+# [5] "Crossings_count_rank" 
+
+# test = ggparcoord(crossings_rank,
+#                   columns= c(3, 4, 5),
+#                   scale = "globalminmax",
+#                   groupColumn = 2) +
+#   scale_color_manual(values =c("forest green", "dark gray", "black")) +
+#   coord_flip()
+# 
+# test_2 = ggparcoord(crossings_rank, columns= c(3, 4, 5),
+#                     scale = "globalminmax",
+#                     groupColumn = 2, # london columns
+#                     alphaLines = 0.8,
+#                     title = "Crossings") +
+#    scale_color_manual(values =c("forest green", "dark gray", "black")) +
+#    coord_flip()  +
+#    ylab("Rank") +
+#    xlab(NULL) +
+#    scale_y_continuous(breaks = c(0, 11, 22, 33)) +
+#    scale_x_discrete(expand = c(0.01,0.01), labels = c("Count by km^2", "Count per head", "Count")) +
+#    theme_minimal()
+# 
+# # check correctly plotted and labelled
+# gridExtra::grid.arrange(test, test_2, nrow=1) # ->  Yes correct
+
+crossings_plot = ggparcoord(crossings_rank, columns= c(3, 4, 5),
+                    scale = "globalminmax",
+                    groupColumn = 2, # london columns
+                    alphaLines = 0.8,
+                    title = "Crossings") +
   scale_color_manual(values =c("forest green", "dark gray", "black")) +
   coord_flip()  +
   ylab("Rank") +
   xlab(NULL) +
   scale_y_continuous(breaks = c(0, 11, 22, 33)) +
-  scale_x_discrete(expand = c(0.01,0.01)) +
+  scale_x_discrete(expand = c(0.01,0.01), labels = NULL) +
   theme_minimal()
 
-gridExtra::grid.arrange(test_chart, asl_counts)
+######### CYCLE LANES AND TRACKS
 
-# asl
-asl_counts = ggparcoord(count_CID_by_borough_rank, 
-                      columns= c(45, 35, 53), 
-                      scale = "globalminmax", 
-                      groupColumn = 14,
-                      alphaLines = 0.8,
-                      title = "ASL") +
+# subset df
+clt_rank = count_CID_by_borough_rank %>%
+  select(c(1, 14, 37, 47, 57))
+names(clt_rank)
+# [1] "BOROUGH"                                
+# [2] "London"                                 
+# [3] "CycleLanesAndTracks_count_by_area_rank" 
+# [4] "CycleLanesAndTracks_count_per_head_rank"
+# [5] "CycleLanesAndTracks_count_rank"    
+
+# test = ggparcoord(clt_rank,
+#                   columns= c(3, 4, 5),
+#                   scale = "globalminmax",
+#                   groupColumn = 2) +
+#   scale_color_manual(values =c("forest green", "dark gray", "black")) +
+#   coord_flip()
+# 
+# test_2 = ggparcoord(clt_rank, 
+#                     columns= c(3, 4, 5),
+#                     scale = "globalminmax",
+#                     groupColumn = 2, # london columns
+#                     alphaLines = 0.8,
+#                     title = "Cycle lanes and tracks") +
+#    scale_color_manual(values =c("forest green", "dark gray", "black")) +
+#    coord_flip()  +
+#    ylab("Rank") +
+#    xlab(NULL) +
+#    scale_y_continuous(breaks = c(0, 11, 22, 33)) +
+#    scale_x_discrete(expand = c(0.01,0.01), labels = c("Count by km^2", "Count per head", "Count")) +
+#    theme_minimal()
+# 
+# # check correctly plotted and labelled
+# gridExtra::grid.arrange(test, test_2, nrow=1) # ->  Yes correct
+
+cycle_lanes_plot = ggparcoord(clt_rank,
+                    columns= c(3, 4, 5),
+                    scale = "globalminmax",
+                    groupColumn = 2, # london columns
+                    alphaLines = 0.8,
+                    title = "Cycle lanes and tracks") +
+   scale_color_manual(values =c("forest green", "dark gray", "black")) +
+   coord_flip()  +
+   ylab("Rank") +
+   xlab(NULL) +
+   scale_y_continuous(breaks = c(0, 11, 22, 33)) +
+   scale_x_discrete(expand = c(0.01,0.01), labels = NULL) +
+   theme_minimal()
+
+
+######### RESTRICTED ROUTES
+
+# subset df
+rr_rank = count_CID_by_borough_rank %>%
+  select(c(1, 14, 38, 48, 58))
+names(rr_rank)
+# [1] "BOROUGH"                             
+# [2] "London"                              
+# [3] "RestrictedRoutes_count_by_area_rank" 
+# [4] "RestrictedRoutes_count_per_head_rank"
+# [5] "RestrictedRoutes_count_rank"   
+
+# test = ggparcoord(rr_rank,
+#                   columns= c(3, 4, 5),
+#                   scale = "globalminmax",
+#                   groupColumn = 2) +
+#   scale_color_manual(values =c("forest green", "dark gray", "black")) +
+#   coord_flip()
+# 
+# test_2 = ggparcoord(rr_rank,
+#                     columns= c(3, 4, 5),
+#                     scale = "globalminmax",
+#                     groupColumn = 2, # london columns
+#                     alphaLines = 0.8,
+#                     title = "Restricted routes") +
+#    scale_color_manual(values =c("forest green", "dark gray", "black")) +
+#    coord_flip()  +
+#    ylab("Rank") +
+#    xlab(NULL) +
+#    scale_y_continuous(breaks = c(0, 11, 22, 33)) +
+#    scale_x_discrete(expand = c(0.01,0.01), labels = c("Count by km^2", "Count per head", "Count")) +
+#    theme_minimal()
+# 
+# # check correctly plotted and labelled
+# gridExtra::grid.arrange(test, test_2, nrow=1) # ->  Yes correct
+
+restrictedroutes_plot = ggparcoord(rr_rank,
+                    columns= c(3, 4, 5),
+                    scale = "globalminmax",
+                    groupColumn = 2, # london columns
+                    alphaLines = 0.8,
+                    title = "Restricted routes") +
+   scale_color_manual(values =c("forest green", "dark gray", "black")) +
+   coord_flip()  +
+   ylab("Rank") +
+   xlab(NULL) +
+   scale_y_continuous(breaks = c(0, 11, 22, 33)) +
+   scale_x_discrete(expand = c(0.01,0.01), labels = NULL) +
+   theme_minimal()
+
+
+######### CYCLE PARKING SITES
+
+# subset df
+parking_sites_rank = count_CID_by_borough_rank %>%
+  select(c(1, 14, 39, 49, 59))
+names(parking_sites_rank)
+# [1] "BOROUGH"                              
+# [2] "London"                               
+# [3] "CycleParkingSites_count_by_area_rank" 
+# [4] "CycleParkingSites_count_per_head_rank"
+# [5] "CycleParkingSites_count_rank  
+
+# test = ggparcoord(parking_sites_rank,
+#                   columns= c(3, 4, 5),
+#                   scale = "globalminmax",
+#                   groupColumn = 2) +
+#   scale_color_manual(values =c("forest green", "dark gray", "black")) +
+#   coord_flip()
+# 
+# test_2 = ggparcoord(parking_sites_rank,
+#                     columns= c(3, 4, 5),
+#                     scale = "globalminmax",
+#                     groupColumn = 2, # london columns
+#                     alphaLines = 0.8,
+#                     title = "Cycle parking sites") +
+#    scale_color_manual(values =c("forest green", "dark gray", "black")) +
+#    coord_flip()  +
+#    ylab("Rank") +
+#    xlab(NULL) +
+#    scale_y_continuous(breaks = c(0, 11, 22, 33)) +
+#    scale_x_discrete(expand = c(0.01,0.01), labels = c("Count by km^2", "Count per head", "Count")) +
+#    theme_minimal()
+# 
+# # check correctly plotted and labelled
+# gridExtra::grid.arrange(test, test_2, nrow=1) # ->  Yes correct
+
+# do plot
+parking_sites_plot = ggparcoord(parking_sites_rank,
+                    columns= c(3, 4, 5),
+                    scale = "globalminmax",
+                    groupColumn = 2, # london columns
+                    alphaLines = 0.8,
+                    title = "Cycle parking sites") +
   scale_color_manual(values =c("forest green", "dark gray", "black")) +
   coord_flip()  +
   ylab("Rank") +
   xlab(NULL) +
   scale_y_continuous(breaks = c(0, 11, 22, 33)) +
-  scale_x_discrete(labels = c("Count per head", "Count by km^2", "Total count"), 
-                   expand = c(0.01,0.01)) +
+  scale_x_discrete(expand = c(0.01,0.01), labels = c("Count by km*2", "Count per head", "Count")) +
   theme_minimal()
 
-# crossings
-crossing_counts = ggparcoord(count_CID_by_borough_rank, 
-                       columns= c(46, 36, 54), 
-                       scale = "globalminmax", 
-                       groupColumn = 14,
-                       alphaLines = 0.8,
-                       title = "Crossings") +
+
+######### CYCLE PARKING SPACES
+# subset df
+parking_spaces_rank = count_CID_by_borough_rank %>%
+  select(c(1, 14, 40, 50, 60))
+names(parking_spaces_rank)
+# [1] "BOROUGH"                               
+# [2] "London"                                
+# [3] "CycleParkingSpaces_count_by_area_rank" 
+# [4] "CycleParkingSpaces_count_per_head_rank"
+# [5] "CycleParkingSpaces_count_rank"    
+
+# test = ggparcoord(parking_spaces_rank,
+#                   columns= c(3, 4, 5),
+#                   scale = "globalminmax",
+#                   groupColumn = 2) +
+#   scale_color_manual(values =c("forest green", "dark gray", "black")) +
+#   coord_flip()
+# 
+# test_2 = ggparcoord(parking_spaces_rank,
+#                     columns= c(3, 4, 5),
+#                     scale = "globalminmax",
+#                     groupColumn = 2, # london columns
+#                     alphaLines = 0.8,
+#                     title = "Cycle parking spaces") +
+#    scale_color_manual(values =c("forest green", "dark gray", "black")) +
+#    coord_flip()  +
+#    ylab("Rank") +
+#    xlab(NULL) +
+#    scale_y_continuous(breaks = c(0, 11, 22, 33)) +
+#    scale_x_discrete(expand = c(0.01,0.01), labels = c("Count by km^2", "Count per head", "Count")) +
+#    theme_minimal()
+# 
+# # check correctly plotted and labelled
+# gridExtra::grid.arrange(test, test_2, nrow=1) # ->  Yes correct
+
+# draw plot
+parking_spaces_plot = ggparcoord(parking_spaces_rank,
+                    columns= c(3, 4, 5),
+                    scale = "globalminmax",
+                    groupColumn = 2, # london columns
+                    alphaLines = 0.8,
+                    title = "Cycle parking spaces") +
   scale_color_manual(values =c("forest green", "dark gray", "black")) +
   coord_flip()  +
   ylab("Rank") +
   xlab(NULL) +
   scale_y_continuous(breaks = c(0, 11, 22, 33)) +
-  scale_x_discrete(labels = c("Count per head", "Count by km^2", "Total count"), 
-                  expand = c(0.01,0.01)) +
-  theme_minimal()
- 
-# cycle lanes and tracks
-clt_counts = ggparcoord(count_CID_by_borough_rank, 
-                             columns= c(47, 37, 55), 
-                             scale = "globalminmax", 
-                             groupColumn = 14,
-                             alphaLines = 0.8,
-                             title = "Cycle lanes and tracks") +
-  scale_color_manual(values =c("forest green", "dark gray", "black")) +
-  coord_flip()  +
-  ylab("Rank") +
-  xlab(NULL) +
-  scale_y_continuous(breaks = c(0, 11, 22, 33)) +
-  scale_x_discrete(labels = c("Count per head", "Count by km^2", "Total count"), 
-                   expand = c(0.01,0.01)) +
+  scale_x_discrete(expand = c(0.01,0.01), labels = NULL) +
   theme_minimal()
 
-# restricted_routes
-rr_counts = ggparcoord(count_CID_by_borough_rank, 
-                        columns= c(48, 38, 56), 
-                        scale = "globalminmax", 
-                        groupColumn = 14,
-                        alphaLines = 0.8,
-                        title = "Restricted routes") +
-  scale_color_manual(values =c("forest green", "dark gray", "black")) +
-  coord_flip()  +
-  ylab("Rank") +
-  xlab(NULL) +
-  scale_y_continuous(breaks = c(0, 11, 22, 33)) +
-  scale_x_discrete(labels = c("Count per head", "Count by km^2", "Total count"), 
-                   expand = c(0.01,0.01)) +
-  theme_minimal() 
- 
 
-# cycle park sites
-cp_sites_counts = ggparcoord(count_CID_by_borough_rank, 
-                       columns= c(48, 38, 56), 
-                       scale = "globalminmax", 
-                       groupColumn = 14,
-                       alphaLines = 0.8,
-                       title = "Cycle parking sites") +
+######### SIGNALS
+# subset df
+signals_rank = count_CID_by_borough_rank %>%
+  select(c(1, 14, 41, 51, 61))
+names(signals_rank)
+# [1] "BOROUGH"                     "London"                     
+# [3] "Signals_count_by_area_rank"  "Signals_count_per_head_rank"
+# [5] "Signals_count_rank"    
+
+# test = ggparcoord(signals_rank,
+#                   columns= c(3, 4, 5),
+#                   scale = "globalminmax",
+#                   groupColumn = 2) +
+#   scale_color_manual(values =c("forest green", "dark gray", "black")) +
+#   coord_flip()
+# 
+# test_2 = ggparcoord(signals_rank,
+#                     columns= c(3, 4, 5),
+#                     scale = "globalminmax",
+#                     groupColumn = 2, # london columns
+#                     alphaLines = 0.8,
+#                     title = "Signals") +
+#    scale_color_manual(values =c("forest green", "dark gray", "black")) +
+#    coord_flip()  +
+#    ylab("Rank") +
+#    xlab(NULL) +
+#    scale_y_continuous(breaks = c(0, 11, 22, 33)) +
+#    scale_x_discrete(expand = c(0.01,0.01), labels = c("Count by km^2", "Count per head", "Count")) +
+#    theme_minimal()
+# 
+# # check correctly plotted and labelled
+# gridExtra::grid.arrange(test, test_2, nrow=1) # ->  Yes correct
+
+# draw plot
+signals_plot = ggparcoord(signals_rank,
+                    columns= c(3, 4, 5),
+                    scale = "globalminmax",
+                    groupColumn = 2, # london columns
+                    alphaLines = 0.8,
+                    title = "Signals") +
   scale_color_manual(values =c("forest green", "dark gray", "black")) +
   coord_flip()  +
   ylab("Rank") +
   xlab(NULL) +
   scale_y_continuous(breaks = c(0, 11, 22, 33)) +
-  scale_x_discrete(labels = c("Count per head", "Count by km^2", "Total count"), 
-                   expand = c(0.01,0.01)) +
-  theme_minimal() 
+  scale_x_discrete(expand = c(0.01,0.01), labels = NULL) +
+  theme_minimal()
+
+
+
+######### TRAFFIC CALMING
+# subset df
+traffic_calming_rank = count_CID_by_borough_rank %>%
+  select(c(1, 14, 42, 52, 62))
+names(traffic_calming_rank)
+# [1] "BOROUGH"                            "London"                            
+# [3] "TrafficCalming_count_by_area_rank"  "TrafficCalming_count_per_head_rank"
+# [5] "TrafficCalming_count_rank"       
+
+# test = ggparcoord(traffic_calming_rank,
+#                   columns= c(3, 4, 5),
+#                   scale = "globalminmax",
+#                   groupColumn = 2) +
+#   scale_color_manual(values =c("forest green", "dark gray", "black")) +
+#   coord_flip()
+# 
+# test_2 = ggparcoord(traffic_calming_rank,
+#                     columns= c(3, 4, 5),
+#                     scale = "globalminmax",
+#                     groupColumn = 2, # london columns
+#                     alphaLines = 0.8,
+#                     title = "Traffic calming") +
+#   scale_color_manual(values =c("forest green", "dark gray", "black")) +
+#   coord_flip()  +
+#   ylab("Rank") +
+#   xlab(NULL) +
+#   scale_y_continuous(breaks = c(0, 11, 22, 33)) +
+#   scale_x_discrete(expand = c(0.01,0.01), labels = c("Count by km^2", "Count per head", "Count")) +
+#   theme_minimal()
+# 
+# # check correctly plotted and labelled
+# gridExtra::grid.arrange(test, test_2, nrow=1) # ->  Yes correct
+
+# create plot
+traffic_calming_plot = ggparcoord(traffic_calming_rank,
+                    columns= c(3, 4, 5),
+                    scale = "globalminmax",
+                    groupColumn = 2, # london columns
+                    alphaLines = 0.8,
+                    title = "Traffic calming") +
+  scale_color_manual(values =c("forest green", "dark gray", "black")) +
+  coord_flip()  +
+  ylab("Rank") +
+  xlab(NULL) +
+  scale_y_continuous(breaks = c(0, 11, 22, 33)) +
+  scale_x_discrete(expand = c(0.01,0.01), labels = NULL) +
+  theme_minimal()
+
+
+######### SIGNAGE
+# subset df
+signage_rank = count_CID_by_borough_rank %>%
+  select(c(1, 14, 43, 53, 63))
+names(signage_rank)
+# [1] "BOROUGH"                     "London"                     
+# [3] "Signage_count_by_area_rank"  "Signage_count_per_head_rank"
+# [5] "Signage_count_rank"         
+
+# test = ggparcoord(signage_rank,
+#                   columns= c(3, 4, 5),
+#                   scale = "globalminmax",
+#                   groupColumn = 2) +
+#   scale_color_manual(values =c("forest green", "dark gray", "black")) +
+#   coord_flip()
+# 
+# test_2 = ggparcoord(signage_rank,
+#                     columns= c(3, 4, 5),
+#                     scale = "globalminmax",
+#                     groupColumn = 2, # london columns
+#                     alphaLines = 0.8,
+#                     title = "Signage") +
+#   scale_color_manual(values =c("forest green", "dark gray", "black")) +
+#   coord_flip()  +
+#   ylab("Rank") +
+#   xlab(NULL) +
+#   scale_y_continuous(breaks = c(0, 11, 22, 33)) +
+#   scale_x_discrete(expand = c(0.01,0.01), labels = c("Count by km^2", "Count per head", "Count")) +
+#   theme_minimal()
+# 
+# # check correctly plotted and labelled
+# gridExtra::grid.arrange(test, test_2, nrow=1) # ->  Yes correct
+
+signage_plot = ggparcoord(signage_rank,
+                    columns= c(3, 4, 5),
+                    scale = "globalminmax",
+                    groupColumn = 2, # london columns
+                    alphaLines = 0.8,
+                    title = "Signage") +
+  scale_color_manual(values =c("forest green", "dark gray", "black")) +
+  coord_flip()  +
+  ylab("Rank") +
+  xlab(NULL) +
+  scale_y_continuous(breaks = c(0, 11, 22, 33)) +
+  scale_x_discrete(expand = c(0.01,0.01), labels = c("Count by km^2", "Count per head", "Count")) +
+  theme_minimal()
+
+######### RESTRICTED POINTS
+# subset df
+restricted_points_rank = count_CID_by_borough_rank %>%
+  select(c(1, 14, 44, 54, 64))
+names(restricted_points_rank)
+# [1] "BOROUGH"                             
+# [2] "London"                              
+# [3] "RestrictedPoints_count_by_area_rank" 
+# [4] "RestrictedPoints_count_per_head_rank"
+# [5] "RestrictedPoints_count_rank"    
+
+# test = ggparcoord(restricted_points_rank,
+#                   columns= c(3, 4, 5),
+#                   scale = "globalminmax",
+#                   groupColumn = 2) +
+#   scale_color_manual(values =c("forest green", "dark gray", "black")) +
+#   coord_flip()
+# 
+# test_2 = ggparcoord(restricted_points_rank,
+#                     columns= c(3, 4, 5),
+#                     scale = "globalminmax",
+#                     groupColumn = 2, # london columns
+#                     alphaLines = 0.8,
+#                     title = "Restricted points") +
+#   scale_color_manual(values =c("forest green", "dark gray", "black")) +
+#   coord_flip()  +
+#   ylab("Rank") +
+#   xlab(NULL) +
+#   scale_y_continuous(breaks = c(0, 11, 22, 33)) +
+#   scale_x_discrete(expand = c(0.01,0.01), labels = c("Count by km^2", "Count per head", "Count")) +
+#   theme_minimal()
+# 
+# # check correctly plotted and labelled
+# gridExtra::grid.arrange(test, test_2, nrow=1) # ->  Yes correct
+
+#draw plot
+restricted_points_plot = ggparcoord(restricted_points_rank,
+                    columns= c(3, 4, 5),
+                    scale = "globalminmax",
+                    groupColumn = 2, # london columns
+                    alphaLines = 0.8,
+                    title = "Restricted points") +
+  scale_color_manual(values =c("forest green", "dark gray", "black")) +
+  coord_flip()  +
+  ylab("Rank") +
+  xlab(NULL) +
+  scale_y_continuous(breaks = c(0, 11, 22, 33)) +
+  scale_x_discrete(expand = c(0.01,0.01), labels = NULL) +
+  theme_minimal()
+
+
+# draw all the asset graphs together
+legend4 <- get_legend(asl_plot) # create legend
+asl_plot = asl_plot + theme(legend.position="none") # remove legends from plots
+crossings_plot = crossings_plot + theme(legend.position="none")
+cycle_lanes_plot = cycle_lanes_plot + theme(legend.position="none")
+restrictedroutes_plot = restrictedroutes_plot + theme(legend.position="none")
+parking_sites_plot = parking_sites_plot + theme(legend.position="none")
+parking_spaces_plot = parking_spaces_plot + theme(legend.position="none")
+signals_plot = signals_plot + theme(legend.position="none")
+traffic_calming_plot = traffic_calming_plot + theme(legend.position="none")
+signage_plot = signage_plot + theme(legend.position="none")
+restricted_points_plot = restricted_points_plot + theme(legend.position="none")
+
+gridExtra::grid.arrange(asl_plot, crossings_plot, cycle_lanes_plot, restrictedroutes_plot,
+                        parking_sites_plot, parking_spaces_plot, signals_plot, traffic_calming_plot,
+                        signage_plot, restricted_points_plot, legend4, nrow = 3, 
+                        widths = c(0.7, 0.5, 0.5, 0.5))
+# save count plot
+plot_count2 = gridExtra::grid.arrange(asl_plot, crossings_plot, cycle_lanes_plot, restrictedroutes_plot,
+                                      parking_sites_plot, parking_spaces_plot, signals_plot, traffic_calming_plot,
+                                      signage_plot, restricted_points_plot, legend4, nrow = 3, 
+                                      widths = c(0.7, 0.5, 0.5, 0.5))
+  
+ggsave(file = "/home/bananafan/Documents/PhD/Paper1/output/3counts_by_7assets.png", 
+       plot_count2, width = 75 * (14/5), height = 65 * (14/5), units = "mm")
+#the above seems to give perfect size for these 3 plots
