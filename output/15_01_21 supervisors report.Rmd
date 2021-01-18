@@ -22,10 +22,36 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ### Paper 1 plan  
 
+- been developing with Roger
+
+*Background/Intro key points*  
+
+- COVID pandemic, measures taken and COVID opportunities  
+
+- what infrastructure makes cycling 'safer'  
+
+- how do we know what makes it safer - research approaches - inc big data opportunities 
+
+- to achieve this, need to know what infrastructure is there to start with - why the CID is important for cycling reaseach  
+
+- present use cases for CID
 
 
-Actions for Paper 1
-- need to do more reading around to develop use cases 
+*Aims of paper:  *
+
+- To describe this new dataset for the first time in the academic literature (what is in it, how to get hold of it, data quality etc)  
+
+- To examine how infrastructure varies by Borough – taxonomy of infrastructure  
+- To examine how infrastructure that is designed to improve safety varies by Borough – Look specifically at the CID data that is around safety – Advanced stop lines (presence of), n = 3775) , on road cycle lanes (n=13849)– segregated ones (or in descending order to ‘safeness’), traffic calming (58565), signals (only those that give specific advantage to cyclists are included in the CID – n = 443) – by LSOA/Borough & TFL  
+* To examine how infrastructure that is designed to improve safety varies by User – gender, deprivation etc  (typology of infrastructure user)  
+  + Compare amount of infrastructure in LSOA by Index of Multiple Deprivation and then by EATF funding  
+  + Does infrastructure vary by LSOA ? Are there any patterns  
+  + Does amount of EATF funding relate to amount of infrastructure and IMD?
+
+*Actions for Paper 1*  
+
+- need to do more reading around to develop use cases and document research approaches 
+
 
 ### Research for Paper 1  
   
@@ -39,18 +65,21 @@ Actions for Paper 1
 - data cleansing CID
 - correcting Borough NAs
 - visualising borough comparisons  
-  
+
   
 #### Findings  
+
 ##### General CID findings
 
 - CID doesnt appear to be updated at all - must just be automatic database extract and upload to repository. Data qulaity same as when I did dissertation analysis 
 
 - CID description:
--- 9 datasets 
+-- 9 datasets  
 
 
-![**Figure 1: overview of datasets and asset types**](/home/bananafan/Documents/PhD/Paper1/images/Datasets_overview.png)
+```{r, echo=FALSE, fig.cap="**Figure 1: overview of datasets and asset types**", fig.topcaption = TRUE, fig.align= "center", out.width = '100%'}
+knitr::include_graphics("/home/bananafan/Documents/PhD/Paper1/images/Datasets_overview.png")
+```
   
 Common variables:  
 
@@ -64,7 +93,7 @@ Common variables:
 Unique variables:  
 
 * specific to asset type
-* e.g cycle lanes/tracks - on/off carriageway, segregation, contraflow, bidirectional
+* e.g cycle lanes/tracks - on/off carriageway, segregation, contraflow, bidirectional  
   
   
 **Table below to give you an idea of amount of data we are dealing with**  
@@ -88,8 +117,6 @@ Unique variables:
 * number of cycle parking sites v number of actual cycle parking spaces - rectifified by calculating both
 * assets that have NAs - low numbers overall but tend to occur for Borough and photos  
 
-
-  
 ##### Managing Borough NAs  
 This needs addressing to do Borough comparisons.  Also because the lengths of the assets that dont have a Borough is significant.
 
@@ -100,10 +127,12 @@ This needs addressing to do Borough comparisons.  Also because the lengths of th
 |Cycle lanes and tracks    |354|1.4%|6.8%
 |Restricted routes         |18|1.3%|8.2%   
 |Signage|2|0%   
-
+  
+  
 *ASL*  
 
-* easy to sort as allocated to Borough that the traffic light is in
+* easy to sort as allocated to Borough that the traffic light is in  
+
 
 *Crossings*  
 
@@ -113,29 +142,31 @@ This needs addressing to do Borough comparisons.  Also because the lengths of th
   + two boroughs but the road (or the majority of the road) it is crossing is in one borough (ie where the crossing is, is on a road that is in one borough) it is coded as that borough e.g. RWG273946 # n = 16  
   + two boroughs but the boundary between the boroughs goes through the centre of the road and that crossing then it is coded as ? both eg RWG293100  # n = 5  
 * Used `st_intersection` to produce two observations for the crossings - split by ONS borough boundaries, then used `st_length` to calculate length of the segments of the Crossing in each Borough.  Took the Borough with the longest segment as the 'official' Borough.  Was congruent with visualisation approach in all but 2 cases - decided to create 'two' Crossings one for each Borough.  
-* Next step is to automate the recoding of the observations so it is completely reproducible 
+* Next step is to automate the recoding of the observations so it is completely reproducible  
 
-
-![**Figure 2: example of two Crossings where colours show impact of `st_intersection` - both visualisation and `st_length` would allocate this Crossing to Camden as opposed to Islington**](/home/bananafan/Documents/PhD/Paper1/images/crossing_NA_eg.png)
+```{r, echo=FALSE, fig.cap="**Figure 2: example of two Crossings where colours show impact of `st_intersection` - both visualisation and `st_length` would allocate this Crossing to Camden as opposed to Islington**", fig.topcaption = TRUE, fig.align= "center", out.width = '100%'}
+knitr::include_graphics("/home/bananafan/Documents/PhD/Paper1/images/crossing_NA_eg.png")
+```
   
-  
+    
 *Cycle Lanes and Tracks*  
 
 * much bigger challenge due to their length and the fact they can cross multiple Boroughs and in fact go outside London Boroughs
 * using `st_intersection` results in two types of geometry `list(c(...))` or `c(...)` which can't be mapped as different types
 * current plan is to attempt to split these cycle lanes and tracks into the component Borough segments and then create new observations for each segment
-* will need to automate this process too
-
-
-![**Figure 3: map of cycle lanes and tracks without a Borough**](/home/bananafan/Documents/PhD/Paper1/images/lanes_NA_map.png)
+* will need to automate this process too  
 
 ```{r,eval=FALSE, echo=FALSE}
 lon_lad_2020_with_thames = readRDS(file = "./map_data/lon_LAD_boundaries_May_2020_BFC.Rds")
 mapview(cycle_lane_borough_NA, color = "red") + mapview(lon_lad_2020_with_thames, alpha.regions = 0.6, zcol = "BOROUGH", legend = FALSE)
 ```
   
-    
-    
+
+```{r, echo=FALSE, fig.cap="**Figure 3: map of cycle lanes and tracks without a Borough**", fig.topcaption = TRUE, fig.align= "center", out.width = '100%'}
+knitr::include_graphics("/home/bananafan/Documents/PhD/Paper1/images/lanes_NA_map.png")
+```  
+  
+  
 *Restricted routes*  
 
 * These have the same issues as the cycle lanes/tracks
@@ -146,39 +177,57 @@ mapview(cycle_lane_borough_NA, color = "red") + mapview(lon_lad_2020_with_thames
 *Signage*  
 
 * Only two signs dont have a Borough  
-* Having mapped them below, which shows that a) they are outside of London and b) the cycle lanes/tracks that they are on have not been included in the CID unless they are within London Boroughs, I think these should be excluded.
+* Having mapped them below, which shows that a) they are outside of London and b) the cycle lanes/tracks that they are on have not been included in the CID unless they are within London Boroughs, I think these should be excluded.  
+
 
 
 ```{r,eval=FALSE, echo=FALSE}
 lon_lad_2020_with_thames = readRDS(file = "./map_data/lon_LAD_boundaries_May_2020_BFC.Rds")
 mapview(f_cycle_lane_track, color = "red", legend = FALSE) + mapview(lon_lad_2020_with_thames, alpha.regions = 0.6, zcol = "BOROUGH", legend=FALSE) + mapview(signage_borough_NA$geometry, color = "red") 
 ```
-![**Figure 4: Map of location of Signage with Borough NA and its proximity to CID cycle lanes and tracks**](/home/bananafan/Documents/PhD/Paper1/images/signage_NA_map.png)
+
+```{r, echo=FALSE, fig.cap="**Figure 4: Map of location of Signage with Borough NA and its proximity to CID cycle lanes and tracks**", fig.topcaption = TRUE, fig.align= "center", out.width = '100%'}
+knitr::include_graphics("/home/bananafan/Documents/PhD/Paper1/images/signage_NA_map.png")
+```  
   
-   
+  
+  
 ##### Borough comparisons  
   
 An analysis of assets by Borough was performed.  This included counts and, for cycle lanes/tracks and restricted routes, length.  The Boroughs were ranked according who had the most (longest) assets with 1 representing the Borough with the most and 34 representing the least.  Although there are only 33 Boroughs in London, there was an additional 'No Borough stated' category. As Boroughs vary by size and population, count and length were standardised to count/length (n/km) per area (km^2) and per head (ONS 2019 estimated population).  Again Boroughs were ranked with 1 representing the highest density of infrastructure count/length by area or population.
 
 Parallel coordinate plots were generated to compare counts and length by asset type, differentiating between Inner and Outer London Boroughs.  
+  
+  
+```{r, echo=FALSE, fig.cap="**Figure 5: Comparison of London boroughs by three measures of infrastructure and by infrastructure types where rank 1 is 'highest rated'**", fig.topcaption = TRUE, fig.align= "center", out.width = '100%'}
+knitr::include_graphics("/home/bananafan/Documents/PhD/Paper1/output/7assets_by_3counts.png")
+```
 
-![**Figure 5: Comparison of London boroughs by three measures of infrastructure and by infrastructure types where rank 1 is 'highest rated')**](/home/bananafan/Documents/PhD/Paper1/output/7assets_by_3counts.png)
   
 Comments:  
-- initially looks hard to spot pattern for counts other than Inner London has higher cycle parking
-- when area is taken into account, it is clearer that Inner London Boroughs have greater density of infrastructure per km^2 for most types of infrastructure
-- this pattern is present but less pronounced when population is taken into account  
+- initially looks hard to spot pattern for counts other than Inner London has higher cycle parking  
+- when area is taken into account, it is clearer that Inner London Boroughs have greater density of infrastructure per km^2 for most types of infrastructure  
+- this pattern is present but less pronounced when population is taken into account    
 
-
-
+```{r, echo=FALSE, fig.cap="**Figure 6: Comparison of London boroughs by infrastructure type, ranked by three measures of infrastructure (1 is 'highest rated')**", fig.topcaption = TRUE, fig.align= "center", out.width = '100%'}
+knitr::include_graphics("/home/bananafan/Documents/PhD/Paper1/output/3counts_by_7assets.png")
+```
   
-![**Figure 6: Comparison of London boroughs by infrastructure type, ranked by three measures of infrastructure (1 is 'highest rated')**](/home/bananafan/Documents/PhD/Paper1/output/3counts_by_7assets.png)
+
 Comments:  
-- clear pattern that more ASL, Cycle Parking and cycling Signals are in Inner London than Outer
+- clear pattern that more ASL, Cycle Parking and cycling Signals are in Inner London than Outer  
 - other infrastructure ranking is more influenced by area and population e.g. signage, cycle lanes and tracks  
   
   
-![**Figure 7: Comparison of London boroughs by three measures of infrastructure length and by infrastructure types where rank 1 is 'highest rated')**](/home/bananafan/Documents/PhD/Paper1/output/2assets_by_3lengths.png)  
+```{r, echo=FALSE, fig.cap="**Figure 7: Comparison of London boroughs by three measures of infrastructure length and by infrastructure types (where rank 1 is 'highest rated')**", fig.topcaption = TRUE, fig.align= "center", out.width = '100%'}
+knitr::include_graphics("/home/bananafan/Documents/PhD/Paper1/output/2assets_by_3lengths.png")
+```  
+  
+Comments:  
+- high ranking Boroughs for length of Cycle Lanes and Tracks are low ranking for lengths of Restricted routes and vice versa  
+- this pattern persists even when standardised to area and population  
+- Inner London Boroughs rank highly for Cycle Lanes and Tracks length when standardised to area but rank lower when standardised to population
+
 
 
 
