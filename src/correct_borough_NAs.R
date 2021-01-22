@@ -161,12 +161,13 @@ leafem::addStaticLabels(mNA, label = crossings_borough_NA$FEATURE_ID) # plot mNA
 
 
 # USe st_intersection to produce two observations for the crossings - split by geographical borough boundaries
-crossings_borough_NA_i = st_intersection(lon_lad_2020,crossings_borough_NA) # 49 observations
-names(crossings_borough_NA_i) # BOROUGH is the column for the lon_lad_2020 Borough that the crossing is in
+crossings_borough_NA_i = st_intersection(lon_lad_2020,crossings_borough_NA) # 49 observations, geometry column is from the crossings dataset
+names(crossings_borough_NA_i) # BOROUGH is the column for the lon_lad_2020 Borough that the crossing is in, whereas BOROUGH.1 
+#is the BOROUGH from the crossing dataset (all NAs)
 mapview(crossings_borough_NA_i, zcol = "BOROUGH") + mapview(lon_lad_2020, alpha.regions = 0.05, zcol = "BOROUGH")
 #this map shows the crossings coloured by the BOROUGH they are in
 
-crossings_borough_NA_i$borough_length = st_length(crossings_borough_NA_i) # measures length of each crossing by BOROUGH
+crossings_borough_NA_i$borough_length = st_length(crossings_borough_NA_i) # measures length of each crossing (using crossing geometry)by BOROUGH
 crossings_borough_NA_length = crossings_borough_NA_i %>% 
   group_by(FEATURE_ID) %>%
   slice(which.max(borough_length)) # keep observations for each feature with the longest length
@@ -201,10 +202,12 @@ incongruent = crossings_borough_NA_i %>%
 incongruent$FEATURE_ID= replace(incongruent$FEATURE_ID, which(incongruent$FEATURE_ID == "RWG153061"), values = c("RWG153061a", "RWG153061b"))
 incongruent$FEATURE_ID= replace(incongruent$FEATURE_ID, which(incongruent$FEATURE_ID == "RWG049417"), values = c("RWG049417a", "RWG049417b"))
 
-# Join the two dataframes together
-crossings_borough_NA_final = rbind(congruent, incongruent)
-
-
+# Create df of all the observations that were Borough NA with correct Boroughs
+# and convert to MLS so has same geometry type as crossings
+crossings_borough_NA_corrected = rbind(congruent, incongruent) %>%
+   select(c("FEATURE_ID","SVDATE","CRS_SIGNAL", "CRS_SEGREG", "CRS_CYGAP", 
+            "CRS_PEDEST", "CRS_LEVEL", "BOROUGH", "PHOTO1_URL", "PHOTO2_URL",
+            "geometry")) 
 
 
 # VAlidating that have corrected NAs
@@ -214,23 +217,37 @@ count_crossings_borough = f_crossings %>%
   group_by(BOROUGH) %>%
   summarise(Count = n()) 
 
-# Code Borough NAs with Borough decided by researcher utilising unique FEATURE_ID to ensure correct obs is coded
-f_crossings$BOROUGH = replace(f_crossings$BOROUGH, which(f_crossings$FEATURE_ID == "RWG236647"), values = 'Hillingdon')
-# Need loop ? purr to:
-#   loop through crossings_borough_NA_length
-#   take the feature_ID and BOROUGH
-#   match feature_ID to f_Crossings
-#   replace the NA Borough in f_Crossings with the correct Borough
+# drop obs with no boroughs from f_crossings
+f_crossings = f_crossings %>%
+  filter(!is.na(BOROUGH)) # 1659 observations ie  the 1687 - 28 NAs
+anyNA(f_crossings$BOROUGH) # = FALSE ie all dropped
 
+# cast geometry
+crossings_borough_NA_corrected = crossings_borough_NA_corrected %>%
+  st_cast("MULTILINESTRING") %>%
+  mutate(BOROUGH = as.character(BOROUGH))
+
+# join corrected observations to the f_crossings
+f_crossings = rbind(f_crossings, crossings_borough_NA_corrected) 
+anyNA(f_crossings$BOROUGH) # = FALSE
 
 # recount Boroughs after transformation
 recount_crossings_borough = f_crossings %>%  #####EWILL NEED TO CHANGE THIS TO A DIFFERENT NAME (POST CHANGE)
   st_drop_geometry() %>%
   group_by(BOROUGH) %>%
-  summarise(Recount = n()) # 27 NA, 100 Hillingdon
+  summarise(Recount = n()) # 
+
+number_recoded = crossings_borough_NA_corrected %>%  #####EWILL NEED TO CHANGE THIS TO A DIFFERENT NAME (POST CHANGE)
+  st_drop_geometry() %>%
+  group_by(BOROUGH) %>%
+  summarise(No_recoded = n())
 
 # join borough counts together to check done correctly
-crossing_boroughs = left_join(count_crossings_borough, recount_crossings_borough)
+crossing_boroughs = left_join(count_crossings_borough, number_recoded) %>%
+  left_join(recount_crossings_borough) # This looks to be correct
+
+# Making map of crossings coloured by Borough
+mapview(f_crossings, zcol = "BOROUGH") + mapview(lon_lad_2020, alpha.regions = 0.1, zcol = "BOROUGH", legend =FALSE)
 
 
 ###############################################################################
@@ -291,84 +308,199 @@ p = 197374.84/sum(length_cycle_lanesBYborough$length)  *100
 
 
 
-# Try to sort out using st_intersection and then length
-NA_i = st_intersection(cycle_lane_borough_NA, lon_lad_2020) # 621 observations
-names(NA_i) # BOROUGH.1 is the column for the lon_lad_2020 Borough that the crossing is in
-mapview(NA_i) # doesnt work - nothing shown - geometry column is complex
-#mapview(NA_i, zcol = "BOROUGH.1") + mapview(lon_lad_2020, alpha.regions = 0.05, zcol = "BOROUGH") # doesnt work - no 
+# Try to sort out using st_intersection 
+lanes_borough_NA_i = st_intersection(lon_lad_2020, cycle_lane_borough_NA) # 621 observations, geometry column is from the lanes dataset
+# this has dropped cycle lanes sections that are outside london
+# this has broken each unique FEATURE_ID into segments based on whether they cross a borough line NB each segment may contain a MLS
+# but contains multiple geometry types
+summary(lanes_borough_NA_i$geometry) # -> 519 linestrings and 102 multilinestrings
+lanes_borough_NA_i = lanes_borough_NA_i %>%
+  st_cast("MULTILINESTRING") # convert geometry type to MLS for all so can mapview
+summary(lanes_borough_NA_i$geometry) # -> 621 MLS.  Now can mapview(lanes_borough_NA_i)
 
-# see if geometry is valid
-st_is_valid(NA_i)
+mapview(lanes_borough_NA_i, zcol = "BOROUGH") + mapview(lon_lad_2020, alpha.regions = 0.1, zcol = "BOROUGH", legend = FALSE)
 
-x = NA_i %>% 
+# count number of observations for each FEATURE_ID
+count_obs = lanes_borough_NA_i %>%
+  st_drop_geometry() %>%
   group_by(FEATURE_ID) %>%
-  count() %>% # this works but then wanted to know how many FEATURE_IDs have different more than one BOROUGH
-  summarise(n_distinct(n))
+  summarise(num_obs = n()) %>%
+  group_by(num_obs) %>%
+  count()
+# num_obs   n
+#     1    88   # 88 feature_ids have 1 observation  NB observation may contain multiple lines but all have same characteristics
+#     2   265
+#     3     1
+# so 88 are unique so ok but the ones with 2 and 3 need recoding with separate FEATURE_IDs
 
-x = x %>% 
-  mutate(count = n_distinct(n))
-summarise(n_distinct(n))      
+# try to sort out on small dataset
+a = lanes_borough_NA_i %>%
+  filter(FEATURE_ID == "RWG008791" | FEATURE_ID == "RWG008822" |
+           FEATURE_ID == "RWG150143") # creates df with 7 observations, 3 have the same feature id, 2 have another, 2 have a different one
+a$FEATURE_ID = paste(a$FEATURE_ID, "_") # this sort of works but still need unique variable on end
+#WAITING FOR ROGER FEEDBACK ON HOW TO ADD UNIQUENESS ON END
+
+# 
+# x = a %>%
+#   group_by(FEATURE_ID)
+# 
+# 
+# 
+# a$FEATURE_ID.3 = ifelse(a$FEATURE_ID == a$FEATURE_ID, 
+#                         paste(a$FEATURE_ID, "_", 1:3))
+# 
+# a$FEATURE_ID.4 = ifelse(a$FEATURE_ID == a$FEATURE_ID, 
+#                       paste(a$FEATURE_ID, "_", 1:i))
+# 
+# a$FEATURE_ID.3 = a %>%
+#   group_by(FEATURE_ID) %>%
+#   ifelse(a$FEATURE_ID == a$FEATURE_ID, 
+#                         paste(a$FEATURE_ID, "_", 1:i))
+# 
+# nth <- paste0(1:12, c("st", "nd", "rd", rep("th", 9)))
+# paste(letters)
+# for (i in seq_along(a$FEATURE_ID) {
+#   replace(FEATURE_ID[[i]], values = FEATURE_ID)
+#   #   e$BOROUGH[[i]] = f$BOROUGH[[i]]
+#   # } # output is that '0' borough names are replace with values but dont match the feature ID ? need to select feature id and match then change
+#   # 
+# #require(data.table)
+# #example <- data.table(mtcars)
+# #example[, id_var := paste(mpg, cyl, seq_len(.N), sep = "_"), by = .(mpg, cyl)]
+# #a[,"FEATURE_ID_2" := paste("FEATURE_ID", seq_len(.N), sep = "_")]
+# 
+# 
+# #incongruent$FEATURE_ID= replace(incongruent$FEATURE_ID, which(incongruent$FEATURE_ID == "RWG153061"), values = c("RWG153061a", "RWG153061b"))
+# #incongruent$FEATURE_ID= replace(incongruent$FEATURE_ID, which(incongruent$FEATURE_ID == "RWG049417"), values = c("RWG049417a", "RWG049417b"))
+# letts = c("_a", "_b", "_c")
+# for(i in seq_along(a)) {
+#   a$FEATURE_ID <- replace(a$FEATURE_ID, a$FEATURE_ID == i, letts[i])
+# }
+# 
+# for(i in seq_along(a)) {
+#   a$FEATURE_ID <- replace(a$FEATURE_ID, a$FEATURE_ID == i, letts[i])
+# }
+# 
+# for(i in seq_along(a)) {
+#   a$FEATURE_ID <- replace(a$FEATURE_ID, a$FEATURE_ID == i, paste("FEATURE_ID", letts[i]))
+# }
+# 
+# test <- c(rep(1,3),rep(2,2),rep(3,1))
+# letts <- c("A","B","C")
+# for(i in 1:3) {
+#   test <- replace(test,test==i,letts[i])
+#   }
+# test
+
+# VAlidating that have corrected NAs
+#count Boroughs before transformation
+count_lanes_borough = f_cycle_lane_track %>%
+  st_drop_geometry() %>%
+  group_by(BOROUGH) %>%
+  summarise(Count = n()) 
+
+# drop obs with no boroughs from f_cycle_lane_track
+f_cycle_lane_track = f_cycle_lane_track %>%
+  filter(!is.na(BOROUGH)) # 24622 observations ie  the 24976 - 354 NAs
+anyNA(f_cycle_lane_track$BOROUGH) # = FALSE ie all dropped
 
 
-NA_i %>% 
-  group_by(FEATURE_ID) %>%
-  summarise(num_boroughs = n()) %>%
-  group_by(num_boroughs) %>%
-  count() 
-# so 88 cycle lanes only have 1 London borough, 265 intersect with 2, 1 intersects with 3      
 
-#which boroughs are these?
-NA_i_num_boroughs = NA_i %>% 
-  group_by(FEATURE_ID) %>%
-  summarise(num_boroughs = n())
-# all the 2s and 3s have the list(c(...)) but 1s can have either list(c(..)) or c(..)
-
-# RWG150143 is the 3
-
-# RWG030533 and RWG038383 are examples of 1
-# RWG008791 and RWG008822 are examples of 2
-# RWG150143 intersects with 3
+# # measure length of each observation
+# lanes_borough_NA_i$borough_length = st_length(lanes_borough_NA_i) # measures length of each crossing (using crossing geometry)by BOROUGH
+# lanes_borough_NA_length = lanes_borough_NA_i %>% 
+#   group_by(FEATURE_ID) %>%
+#   slice(which.max(borough_length)) # keep observations for each feature with the longest length
+# 
+# 
+# 
+# m1 = mapview(lanes_borough_NA_i, zcol = "BOROUGH", legend = FALSE) + mapview(lon_lad_2020, alpha.regions = 0.1, zcol = "BOROUGH", legend = FALSE)
+# m2 = mapview(cycle_lane_track) + mapview(lon_lad_2020, alpha.regions = 0.1, zcol = "BOROUGH", legend = FALSE)
+# leafsync::sync(m1,m2)
 
 
-# USe st_intersection to produce two observations for the crossings - split by geographical borough boundaries
-cycle_lane_borough_NA_i = st_intersection(lon_lad_2020, cycle_lane_borough_NA) # 607 observations
-names(cycle_lane_borough_NA_i) # BOROUGH is the column for the lon_lad_2020 Borough that the crossing is in
-mapview(cycle_lane_borough_NA_i$geometry) + mapview(lon_lad_2020, alpha.regions = 0.05, zcol = "BOROUGH") # this doesnt work
 
-#issue is with the cycle_lane_borough_NA_i - geometry column has lists and non lists - still sf class though. 
 
-examples = cycle_lane_borough_NA_i %>%
-  filter(FEATURE_ID %in% c("RWG030533", "RWG038383", "RWG008791", "RWG008822", "RWG150143"))
 
-mapview(examples) # no lines shown
 
-c_only_geometry = cycle_lane_borough_NA_i %>%
-  filter(FEATURE_ID == "RWG008791")
-mapview(c_only_geometry) # this works
-mapview(c_only_geometry) + mapview(lon_lad_2020, alpha.regions = 0.05, zcol = "BOROUGH") # this works
-# can see that "RWG008791" is in haringey and hacknay (vast majority in haringey though)
 
-list_geometry = cycle_lane_borough_NA_i %>%
-  filter(FEATURE_ID == "RWG150143")
-mapview(list_geometry) # this works
-mapview(list_geometry) + mapview(lon_lad_2020, alpha.regions = 0.05, zcol = "BOROUGH") # this works
-# can see that #RWG150143" is in Waltham Forest, Hacknay and Newham but cant decide how much in each as v convulted track
-
-# so plotting individual ones whether list(c(...)) or c(...) works but plotting 
-# dataset that has both types in geometry column (e.g. examples) wont plot
-
-# look at '1s'
-one_list_geometry = cycle_lane_borough_NA_i %>%
-  filter(FEATURE_ID == "RWG275352")
-mapview(one_list_geometry) # this works
-mapview(one_list_geometry) + mapview(lon_lad_2020, alpha.regions = 0.05, zcol = "BOROUGH") # this works
-# this cycle lane has two parts that are split because it goes outside london in the mid portion
-
-one_c_geometry = cycle_lane_borough_NA_i %>%
-  filter(FEATURE_ID == "RWG234549")
-mapview(one_c_geometry) # this works
-mapview(one_c_geometry) + mapview(lon_lad_2020, alpha.regions = 0.05, zcol = "BOROUGH") # this works
-# this one appears to be totally in Hounslow but is v close to border with Ealing
+# NA_i_r = st_intersection(lon_lad_2020, cycle_lane_borough_NA) # 621 observations
+# names(NA_i) # BOROUGH.1 is the column for the lon_lad_2020 Borough that the crossing is in
+# mapview(NA_i) # doesnt work - nothing shown - geometry column is complex
+# #mapview(NA_i, zcol = "BOROUGH.1") + mapview(lon_lad_2020, alpha.regions = 0.05, zcol = "BOROUGH") # doesnt work - no 
+# 
+# # see if geometry is valid
+# st_is_valid(NA_i)
+# 
+# x = NA_i %>% 
+#   group_by(FEATURE_ID) %>%
+#   count() %>% # this works but then wanted to know how many FEATURE_IDs have different more than one BOROUGH
+#   summarise(n_distinct(n))
+# 
+# x = x %>% 
+#   mutate(count = n_distinct(n))
+# summarise(n_distinct(n))      
+# 
+# 
+# NA_i %>% 
+#   group_by(FEATURE_ID) %>%
+#   summarise(num_boroughs = n()) %>%
+#   group_by(num_boroughs) %>%
+#   count() 
+# # so 88 cycle lanes only have 1 London borough, 265 intersect with 2, 1 intersects with 3      
+# 
+# #which boroughs are these?
+# NA_i_num_boroughs = NA_i %>% 
+#   group_by(FEATURE_ID) %>%
+#   summarise(num_boroughs = n())
+# # all the 2s and 3s have the list(c(...)) but 1s can have either list(c(..)) or c(..)
+# 
+# # RWG150143 is the 3
+# 
+# # RWG030533 and RWG038383 are examples of 1
+# # RWG008791 and RWG008822 are examples of 2
+# # RWG150143 intersects with 3
+# 
+# 
+# # USe st_intersection to produce two observations for the crossings - split by geographical borough boundaries
+# cycle_lane_borough_NA_i = st_intersection(lon_lad_2020, cycle_lane_borough_NA) # 607 observations
+# names(cycle_lane_borough_NA_i) # BOROUGH is the column for the lon_lad_2020 Borough that the crossing is in
+# mapview(cycle_lane_borough_NA_i$geometry) + mapview(lon_lad_2020, alpha.regions = 0.05, zcol = "BOROUGH") # this doesnt work
+# 
+# #issue is with the cycle_lane_borough_NA_i - geometry column has lists and non lists - still sf class though. 
+# 
+# examples = cycle_lane_borough_NA_i %>%
+#   filter(FEATURE_ID %in% c("RWG030533", "RWG038383", "RWG008791", "RWG008822", "RWG150143"))
+# 
+# mapview(examples) # no lines shown
+# 
+# c_only_geometry = cycle_lane_borough_NA_i %>%
+#   filter(FEATURE_ID == "RWG008791")
+# mapview(c_only_geometry) # this works
+# mapview(c_only_geometry) + mapview(lon_lad_2020, alpha.regions = 0.05, zcol = "BOROUGH") # this works
+# # can see that "RWG008791" is in haringey and hacknay (vast majority in haringey though)
+# 
+# list_geometry = cycle_lane_borough_NA_i %>%
+#   filter(FEATURE_ID == "RWG150143")
+# mapview(list_geometry) # this works
+# mapview(list_geometry) + mapview(lon_lad_2020, alpha.regions = 0.05, zcol = "BOROUGH") # this works
+# # can see that #RWG150143" is in Waltham Forest, Hacknay and Newham but cant decide how much in each as v convulted track
+# 
+# # so plotting individual ones whether list(c(...)) or c(...) works but plotting 
+# # dataset that has both types in geometry column (e.g. examples) wont plot
+# 
+# # look at '1s'
+# one_list_geometry = cycle_lane_borough_NA_i %>%
+#   filter(FEATURE_ID == "RWG275352")
+# mapview(one_list_geometry) # this works
+# mapview(one_list_geometry) + mapview(lon_lad_2020, alpha.regions = 0.05, zcol = "BOROUGH") # this works
+# # this cycle lane has two parts that are split because it goes outside london in the mid portion
+# 
+# one_c_geometry = cycle_lane_borough_NA_i %>%
+#   filter(FEATURE_ID == "RWG234549")
+# mapview(one_c_geometry) # this works
+# mapview(one_c_geometry) + mapview(lon_lad_2020, alpha.regions = 0.05, zcol = "BOROUGH") # this works
+# # this one appears to be totally in Hounslow but is v close to border with Ealing
 
 
 
