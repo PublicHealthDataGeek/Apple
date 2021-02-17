@@ -317,13 +317,132 @@ fct_count(f_cycle_lane_track$CLT_PRIORI) # TRE = 1, TRUE = 2264
 f_cycle_lane_track$CLT_PRIORI = fct_recode(f_cycle_lane_track$CLT_PRIORI, "TRUE" = "TRE") # convert TRE to TRUE
 fct_count(f_cycle_lane_track$CLT_PRIORI) # levels are only True and False with 2265 TRUE
 
+
+########## Correct Borough NAs
+anyNA(f_cycle_lane_track$BOROUGH) # = TRUE
+
+# 1) identify missing Borough details
+cycle_lane_borough_NA = f_cycle_lane_track %>%
+  filter(is.na(BOROUGH)) # 354 observations ie 354 cycle lanes/tracks have no Borough
+
+# 2) Split each observation into segments using ONS borough boundaries 
+lanes_borough_NA_i = st_intersection(lon_lad_2020, cycle_lane_borough_NA) # 621 observations
+# geometry column is from the CID lanes dataset
+# cycle lane segments outside London boroughs have been dropped
+# this has broken each unique FEATURE_ID into segments based on whether they cross a borough line 
+# NB each segment may contain more than one geometry type
+summary(lanes_borough_NA_i$geometry) # -> 519 linestrings and 102 multilinestrings
+lanes_borough_NA_i = lanes_borough_NA_i %>%
+  st_cast("MULTILINESTRING") # convert geometry type to MLS for all so can mapview
+summary(lanes_borough_NA_i$geometry) # -> 621 MLS.  Now can mapview(lanes_borough_NA_i)
+
+mapview(lanes_borough_NA_i, zcol = "BOROUGH") + mapview(lon_lad_2020, alpha.regions = 0.1, zcol = "BOROUGH", legend = FALSE)
+
+# 3) Count number of observations for each FEATURE_ID
+count_obs = lanes_borough_NA_i %>%
+  st_drop_geometry() %>%
+  group_by(FEATURE_ID) %>%
+  summarise(num_obs = n()) %>%
+  group_by(num_obs) %>%
+  count()
+# num_obs   n
+#     1    88   # 88 feature_ids have 1 observation  NB observation may contain multiple lines but all have same characteristics
+#     2   265
+#     3     1
+# so 88 are unique so ok but the ones with 2 and 3 need recoding with separate FEATURE_IDs
+
+# 4) Relabel FEATURE_ID so each segment can be identified
+# Group 621 by FEATURE_ID then add a cumulative sum to each grouped observation (will be 1, 2 or 3)
+lanes_borough_NA_corrected = lanes_borough_NA_i %>%
+  mutate(n = 1) %>%
+  group_by(FEATURE_ID) %>%
+  mutate(cum_count = cumsum(n)) %>%
+  select(-n)
+
+# relabel the FEATURE_ID with the cumulative number so each observation has a unique ID
+lanes_borough_NA_corrected$FEATURE_ID = paste(lanes_borough_NA_corrected$FEATURE_ID, "_", lanes_borough_NA_corrected$cum_count)
+
+# 5) Check that the correct number have 1, 2 or 3 appended to the FEATURE_ID
+lanes_borough_NA_corrected %>%
+  st_drop_geometry() %>%
+  group_by(cum_count) %>%
+  count()
+# cum_count   n
+#       1   354  (= 1 + 265 + 88)
+#       2   266  (= 1+ 265)
+#       3     1
+
+# 6) Create df of all the observations with correct Boroughs that can be joined
+lanes_borough_NA_corrected = lanes_borough_NA_corrected %>%
+  select(c("FEATURE_ID", "SVDATE", "CLT_CARR", "CLT_SEGREG", "CLT_STEPP", 
+           "CLT_PARSEG", "CLT_SHARED", "CLT_MANDAT", "CLT_ADVIS",  "CLT_PRIORI",
+           "CLT_CONTRA", "CLT_BIDIRE", "CLT_CBYPAS", "CLT_BBYPAS", "CLT_PARKR", 
+           "CLT_WATERR", "CLT_PTIME",  "CLT_ACCESS", "CLT_COLOUR", "BOROUGH", 
+           "PHOTO1_URL", "PHOTO2_URL", "geometry")) %>%
+  mutate(BOROUGH = as.character(BOROUGH)) # change borough to character so can match back to f_cycle_lane_track
+
+# NB geometry is already Multiline string so no need to convert
+
+# 7) Validate that have corrected NAs so count NAs before transformation
+count_lanes_borough = f_cycle_lane_track %>%
+  st_drop_geometry() %>%
+  group_by(BOROUGH) %>%
+  summarise(Count = n()) 
+
+# 8) Join main lanes dataset to corrected borough dataset
+#  8a) drop obs with no boroughs from f_cycle_lane_track
+f_cycle_lane_track = f_cycle_lane_track %>%
+  filter(!is.na(BOROUGH)) # 24622 observations ie  the 24976 - 354 NAs
+anyNA(f_cycle_lane_track$BOROUGH) # = FALSE ie all dropped
+
+#  8b) join corrected observations to the f_cycle_lane_track
+f_cycle_lane_track = rbind(f_cycle_lane_track, lanes_borough_NA_corrected) 
+anyNA(f_cycle_lane_track$BOROUGH) # = FALSE
+
+# 9) Validate have correctly transformed
+#  9a) Recount Boroughs after transformation
+recount_lanes_borough = f_cycle_lane_track %>%  
+  st_drop_geometry() %>%
+  group_by(BOROUGH) %>%
+  summarise(Recount = n()) 
+
+#  9b) Check how many recoded
+number_recoded = lanes_borough_NA_corrected %>%  
+  st_drop_geometry() %>%
+  group_by(BOROUGH) %>%
+  summarise(Number_recoded = n())
+
+#  9c) Create df of the counts
+lanes_boroughs = left_join(count_lanes_borough, number_recoded) %>%
+  left_join(recount_lanes_borough) # This looks to be correct
+
+#  9d) Compare totals to make sure they match
+x = lanes_boroughs %>%
+  replace_na(list(Count = 0, Number_recoded = 0, Recount = 0))
+total <- sapply(x[,2:4], sum) # this gives figures of:
+# 24976 total count
+# 621 observation recoded 
+# new total number of observations in the lanes dataset of 25243 
+# 25243 = 24976 (original number) - 354 (no borough) + 621 (recoded)
+
+
+# Making map of crossings coloured by Borough
+mapview(f_crossings, zcol = "BOROUGH") + mapview(lon_lad_2020, alpha.regions = 0.1, zcol = "BOROUGH", legend =FALSE)
+
+
+
+
+
+
+
+
 # Borough level analysis
 #####
 # Count number of cycle lanes by Borough
 cycle_lane_track_borough_count = f_cycle_lane_track %>%
   st_drop_geometry() %>%
   group_by(BOROUGH) %>%
-  summarise(CycleLanesAndTracks = n()) # 33 boroughs plus 354 cycle lanes/tracks with no borough
+  summarise(CycleLanesAndTracks = n()) # 33 boroughs no NAs
 
 # Length of cycle lanes and tracks by Borough
 f_cycle_lane_track$length_m = st_length(f_cycle_lane_track$geometry)
