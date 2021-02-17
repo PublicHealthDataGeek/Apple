@@ -273,7 +273,8 @@ f_cycle_lane_track = cycle_lane_track %>%
   mutate_at(f_variables, as.factor)
 
 # correct TRE to TRUE in CLT_PRIORI
-f_cycle_lane_track$CLT_PRIORI = fct_recode(f_cycle_lane_track$CLT_PRIORI, "TRUE" = "TRE") # convert TRE to TRUE
+f_cycle_lane_track$CLT_PRIORI = fct_recode(f_cycle_lane_track$CLT_PRIORI, 
+                                           "TRUE" = "TRE") # convert TRE to TRUE
 
 
 #INITIAL WORK ON CYCLE LANES?TRACKS re BOROUGH NA
@@ -337,10 +338,16 @@ count_obs = lanes_borough_NA_i %>%
 a = lanes_borough_NA_i %>%
   filter(FEATURE_ID == "RWG008791" | FEATURE_ID == "RWG008822" |
            FEATURE_ID == "RWG150143") # creates df with 7 observations, 3 have the same feature id, 2 have another, 2 have a different one
-a$FEATURE_ID = paste(a$FEATURE_ID, "_") # this sort of works but still need unique variable on end
-#WAITING FOR ROGER FEEDBACK ON HOW TO ADD UNIQUENESS ON END
 
-# 
+a = a %>%
+  mutate(n = 1) %>%
+  group_by(FEATURE_ID) %>%
+  mutate(cm_count = cumsum(n)) %>%
+  select(-n)
+a$FEATURE_ID = paste(a$FEATURE_ID, "_", a$cm_count) # this works 
+
+
+
 # x = a %>%
 #   group_by(FEATURE_ID)
 # 

@@ -14,10 +14,12 @@ library(mapview)
 library(leaflet)
 library(leafem)
 #library(leafsync)
-library(summarytools)
+#library(summarytools) dont load if want to use mapview
 library(forcats)
 library(units)
 
+# import May 2020 ONS LA boundary data (required for NA management)
+lon_lad_2020 = readRDS(file = "./map_data/lon_LAD_boundaries_May_2020_BFE.Rds")
 
 #######################
 # Advanced Stop Lines #
@@ -67,6 +69,11 @@ asl_borough_count= f_advanced_stop_line %>%
   st_drop_geometry() %>%
   group_by(BOROUGH) %>%
   summarise(ASL = n()) # 33 boroughs plus 1 asl with no borough assigned
+
+# Correct NA as Greenwich and factor the BOROUGH variable - SEE correct_borough_NAs file for why Greenwich
+f_advanced_stop_line$BOROUGH = factor(f_advanced_stop_line$BOROUGH) %>%
+  fct_explicit_na(na_level = "Greenwich")
+anyNA(f_advanced_stop_line$BOROUGH) # = FALSE so no NAs
 
 ##### Final admin steps on ASL dataset #####
 # check all variables in correct format
@@ -128,6 +135,99 @@ crossings_borough_count = f_crossings %>%
   st_drop_geometry() %>%
   group_by(BOROUGH) %>%
   summarise(Crossings = n()) # 33 boroughs plus 28 crossings with no borough
+
+# Correct NAs as per correct_borough_NAs working
+#  1) Create dataset of 28 crossings that have no Borough
+crossings_borough_NA = f_crossings %>%
+  filter(is.na(BOROUGH)) 
+
+#  2) Use st_intersection to produce two observations for the crossings
+crossings_borough_NA_i = st_intersection(lon_lad_2020, crossings_borough_NA) 
+# 49 observations, geometry column is from the crossings dataset but split by ONS borough boundaries
+# BOROUGH is the column from the lon_lad_2020 dataset and represents the Borough that the crossing is in, 
+# whereas BOROUGH.1 is the BOROUGH from the crossing dataset (all NAs)
+
+mapview(crossings_borough_NA_i, zcol = "BOROUGH") + mapview(lon_lad_2020, alpha.regions = 0.05, zcol = "BOROUGH")
+#this map shows the crossings coloured by the BOROUGH they are in
+
+# 3) Add column for length of each observation (using crossing geometry)by BOROUGH and keep obs with longest length
+crossings_borough_NA_i$borough_length = st_length(crossings_borough_NA_i) 
+
+# 4) Create final dataset that gives the proposed Borough for each observation
+# 4a) create congruent dataset where visual check and st_length check matches (n = 26)
+congruent = crossings_borough_NA_i %>%
+  filter(!FEATURE_ID %in% c("RWG153061", "RWG049417")) #n = 45 (4 obs with these FEATURE_IDs removed)
+
+congruent = congruent %>% 
+  group_by(FEATURE_ID) %>%
+  slice(which.max(borough_length)) # keep the observation which has the longest length - n = 26
+
+# 4b) create incongruent dataset where visual check and st_length check does not match and relabel FEATURE_IDs
+# ie for observations "RWG153061", "RWG049417" 
+# recode Feature_ID with 'a' and 'b'
+# crosschecked that a/b corresponds with the right borough
+incongruent = crossings_borough_NA_i %>%
+  filter(FEATURE_ID %in% c("RWG153061", "RWG049417")) %>%
+  group_by(FEATURE_ID) %>%
+  arrange(desc(borough_length)) %>%
+  ungroup() #arrange order of data by grouping by FEATURE_ID then descending length before relabelling FEATURE_ID in subsequent lines
+incongruent$FEATURE_ID = replace(incongruent$FEATURE_ID, which(incongruent$FEATURE_ID == "RWG153061"), values = c("RWG153061_1", "RWG153061_2"))
+incongruent$FEATURE_ID = replace(incongruent$FEATURE_ID, which(incongruent$FEATURE_ID == "RWG049417"), values = c("RWG049417_1", "RWG049417_2"))
+
+# 5) Create df of all the observations that were Borough NA with correct Boroughs
+# and convert to MLS so has same geometry type as crossings
+# 5a) create df of corrected Boroughs with columns that match Crossings dataset
+crossings_borough_NA_corrected = rbind(congruent, incongruent) %>%
+  select(c("FEATURE_ID","SVDATE","CRS_SIGNAL", "CRS_SEGREG", "CRS_CYGAP", 
+           "CRS_PEDEST", "CRS_LEVEL", "BOROUGH", "PHOTO1_URL", "PHOTO2_URL",
+           "geometry")) 
+
+
+# 5b) To validate that have corrected NAs, create df of counted Boroughs before transformation
+count_crossings_borough = f_crossings %>%
+  st_drop_geometry() %>%
+  group_by(BOROUGH) %>%
+  summarise(Count = n()) 
+
+# 5c) change geometry to multilinestring
+# cast geometry
+unique(st_geometry_type(crossings_borough_NA_corrected)) # Linestring
+crossings_borough_NA_corrected = crossings_borough_NA_corrected %>%
+  st_cast("MULTILINESTRING") %>%
+  mutate(BOROUGH = as.character(BOROUGH)) # and unfactor BOROUGH for step 6
+
+# 6) Add observations with correct Boroughs to main Crossing dataset
+# 6a) Drop 28 observations with no boroughs from f_crossings dataset
+f_crossings = f_crossings %>%
+  filter(!is.na(BOROUGH)) # 1659 observations ie  the 1687 - 28 NAs
+anyNA(f_crossings$BOROUGH) # = FALSE ie all dropped
+
+# 6b) join corrected observations to the f_crossings
+f_crossings = rbind(f_crossings, crossings_borough_NA_corrected) 
+anyNA(f_crossings$BOROUGH) # = FALSE
+
+# 7) Validate have correctly 
+# 7a) Recount Boroughs after transformation
+recount_crossings_borough = f_crossings %>%  #####EWILL NEED TO CHANGE THIS TO A DIFFERENT NAME (POST CHANGE)
+  st_drop_geometry() %>%
+  group_by(BOROUGH) %>%
+  summarise(Recount = n()) # 
+
+number_recoded = crossings_borough_NA_corrected %>%  #####EWILL NEED TO CHANGE THIS TO A DIFFERENT NAME (POST CHANGE)
+  st_drop_geometry() %>%
+  group_by(BOROUGH) %>%
+  summarise(No_recoded = n())
+
+# join borough counts together to check done correctly
+crossing_boroughs = left_join(count_crossings_borough, number_recoded) %>%
+  left_join(recount_crossings_borough) # This looks to be correct
+x = crossing_boroughs %>%
+  replace_na(list(Count = 0, No_recoded = 0, Recount = 0))
+total <- sapply(x[,2:4], sum) # this gives figures of:
+# 1687 total count
+# 30 observation recoded (26 plus the 2+2 observations that had the same FEATURE_ID)
+# new total number of observations in the crossins dataset of 1689 - 
+## ie the original 1687 that now have the correct Borough plus the extra 2 observations that have the FEATURE_ID_2 codes
 
 # create new df without geometry that enables faster analysis of data
 non_geom_f_crossings = st_drop_geometry(f_crossings)
