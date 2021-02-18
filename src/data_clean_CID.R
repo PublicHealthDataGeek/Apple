@@ -13,6 +13,7 @@ library(sf)
 library(mapview)
 library(leaflet)
 library(leafem)
+library(leafpop)
 #library(leafsync)
 #library(summarytools) dont load if want to use mapview
 library(forcats)
@@ -336,7 +337,8 @@ lanes_borough_NA_i = lanes_borough_NA_i %>%
   st_cast("MULTILINESTRING") # convert geometry type to MLS for all so can mapview
 summary(lanes_borough_NA_i$geometry) # -> 621 MLS.  Now can mapview(lanes_borough_NA_i)
 
-mapview(lanes_borough_NA_i, zcol = "BOROUGH") + mapview(lon_lad_2020, alpha.regions = 0.1, zcol = "BOROUGH", legend = FALSE)
+cycle_lanes_NA_map = mapview(lanes_borough_NA_i, zcol = "BOROUGH") + mapview(lon_lad_2020, alpha.regions = 0.1, zcol = "BOROUGH", legend = FALSE)
+
 
 # 3) Count number of observations for each FEATURE_ID
 count_obs = lanes_borough_NA_i %>%
@@ -381,7 +383,7 @@ lanes_borough_NA_corrected = lanes_borough_NA_corrected %>%
            "PHOTO1_URL", "PHOTO2_URL", "geometry")) %>%
   mutate(BOROUGH = as.character(BOROUGH)) # change borough to character so can match back to f_cycle_lane_track
 
-# NB geometry is already Multiline string so no need to convert
+# NB geometry is already Multilinestring so no need to convert
 
 # 7) Validate that have corrected NAs so count NAs before transformation
 count_lanes_borough = f_cycle_lane_track %>%
@@ -426,9 +428,15 @@ total <- sapply(x[,2:4], sum) # this gives figures of:
 # 25243 = 24976 (original number) - 354 (no borough) + 621 (recoded)
 
 
-# Making map of crossings coloured by Borough
-mapview(f_crossings, zcol = "BOROUGH") + mapview(lon_lad_2020, alpha.regions = 0.1, zcol = "BOROUGH", legend =FALSE)
+# 10) Visually inspect cycle lanes and tracks to check now coded correct Borough
+mapview(lon_lad_2020, alpha.regions = 0.1, lwd = 1) + 
+  mapview(f_cycle_lane_track, zcol = "BOROUGH") 
+# there appears to be a cycle lane/track that is yellow (Wandsworth) that is in the Boundaries of Merton
 
+wandsworth = f_cycle_lane_track %>%
+  filter(BOROUGH == "Wandsworth")
+wandsworth_map = mapview(wandsworth, zcol = "BOROUGH") + mapview(lon_lad_2020, alpha.regions = 0.1, lwd = 1)
+leafem::addStaticLabels(m1, label = wandsworth$FEATURE_ID) # plot mNA with the FEATURE_IDs labelled so can identify
 
 
 
@@ -503,7 +511,23 @@ f_variables = c("RES_PEDEST", "RES_BRIDGE", "RES_TUNNEL", "RES_STEPS", "RES_LIFT
 # convert columns to factors (BOROUGH needs doing separately as it has some NAs in, CLT_ACCESS not converted as 721 different values)
 f_restricted_route = restricted_route %>%
   mutate_at(f_variables, as.factor)
-f_restricted_route$BOROUGH = factor(restricted_route$BOROUGH, exclude = NULL)
+anyNA(f_restricted_route$BOROUGH) # = TRUE
+
+
+########## Correct Borough NAs
+
+# 1) identify missing Borough details
+restricted_route_borough_NA = f_restricted_route %>%
+  filter(is.na(BOROUGH)) # 18 observations ie 18 restricted routes no Borough
+
+
+
+
+
+
+
+
+
 
 glimpse(f_restricted_route) # check converted ok
 levels(f_restricted_route$BOROUGH) # check have 34 (33 actual boroughs plus 1 NA value)

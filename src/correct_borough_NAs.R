@@ -448,11 +448,114 @@ length_restricted_routesBYborough = f_restricted_route %>%
   group_by(BOROUGH) %>%
   summarise(length = sum(length)) 
 length_restricted_routesBYborough = st_drop_geometry(length_restricted_routesBYborough)
+sum(length_restricted_routesBYborough$length) # =  307067.8 [m]
 # total length of those observations without a Borough is 25209.39032 [m]
-sum(length_restricted_routesBYborough$length) # total length of all cycle lanes = 307067.8 [m]
+sum(length_restricted_routesBYborough$length) # total length of all RR = 307067.8 [m]
 per = 25209.39032/sum(length_restricted_routesBYborough$length)  *100
 # p = 8.2% so although only 1.3% of assets dont have a Borough, these observations account for 8% of the total length 
 # of restricted routes so probably worth sorting out. 
+
+# Try to sort out using st_intersection 
+restricted_route_borough_NA_i = st_intersection(lon_lad_2020, restricted_route_borough_NA) # 36 observations, 
+#geometry column is from the lanes dataset
+# this has broken each unique FEATURE_ID into segments based on whether they cross a borough line NB each segment may contain a MLS
+# but contains multiple geometry types
+summary(restricted_route_borough_NA_i$geometry) # -> 27 linestrings and 9 multilinestrings
+restricted_route_borough_NA_i = restricted_route_borough_NA_i %>%
+  st_cast("MULTILINESTRING") # convert geometry type to MLS for all so can mapview
+summary(restricted_route_borough_NA_i$geometry) # -> 36 MLS.  Now can mapview(lanes_borough_NA_i)
+
+mapview(restricted_route_borough_NA_i, zcol = "BOROUGH") + mapview(lon_lad_2020, alpha.regions = 0.1, zcol = "BOROUGH", legend = FALSE)
+
+# count number of observations for each FEATURE_ID
+count_obs = restricted_route_borough_NA_i %>%
+  st_drop_geometry() %>%
+  group_by(FEATURE_ID) %>%
+  summarise(num_obs = n()) %>%
+  group_by(num_obs) %>%
+  count()
+#   num_obs     n
+#1       1      1 # 1 FEATURE_ID has one observation
+#2       2     16 # 16 FEATURE_IDs have two observations
+#3       3      1  #  1 FEATURE_ID has 3 observations
+
+
+# Group 36 by FEATURE_ID then add a cumulative sum to each grouped observation (will be 1, 2 or 3)
+restricted_route_NA_corrected = restricted_route_borough_NA_i %>%
+  mutate(n = 1) %>%
+  group_by(FEATURE_ID) %>%
+  mutate(cum_count = cumsum(n)) %>%
+  select(-n)
+
+# relabel the FEATURE_ID with the cumulative number so each observation has a unique ID
+restricted_route_NA_corrected$FEATURE_ID = paste(restricted_route_NA_corrected$FEATURE_ID, "_", restricted_route_NA_corrected$cum_count)
+
+# Check that the correct number have 1, 2 or 3 appended to the FEATURE_ID
+restricted_route_NA_corrected %>%
+  st_drop_geometry() %>%
+  group_by(cum_count) %>%
+  count()
+
+# cum_count     n   # This looks to be correct
+#         1    18  = 1 + 16 + 1
+#         2    17  = 1 + 16
+#         3     1
+
+# Create df of all the observations that were Borough NA with correct Boroughs
+restricted_route_NA_corrected = restricted_route_NA_corrected %>%
+  select(c("FEATURE_ID", "SVDATE", "RES_PEDEST", "RES_BRIDGE", "RES_TUNNEL", 
+           "RES_STEPS", "RES_LIFT", "BOROUGH", "PHOTO1_URL", "PHOTO2_URL", 
+           "geometry", )) %>%
+  mutate(BOROUGH = as.character(BOROUGH)) %>% 
+  mutate(length = st_length(geometry))
+  # change borough to character and add length column so can match back to f_restricted_route
+# NB geometry is already Multiline string so no need to convert
+
+# VAlidating that have corrected NAs
+#count Boroughs before transformation
+count_restricted_route_borough = f_restricted_route %>%
+  st_drop_geometry() %>%
+  group_by(BOROUGH) %>%
+  summarise(Count = n()) 
+
+# drop obs with no boroughs from f_restricted_route
+f_restricted_route = f_restricted_route %>%
+  filter(!is.na(BOROUGH)) # 1360 observations ie  the 1378 - 18 NAs
+anyNA(f_restricted_route$BOROUGH) # = FALSE ie all dropped
+
+
+# join corrected observations to the f_restricted_route
+f_restricted_route = rbind(f_restricted_route, restricted_route_NA_corrected) 
+anyNA(f_restricted_route$BOROUGH) # = FALSE
+
+# recount Boroughs after transformation
+recount_restricted_route_borough = f_restricted_route %>%  
+  st_drop_geometry() %>%
+  group_by(BOROUGH) %>%
+  summarise(Recount = n()) 
+
+number_recoded = restricted_route_NA_corrected %>%  
+  st_drop_geometry() %>%
+  group_by(BOROUGH) %>%
+  summarise(Number_recoded = n())
+
+# join borough counts together to check done correctly
+restricted_route_boroughs = left_join(count_restricted_route_borough, number_recoded) %>%
+  left_join(recount_restricted_route_borough) # This looks to be correct
+
+
+
+# Making map of crossings coloured by Borough
+mapview(f_restricted_route, zcol = "BOROUGH") + mapview(lon_lad_2020, alpha.regions = 0.1, zcol = "BOROUGH", legend =FALSE)
+
+
+
+
+
+
+
+
+
 
 
 
