@@ -709,6 +709,63 @@ f_signal = signal %>%
 glimpse(f_signal) # check converted ok
 levels(f_signal$BOROUGH) # only have 23 and no NA value
 
+mapviewOptions(native.crs = TRUE)
+mapview(f_signal, zcol = "BOROUGH") + 
+  mapview(lon_lad_2020, alpha.regions = 0.5, zcol = "BOROUGH",
+          lwd = 1, legend = FALSE) # Visual inspection all appears to be fine
+
+CID_enfield = f_signal %>%
+  filter(BOROUGH == "Enfield") # 5 observations
+enfield_ONS = lon_lad_2020 %>%
+  filter(BOROUGH == "Enfield")
+st_contains(CID_enfield$geometry, enfield_ONS$geometry)
+st_geometry_type(CID_enfield)
+st_geometry_type(enfield_ONS)
+
+st_contains(CID_enfield, enfield_ONS, sparse = FALSE)
+st_contains(enfield_ONS, CID_enfield, sparse = FALSE) # this works
+x = st_contains(lon_lad_2020, f_signal, sparse = FALSE) # this works
+
+for (i in 1:nrow(lon_lad_2020)) {
+  assign(paste("ddat",i,sep="_"), data)
+}
+####? do I want a list of boroughs as a vector then use for loop for each borough, check against
+# dataset tjem dp st_contains
+
+boroughs = c("Barking & Dagenham", "Barnet", "Bexley", "Brent",  
+             "Bromley", "Camden", "City of London", "Croydon", 
+             "Ealing", "Enfield", "Greenwich", "Hackney",  
+             "Hammersmith & Fulham", "Haringey", "Harrow", 
+             "Havering", "Hillingdon", "Hounslow", "Islington", 
+             "Kensington & Chelsea", "Kingston upon Thames",  
+             "Lambeth", "Lewisham", "Merton", "Newham", 
+             "Redbridge", "Richmond upon Thames", "Southwark",  
+             "Sutton", "Tower Hamlets", "Waltham Forest",   
+             "Wandsworth", "Westminster") 
+
+
+
+st_contains(lon_lad_2020[i], f_signal[i], sparse = FALSE)
+ # doesnt work
+    
+
+
+for (i in seq_along(lon_lad_2020$BOROUGH)) {
+  if (st_contains(lon_lad_2020[i], f_signal[i])) {
+    print("signal is in ONS")
+  } else{
+    print("FALSE")
+  }
+}
+
+if (st_contains(f_signal$geometry, lon_lad_2020$geometry)) {
+  print("signal is in ONS")
+} else{
+  print("FALSE")
+}
+}
+
+
 # Borough level analysis
 signal_borough_count = f_signal %>%
   st_drop_geometry() %>%
