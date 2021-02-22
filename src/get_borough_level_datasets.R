@@ -20,7 +20,8 @@ library(mapview)
 #library(CycleInfraLnd)
 
 # Load datasets
-
+cleansed_asl = readRDS(file = "/home/bananafan/Documents/PhD/Paper1/data/cleansed_asl")
+cleansed_crossings = readRDS(file = "/home/bananafan/Documents/PhD/Paper1/data/cleansed_crossings")
 cleansed_cycle_lane_track = readRDS(file = "/home/bananafan/Documents/PhD/Paper1/data/cleansed_cycle_lane_track")
 
 
