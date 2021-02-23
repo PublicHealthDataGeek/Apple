@@ -2,12 +2,10 @@
 # Data cleaning CID - crossings                                                   #
 #                                                                                 #
 # This code downloads the CID and cleans up the variables                         #
-# It recodes the observations that has no Borough assigned                        #
+# It recodes the observations that have no Borough assigned (n = 28)              #
 # It also checks that the Boroughs are correctly assigned where they exist        #
-# Where crossings 
-
-ycle lanes and tracks cross more than one London Borough they are split  #
-# into multiple observations based on their Borough location                      #
+# 9 were identified that may not be correctly assigned but only 2 needing         #
+# correcting.  One of the two needed splitting into two observations              #
 #                                                                                 #
 ###################################################################################
 
@@ -24,9 +22,6 @@ library(leaflet)
 library(leafem)
 library(forcats)
 library(units)
-#library(tmap)
-#library(leafsync)
-#library(summarytools) dont load if want to use mapview
 
 # Set Mapview options to use data CRS rather than OSM projections
 mapviewOptions(native.crs = TRUE)

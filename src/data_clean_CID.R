@@ -731,6 +731,23 @@ for (i in 1:nrow(lon_lad_2020)) {
 }
 ####? do I want a list of boroughs as a vector then use for loop for each borough, check against
 # dataset tjem dp st_contains
+test_borough = c("Enfield", "City of London")
+
+for (i in test_borough) {
+  st_contains(lon_lad_2020, f_signal, sparse = FALSE)
+}
+
+for (i in seq_along(test_borough)) {
+  st_contains(lon_lad_2020, f_signal, sparse = FALSE)
+}
+
+## https://discdown.org/rprogramming/loops.html
+
+for (i in test_borough) {
+  print(paste("contains", i))
+}
+# [1] "contains Enfield"
+# [1] "contains City of London"
 
 boroughs = c("Barking & Dagenham", "Barnet", "Bexley", "Brent",  
              "Bromley", "Camden", "City of London", "Croydon", 

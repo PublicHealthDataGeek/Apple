@@ -2,8 +2,8 @@
 # Data cleaning CID - ASL                                                         #
 #                                                                                 #
 # This code downloads the CID and cleans up the variables                         #
-# It recodes the observations that has no Borough assigned                        #
-# It also checks that the Boroughs are correctly assigned where they exist        #
+# It recodes the observation (n = 1) that has no Borough assigned                 #
+# It also checks that the Boroughs are correctly assigned for the rest of the ASL #
 #                                                                                 #
 ###################################################################################
 
@@ -18,11 +18,9 @@ library(sf)
 library(mapview)
 library(forcats)
 library(units)
-#library(leaflet)
-#library(leafem)
-#library(tmap)
-#library(leafsync)
-#library(summarytools) dont load if want to use mapview
+
+# set mapview options so that matches crs
+mapviewOptions(native.crs = TRUE)
 
 # Import May 2020 ONS LA boundary data (required for NA management)
 lon_lad_2020 = readRDS(file = "./map_data/lon_LAD_boundaries_May_2020_BFE.Rds")

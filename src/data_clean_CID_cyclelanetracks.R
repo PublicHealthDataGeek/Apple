@@ -22,9 +22,9 @@ library(leaflet)
 library(leafem)
 library(forcats)
 library(units)
-#library(tmap)
-#library(leafsync)
-#library(summarytools) dont load if want to use mapview
+
+# set mapview options so that matches crs
+mapviewOptions(native.crs = TRUE)
 
 # import May 2020 ONS LA boundary data (required for NA management)
 lon_lad_2020 = readRDS(file = "./map_data/lon_LAD_boundaries_May_2020_BFE.Rds")
