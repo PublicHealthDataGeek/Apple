@@ -128,7 +128,7 @@ signage_not_NA = f_signage %>%
 # 1) Review NAs first
 pre_borough_cleanse_map = mapview(signage_NA, zcol = "BOROUGH", na.color = "red") + 
   mapview(lon_lad_2020, alpha.regions = 0.1, legend = FALSE, lwd = 1)         
-# These observations are outside London Boroughs so drop
+# These 2 observations are outside London Boroughs so drop
 drop_ids = pull(signage_NA, FEATURE_ID) 
 
 # drop these FEATURE_IDs from dataset
