@@ -31,7 +31,7 @@ traffic_calming = get_cid_points(type = "traffic_calming")
 
 # check and convert CRS so matches ONS boundary data CRS
 traffic_calming = st_transform(traffic_calming, crs=27700) 
-           # st_crs(traffic_calming) # PROJCRS["OSGB 1936 / British National Grid",
+# st_crs(traffic_calming) # PROJCRS["OSGB 1936 / British National Grid",
 
 ###################################
 # Check completeness of variables #
