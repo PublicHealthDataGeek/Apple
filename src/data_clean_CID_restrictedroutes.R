@@ -273,7 +273,7 @@ f_restricted_route = f_restricted_route %>%
 anyNA(f_restricted_route$BOROUGH) # = FALSE ie all dropped
 
 #  8b) join corrected observations to the f_restricted_route
-f_restricted_route = rbind(f_restricted_route, restricted_route_NA_corrected) 
+f_restricted_route = rbind(f_restricted_route, restricted_route_NA_corrected) # = 1399 (1963 + 36) 
 anyNA(f_restricted_route$BOROUGH) # = FALSE
 
 # 9) Validate have correctly transformed

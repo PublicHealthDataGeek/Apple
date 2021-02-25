@@ -163,7 +163,7 @@ RWG273925_corrected = RWG273925 %>%
            "PHOTO1_URL", "PHOTO2_URL", "geometry")) %>%
   mutate(BOROUGH = as.character(BOROUGH)) # change borough to character so can match back to f_crossings
 
-# Remove the 72 observations from f_cycle_lane_track that have been replaced by the 144 new observations
+# Remove and then add the observations
 f_crossings = f_crossings %>%
   filter(!FEATURE_ID == "RWG273925") # n = 1686 ie 1 removed from the 1687 
 # Join RWG273925_corrected to f_crossings - will then have 1688 ie 2 more
