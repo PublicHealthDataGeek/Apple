@@ -10,16 +10,17 @@
 library(tidyverse)
 library(sf)
 library(mapview)
+library(units)
 # library(leaflet)
 # library(leafem)
 # # library(leafsync)
 # # library(summarytools)
 # library(forcats)
-# library(units)
+
 #library(tmap)
 #library(CycleInfraLnd)
 
-# Load datasets
+# Load datasets - these datasets were downloaded from TFL 25th February 2021
 c_asl = readRDS(file = "/home/bananafan/Documents/PhD/Paper1/data/cleansed_asl")
 c_crossings = readRDS(file = "/home/bananafan/Documents/PhD/Paper1/data/cleansed_crossings")
 c_cyclelanetrack = readRDS(file = "/home/bananafan/Documents/PhD/Paper1/data/cleansed_cycle_lane_track")
@@ -31,38 +32,74 @@ c_signals = readRDS(file = "/home/bananafan/Documents/PhD/Paper1/data/cleansed_s
 c_trafficcalming = readRDS(file = "/home/bananafan/Documents/PhD/Paper1/data/cleansed_trafficcalming")
 # NB crossings, cycle lanes/tracks, restricted routes and signage need Borough factoring but now c_datasets are correct
 
-lon_lad_2020 = readRDS(file = "./map_data/lon_LAD_boundaries_May_2020_BFE.Rds")
-
-
-
-dataset_names = c("c_asl", "c_crossings", "c_cyclelanetrack", "c_Rroutes", 
-                  "c_Rpoints", "c_parking", "c_signage", "c_signals", 
-                  "c_trafficcalming") #list of datasets to loop through
-borough_names = as.character(pull(lon_lad_2020, BOROUGH)) # get list of borough names
-borough_count = data.frame(Borough = vector(mode = "character", length = length(borough_names))) # create output df for loop
-
-
-# Create dataset of Borough level counts by asset type
+########################################################
+# Create dataset of Borough level counts by asset type #
+########################################################
 
 # 1) Create Borough counts by asset type
-# ## a) Cycle lanes and tracks
+# ## a) ASL
+asl_borough_count = c_asl %>%
+  st_drop_geometry() %>%
+  group_by(BOROUGH) %>%
+  summarise(ASL = n()) # 33 boroughs no NAs
+
+# ## b) Crossings
+crossings_borough_count = c_crossings %>%
+  st_drop_geometry() %>%
+  group_by(BOROUGH) %>%
+  summarise(Crossings = n()) # 33 boroughs no NAs
+
+# ## c) Cycle lanes and tracks
 cycle_lane_track_borough_count = c_cyclelanetrack %>%
   st_drop_geometry() %>%
   group_by(BOROUGH) %>%
   summarise(CycleLanesAndTracks = n()) # 33 boroughs no NAs
 
+# ## d) Restricted routes
+restricted_route_borough_count = c_Rroutes %>%
+  st_drop_geometry() %>%
+  group_by(BOROUGH) %>%
+  summarise(RestrictedRoutes = n()) # 33 boroughs no NAs
 
-######## NB use right summarise terms so that visualising borough counts still work!!!!!
+# ## e) Cycle Parking sites
+cycle_parking_sites_borough_count = c_parking %>%
+  st_drop_geometry() %>%
+  group_by(BOROUGH) %>%
+  summarise(CycleParkingSites = n()) # 33 boroughs no NAs
+
+# ## f) Cycle Parking spaces
+cycle_parking_space_borough_count = c_parking %>%
+  st_drop_geometry() %>%
+  group_by(BOROUGH) %>%
+  summarise(CycleParkingSpaces = sum(PRK_CPT))
+
+# ## g) Signals
+signal_borough_count = c_signals %>%
+  st_drop_geometry() %>%
+  group_by(BOROUGH) %>%
+  summarise(Signals = n()) # 23 boroughs no NAs
+
+# ## h) Signage
+signage_borough_count = c_signage %>%
+  st_drop_geometry() %>%
+  group_by(BOROUGH) %>%
+  summarise(Signage = n()) # 33 boroughs no NAs
+
+# ## i) Restricted points
+restricted_points_borough_count = c_Rpoints %>%
+  st_drop_geometry() %>%
+  group_by(BOROUGH) %>%
+  summarise(Restricted_Points = n()) # 27 boroughs no NAs
+
+# ## j) Traffic calming
+traffic_calming_borough_count= c_trafficcalming %>%
+  st_drop_geometry() %>%
+  group_by(BOROUGH) %>%
+  summarise(TrafficCalming = n()) # 27 boroughs no NAs
 
 
-
-
-
-##########################################
-# OLD CODE BELOW - probably still useful - needs checking and correcting though
-
-####### Count of assets by Borough
-CID_by_borough = list(asl_borough_count, crossings_borough_count, 
+# 2) Create count dataset
+CID_count_borough = list(asl_borough_count, crossings_borough_count, 
                       cycle_lane_track_borough_count, 
                       restricted_route_borough_count,
                       cycle_parking_sites_borough_count,
@@ -73,43 +110,58 @@ CID_by_borough = list(asl_borough_count, crossings_borough_count,
                       restricted_points_borough_count) %>%
   reduce(left_join, by = "BOROUGH")
 
-# need to replace NA in Borough with 'Borough not stated' and NAs in other columns with 0
-sum(is.na(CID_by_borough)) # = 21
+# 3) Replace NA in count with 0
 
-# Replace 'Borough NA' with text and count NAs with 0
-CID_by_borough = CID_by_borough %>% 
-  replace_na(list(BOROUGH = "No Borough stated in CID")) %>%
+#sum(is.na(CID_count_borough)) # = 16 (10 from Signals and 6 from restricted points)
+CID_count_borough = CID_count_borough %>% 
   replace(is.na(.), 0)
-sum(is.na(CID_by_borough)) # checks that no NAs now exist (= 0)
+# sum(is.na(CID_count_borough)) # checks that no NAs now exist (= 0)
 
-saveRDS(CID_by_borough, file = "/home/bananafan/Documents/PhD/Paper1/output/CID_count_by_borough")
 
-###### Length of line assets by Borough
-
-# 
-# # Length of cycle lanes and tracks by Borough
-# f_cycle_lane_track$length_m = st_length(f_cycle_lane_track$geometry)
-# f_cycle_lane_track$length_km = set_units(st_length(f_cycle_lane_track$geometry), km)
-# 
-# cycle_lane_track_borough_length = f_cycle_lane_track %>%
-#   group_by(BOROUGH) %>%
-#   summarise(across(c(length_m, length_km), sum))
-# # drop geometry cant be done within the pipe as it causes weirdness in the measurements (see issue 1)
-# # it needs to be dropped to make dataset manageable
-# cycle_lane_track_borough_length = st_drop_geometry(cycle_lane_track_borough_length) 
-# 
-# # Save these datasets for combination
+# 4) Save dataset
+saveRDS(CID_count_borough, file = "/home/bananafan/Documents/PhD/Paper1/data/CID_count_by_borough")
 
 
 
+#########################################################
+# Create dataset of Borough level lengths by asset type #
+#########################################################
 
+# 1) Calculate lengths of each asset
+
+# Restricted routes
+c_Rroutes$length_m = st_length(c_Rroutes$geometry)
+c_Rroutes$length_km = set_units(st_length(c_Rroutes$geometry), km)
+
+# Cycle Lanes and Tracks - already done in the dataset
+## c_cyclelanetrack$b_length_m = st_length(c_cyclelanetrack$geometry)
+## c_cyclelanetrack$length_km = set_units(st_length(c_cyclelanetrack$geometry), km)
+ 
+# 2) Calculate total length of assets by Borough
+restricted_route_borough_length = c_Rroutes %>%
+  group_by(BOROUGH) %>%
+  summarise(across(c(length_m, length_km), sum))
+# drop geometry cant be done within the pipe as it causes weirdness in the measurements (see issue 1)
+# it needs to be dropped to make dataset manageable
+restricted_route_borough_length = st_drop_geometry(restricted_route_borough_length) 
+
+
+cycle_lane_track_borough_length = c_cyclelanetrack %>%
+   group_by(BOROUGH) %>%
+   summarise(across(c(length_m, length_km), sum))
+ # drop geometry cant be done within the pipe as it causes weirdness in the measurements (see issue 1)
+ # it needs to be dropped to make dataset manageable
+cycle_lane_track_borough_length = st_drop_geometry(cycle_lane_track_borough_length) 
+ 
+
+#3) Create dataset for lengths
 length_CID_by_borough = list(cycle_lane_track_borough_length,
                              restricted_route_borough_length) %>%
   reduce(left_join, by = "BOROUGH") %>%
   mutate(across(2:5, round, 1)) %>%
   rename(c(CycleLaneTrack_km = length_km.x, RestrictedRoute_km = length_km.y,
-           CycleLaneTrack_m = length_m.x, RestrictedRoute_m = length_m.y)) %>%
-  replace_na(list(BOROUGH = "No Borough stated in CID")) # Correct NA in Borough column
+           CycleLaneTrack_m = length_m.x, RestrictedRoute_m = length_m.y))
 
-saveRDS(length_CID_by_borough, file = "/home/bananafan/Documents/PhD/Paper1/output/CID_length_by_borough")
+# 4) Save dataset
+saveRDS(length_CID_by_borough, file = "/home/bananafan/Documents/PhD/Paper1/data/CID_length_by_borough")
 
