@@ -285,3 +285,266 @@ unique(lon_os_structures$structure)
 # [5] "Level Crossing Unbarriered"     "Level Crossing Fully Barriered"
 # [7] "Toll Indicator"                 "Level Crossing Part Barriered" 
 # [9] "Structure"                      "Bridge Under Road" 
+
+#############################
+# Access restriction layers #
+#############################
+
+# 1) AccessRestriction
+# location and type of restriction plus vehicle it applies to 
+
+os_access_rest = st_read("/home/bananafan/Downloads/os_highways/MasterMap Highways Network_3984103/Highways_Data_March19.gdb",
+                        layer = "AccessRestriction") 
+
+# Reading layer `AccessRestriction' from data source `/home/bananafan/Downloads/os_highways/MasterMap Highways Network_3984103/Highways_Data_March19.gdb' using driver `OpenFileGDB'
+# Simple feature collection with 44104 features and 6 fields
+# geometry type:  POINT
+# dimension:      XY
+# bbox:           xmin: 70629 ymin: 10495.87 xmax: 655548 ymax: 1215648
+# projected CRS:  OSGB 1936 / British National Grid
+
+names(os_access_rest)
+# [1] "TOID"                 "localId"              "beginLifespanVersion" "restriction"         
+# [5] "reasonForChange"      "trafficSign"          "SHAPE"    
+
+unique(os_access_rest$restriction)
+#[1] "forbiddenLegally"     "physicallyImpossible" "private" 
+
+unique(os_access_rest$trafficSign)
+# [1] "No goods vehicles over 7.5T"               "Unsuitable for long vehicles"             
+# [3] "Unsuitable for heavy goods vehicles"       "No goods vehicles over 17T"               
+# [5] "No goods vehicles over 18T"                "Unsuitable for coaches"                   
+# [7] "No goods vehicles over 5T"                 "No goods vehicles over 17.5T"             
+# [9] "Unsuitable for motor vehicles"             "Unsuitable for towed caravans"            
+# [11] "Unsuitable for wide vehicles"              "Unsuitable for large vehicles"            
+# [13] "No goods vehicles over 3.5T"               "No goods vehicles over 3T"                
+# [15] "No goods vehicles over 16.5T"              "Unsuitable for buses"                     
+# [17] "Unsuitable for through traffic"            "Unsuitable for articulated vehicles"      
+# [19] "No Entry"                                  "No motor vehicles"                        
+# [21] "No vehicles"                               "Buses only"                               
+# [23] "No buses"                                  "Pedal cycles and motor cycles only"       
+# [25] "Pedal cycles only"                         "No abnormal loads"                        
+# [27] "Local buses only"                          "No heavy goods vehicles"                  
+# [29] "No light goods vehicles"                   "Buses and taxis only"                     
+# [31] "Buses, pedal cycles and taxis only"        "Pedal cycles, local buses and taxis only" 
+# [33] "No solo motorcycles"                       "Taxis only"                               
+# [35] "No cycling"                                "Buses and pedal cycles only"              
+# [37] "Local buses, school buses and taxis only"  "Buses, pedal cycles, motor cycles and tax"
+# [39] "No towed caravans"                         "No wide loads"                            
+# [41] "School buses only"                         "No motor vehicles except solo motor cycle"
+# [43] "No buses, No goods vehicles over 7.5T"     "No vehicles carrying explosives or flamma"
+# [45] "No vehicles carrying dangerous goods"      "Non-statutory wide loads only"            
+# [47] "Tramcars only"                             "Non-statutory residents and guests only"  
+# [49] "No tracked vehicles"                       "Motor cycles only"                        
+# [51] "No buses, No heavy goods vehicles"         "Non-statutory no vehicles"                
+# [53] "No buses, No light goods vehicles, No sol" "No articulated vehicles"                  
+# [55] "No goods vehicles over 33T"                "Buses and tramcars only"                  
+# [57] "Local buses and school buses only"  
+
+# 2) AccessRestriction_Inclusion  Types of vehicle or use that the restriction applies to.
+os_access_rest_inc = st_read("/home/bananafan/Downloads/os_highways/MasterMap Highways Network_3984103/Highways_Data_March19.gdb",
+                         layer = "AccessRestriction_Inclusion") 
+# tibble df no geometry
+# 44151 obs of 3 varialbes
+names(os_access_rest_inc)
+
+names(os_access_rest_inc)
+#[1] "TOID"          "inclusion"     "inclusionType"
+
+unique(os_access_rest_inc$inclusion)
+# [1] "Goods Vehicles Exceeding 7.5T"  "Long Vehicles"                 
+# [3] "Heavy Goods Vehicles"           "Goods Vehicles Exceeding 17T"  
+# [5] "Goods Vehicles Exceeding 18T"   "Coaches"                       
+# [7] "Goods Vehicles Exceeding 5T"    "Goods vehicles Exceeding 17.5T"
+# [9] "Motor Vehicles"                 "Towed Caravans"                
+# [11] "Wide Vehicles"                  "Large Vehicles"                
+# [13] "Goods Vehicles Exceeding 3.5T"  "Goods Vehicles Exceeding 3T"   
+# [15] "Goods vehicles Exceeding 16.5T" "Buses"                         
+# [17] "Through Traffic"                "Articulated Vehicles"          
+# [19] "All Vehicles"                   "Loading And Unloading"         
+# [21] "Abnormal Loads"                 "Light Goods Vehicles"          
+# [23] "Motor Cycles"                   "Pedal Cycles"                  
+# [25] "Wide Loads"                     "Explosives"                    
+# [27] "Inflammables"                   "Dangerous Goods"               
+# [29] "Tracked Vehicles"               "Access"                        
+# [31] "Goods vehicles Exceeding 33T"   "Authorised Vehicles" 
+
+unique(os_access_rest_inc$inclusionType)
+#[1] "vehicle" "use"     "load" 
+
+
+# 3) AccessRestriction_Exemption- Types of vehicle or use that are exempt from the restriction
+
+os_access_rest_exem = st_read("/home/bananafan/Downloads/os_highways/MasterMap Highways Network_3984103/Highways_Data_March19.gdb",
+                              layer = "AccessRestriction_Exemption") 
+# tibble
+
+names(os_access_rest_exem)
+# [1] "TOID"          "exemption"     "exemptionType"
+
+unique(os_access_rest_exem$exemption)
+# [1] "Loading And Unloading"         "Access"                       
+# [3] "Permit Holders"                "Local Buses"                  
+# [5] "Buses"                         "Authorised Vehicles"          
+# [7] "Taxis"                         "Pedal Cycles"                 
+# [9] "Motor Cycles"                  "Emergency Vehicles"           
+# [11] "School Buses"                  "Goods Vehicles"               
+# [13] "Emergency Access"              "Service Vehicles"             
+# [15] "Heavy Goods Vehicles"          "Fuel Tankers"                 
+# [17] "Disabled"                      "Coaches"                      
+# [19] "Abnormal Loads"                "Tramcars"                     
+# [21] "Escorted Traffic"              "Guided Buses"                 
+# [23] "Wide Loads"                    "Residents And Guests"         
+# [25] "Access To Off Street Premises" "Works Traffic"                
+# [27] "Articulated Vehicles"          "Public Transport"             
+# [29] "Mopeds"      
+
+unique(os_access_rest_exem$exemptionType)
+# [1] "use"     "vehicle" "load"   
+
+
+#############################
+# Turn Restriction layers #
+#############################
+# Turn restrictions are a restriction based upon a vehicle manoeuvre. Thistype of 
+# restriction includes prohibitive driving instructions, mandatory driving instruction and implicit restrictions.
+# Prohibited instructions are indicated by road signs within a red circle,
+# Mandatory driving instructions indicated by road signs within a blue circle
+
+# 1) Turn Restriction
+os_turn_rest = st_read("/home/bananafan/Downloads/os_highways/MasterMap Highways Network_3984103/Highways_Data_March19.gdb",
+                        layer = "TurnRestriction") 
+# tibble - no shape
+# 832430 obs. of  5 variables:
+  
+names(os_turn_rest)
+# [1] "TOID"                 "identifier"           "beginLifespanVersion"
+# [4] "restriction"          "reasonForChange" 
+
+unique(os_turn_rest$restriction)
+#[1] "One Way"        "No Turn"        "Mandatory Turn"
+
+unique(os_turn_rest$beginLifespanVersion)
+# NB on 30 dates.... 
+
+unique(os_turn_rest$reasonForChange)
+# [1] "New"                 "Modified Attributes"
+
+
+# 2) TurnRestriction_Exemption 
+os_turn_rest_exemp = st_read("/home/bananafan/Downloads/os_highways/MasterMap Highways Network_3984103/Highways_Data_March19.gdb",
+                       layer = "TurnRestriction_Exemption") 
+#tibble
+# 1587 obs. of  3 variables:
+
+names(os_turn_rest_exemp)
+# [1] "TOID"          "exemption"     "exemptionType"
+
+unique(os_turn_rest_exemp$exemption)
+# [1] "Pedal Cycles"          "Buses"                 "Taxis"                
+# [4] "Local Buses"           "Motor Cycles"          "Heavy Goods Vehicles" 
+# [7] "Loading And Unloading" "Emergency Vehicles"    "Access"               
+# [10] "Authorised Vehicles"   "Emergency Access"      "Coaches"              
+# [13] "Vehicles Under 7.5T"   "Public Transport"      "Permit Holders"       
+# [16] "Service Vehicles"      "School Buses" 
+
+#THEREFORE CAN IDENTIFY WHICH TURNS HAVE PEDAL CYCLE EXEMPTION.  
+
+turn_count_exemp_veh_type = os_turn_rest_exemp %>%
+  group_by(exemption) %>%
+  summarise(count = n())
+
+# -> Pedal Cycles 678  ? seems low.  are these new turn exemptions?  
+
+
+
+
+
+
+
+
+
+#############################
+# Highway Dedication layers #
+#############################
+
+# Highway dedication provides an indication of the type of Highway user who has access to that particular 
+# section of the Highway.
+# There can only be one Highway Dedication type applied to the geometry at any given date or time.
+
+# Higwhay dedication
+os_access_ded = st_read("/home/bananafan/Downloads/os_highways/MasterMap Highways Network_3984103/Highways_Data_March19.gdb",
+                         layer = "HighwayDedication") 
+
+# Reading layer `HighwayDedication' from data source `/home/bananafan/Downloads/os_highways/MasterMap Highways Network_3984103/Highways_Data_March19.gdb' using driver `OpenFileGDB'
+# Simple feature collection with 3695856 features and 13 fields
+# geometry type:  MULTILINESTRING
+# dimension:      XY
+# bbox:           xmin: 80699.01 ymin: 6441.14 xmax: 655562.7 ymax: 657489
+# projected CRS:  OSGB 1936 / British National Grid
+
+names(os_access_ded)
+# [1] "id"                   "identifier"           "beginLifespanVersion" "validFrom"           
+# [5] "reasonForChange"      "dedication"           "publicRightOfWay"     "nationalCycleRoute"  
+# [9] "quietRoute"           "obstruction"          "planningOrder"        "worksProhibited"     
+# [13] "SHAPE_Length"         "SHAPE" 
+
+unique(os_access_ded$dedication)
+# [1] "All Vehicles"                        "Pedestrian Way Or Footpath"         
+# [3] "No Dedication Or Dedication Unknown" "Cycle Track Or Cycle Way"           
+# [5] "Motorway"                            "Byway Open To All Traffic"          
+# [7] "Bridleway"                           "Restricted Byway"  
+
+unique(os_access_ded$publicRightOfWay)
+# 0-1
+
+unique(os_access_ded$planningOrder)
+# 0 NA -1
+
+
+
+RestrictionForVehicles - tro
+
+#############################
+# Maintenance layers #
+#############################
+
+
+#### Maintenance layes - provides inforamtion about whether the road is maintatined at public expences
+#  (if prospectively maintainable it will be going into public maintenance)
+# 24                                      Maintenance_noGeom                   NA  1200714     13
+# 25                                  Maintenance_point          Multi Point    46893     13
+# 26                                   Maintenance_line    Multi Line String    15957     14
+# 27                                   Maintenance_area        Multi Polygon      143     15
+
+
+# Turn restrictions are a restriction based upon a vehicle manoeuvre. Thistype of 
+# restriction includes prohibitive driving instructions, mandatory driving instruction and implicit restrictions.
+# Prohibited instructions are indicated by road signs within a red circle,
+# Mandatory driving instructions indicated by road signs within a blue circle
+
+# 1) Maintenance_line
+os_main_line = st_read("/home/bananafan/Downloads/os_highways/MasterMap Highways Network_3984103/Highways_Data_March19.gdb",
+                       layer = "Maintenance_line") 
+
+# Simple feature collection with 15957 features and 14 fields
+# geometry type:  MULTILINESTRING
+# dimension:      XY
+# bbox:           xmin: 222282.2 ymin: 36610 xmax: 655502.7 ymax: 622941
+# projected CRS:  OSGB 1936 / British National Grid
+
+names(os_main_line)
+# [1] "ID"                        "localId"                  
+# [3] "beginLifespanVersion"      "validFrom"                
+# [5] "maintenanceResponsibility" "partialReference"         
+# [7] "highwayAuthorityName"      "highwayAuthorityID"       
+# [9] "maintenanceAuthorityName"  "maintenanceAuthorityID"   
+# [11] "referenceToStreetUSRN"     "reasonForChange"          
+# [13] "locationDescription"       "SHAPE_Length"             
+# [15] "SHAPE"  
+
+unique(os_main_line$maintenanceResponsibility)
+# 1] "Maintainable At Public Expense"                            
+# [2] "Not Maintained At Public Expense"                          
+# [3] "Prospectively Maintainable At Public Expense"              
+# [4] "Maintenance Responsibility Is To Another Highway Authority"
