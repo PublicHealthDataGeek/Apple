@@ -5,7 +5,7 @@
 # The data is limited to London using ONS dataset.
 # XYZ data is converted to XY
 #
-# - road nodes that reprsent junctions are identified
+# - road nodes that represent junctions are identified
 #  ???????
 # aggregated data is saved to github but other data is not
 
@@ -98,7 +98,7 @@ st_layers("/home/bananafan/Downloads/os_highways/MasterMap Highways Network_3984
 # NB LOOKING AT MAPS WILL NEED TO LIMIT NODES TO ONES THAT ARE JUNCTIONS _ ALSO 
 # ? also need to limits roads to something tooo????
 
-
+# 1) Read in road link layer
 os_road_link = st_read("/home/bananafan/Downloads/os_highways/MasterMap Highways Network_3984103/Highways_Data_March19.gdb",
                 layer = "RoadLink")
 # Simple feature collection with 5062741 features and 38 fields
@@ -135,33 +135,181 @@ names(os_road_link)
 str(os_road_link)
 
 
-# Need to limit to Greater London area
+# 2) Limit Road Link data to London Boroughs only
 
-# import May 2020 ONS LA boundary data (required for NA management)
+# import May 2020 ONS LA boundary data
 lon_lad_2020 = readRDS(file = "./map_data/lon_LAD_boundaries_May_2020_BFE.Rds")
 
+# Create spatial object for all 33 boroughs
+london_union = st_union(lon_lad_2020) 
 
-# Spatially join road link data to London Boroughs using inner join 
-# (ie only keep observations that are in both)
-lon_os_road_link = st_join(os_road_link, lon_lad_2020, left = FALSE)
+# Limit road links to within the Outer London Boundary
+lon_os_road_link = st_intersection(os_road_link, london_union)
 
-# Get rid of Z aspect in geometry (keep just X&Y)
+# Create object with just Borough names and geometry
+lon_boroughs = lon_lad_2020 %>%
+  select(c("BOROUGH", "geometry"))  
+
+# Spatially join London road link data to London Borough names 
+lon_os_road_link = st_join(lon_os_road_link, lon_boroughs)
+
+# Remove Z aspect in geometry (keep just X&Y)
 lon_os_road_link = st_zm(lon_os_road_link, drop = T, what = 'ZM')
 
 # Save road link data - not on github
 #saveRDS(lon_os_road_link, file = "/home/bananafan/Documents/PhD/Datasets/lon_os_road_link")
 
 # Examine London road dataset
-# lon_os_road_link = readRDS(file = "/home/bananafan/Documents/PhD/Datasets/lon_os_road_link")
-str(lon_os_road_link) # 292652 obs. of  49 variables
+str(lon_os_road_link) # 290664 obs. of  40 variables
 
-# limit to city of London
-city = lon_os_road_link %>%
-  filter(BOROUGH == "City of London") # n = 1443
 
-mapview(city)
-tmap::qtm(city)
-tmap::qtm(lon_os_road_link)
+
+unique(lon_os_road_link$roadClassification)
+# [1] "A Road"                "Unclassified"          "Classified Unnumbered"
+# [4] "Unknown"               "Not Classified"        "B Road"               
+# [7] "Motorway"   
+
+# Not Classifed = Roads that have not been assigned a road classification at national or local level by a designation authority.
+# Unknown = The classification of the road is unknown because the RoadLink is not a Motorway, A or B road and the RoadLink has not been matched to the National Street Gazetteer.
+
+unique(lon_os_road_link$routeHierarchy)
+# [1] "A Road Primary"                   "Minor Road"                      
+# [3] "A Road"                           "Local Road"                      
+# [5] "Restricted Local Access Road"     "B Road"                          
+# [7] "Restricted Secondary Access Road" "Secondary Access Road"           
+# [9] "Local Access Road"                "B Road Primary"                  
+# [11] "Motorway" 
+# Local access road = A road intended for the start or end of a journey, not intended for through traffic but will be openly accessible.
+# Restricted local access road = A road intended for the start or end of a journey, not intended for through traffic andwill have a restriction on who can use it
+# Secondary Access Road = A road that provides alternate/secondary access to property or land not intended for throughtraffic
+# Restricted Secondary Access Road - as above plus restricted
+
+unique(lon_os_road_link$operationalState)
+# [1] "Open"               "Under Construction"
+
+unique(lon_os_road_link$formOfWay)
+# [1] "Dual Carriageway"                "Single Carriageway"             
+# [3] "Traffic Island Link"             "Slip Road"                      
+# [5] "Traffic Island Link At Junction" "Roundabout"                     
+# [7] "Shared Use Carriageway"          "Enclosed Traffic Area"          
+# [9] "Track"                           "Guided Busway"                  
+# [11] "Layby"
+
+unique(lon_os_road_link$directionality)
+# [1] "inOppositeDirection" "bothDirections"      "inDirection" 
+
+summary(lon_os_road_link$length)
+# Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+# 1.01   24.38   46.07   68.55   84.02 3735.77 
+
+# roadWidthMinimum and roadWidthAverage are character in metres
+
+unique(lon_os_road_link$cycleFacility)
+# [1] ""                                       "Unknown Type Of Cycle Route Along Road"
+
+###########################
+# Data wrangling
+#
+
+# 1) Factor appropriate columns
+columns2factor = c("roadClassification", "routeHierarchy", "formOfWay", "directionality",
+           "cycleFacility", "operationalState")
+
+lon_os_road_link = lon_os_road_link %>%
+  mutate_at(columns2factor, as.factor)
+
+
+# 2) Convert road width into numeric
+#??? DO I WANT TO DO THIS
+# lon_os_road_link$roadWidthMinimum = as.numeric(lon_os_road_link$roadWidthMinimum)
+# above doesnt work, turns them all into NAS
+#will have to drop m from cell then convert to numeric
+
+
+
+##############
+# Examine London data
+
+# a) Road classification
+lon_road_class_count = lon_os_road_link %>%
+  st_drop_geometry() %>%
+  select(roadClassification) %>%
+  group_by(roadClassification) %>%
+  summarise(count = n())
+
+# roadClassification     count
+# * <chr>                  <int>
+# 1 A Road                 42486
+# 2 B Road                 10683
+# 3 Classified Unnumbered  12316
+# 4 Motorway                 420
+# 5 Not Classified         19376
+# 6 Unclassified          148140
+# 7 Unknown                57243
+
+# b) Route hierachy
+lon_route_hierachy_count = lon_os_road_link %>%
+  st_drop_geometry() %>%
+  select(routeHierarchy) %>%
+  group_by(routeHierarchy) %>%
+  summarise(count = n())
+
+# routeHierarchy                    count
+# * <fct>                             <int>
+# 1 A Road                            31728
+# 2 A Road Primary                    10758
+# 3 B Road                            10678
+# 4 B Road Primary                        5
+# 5 Local Access Road                  3761
+# 6 Local Road                       145551
+# 7 Minor Road                        29395
+# 8 Motorway                            420
+# 9 Restricted Local Access Road      33678
+# 10 Restricted Secondary Access Road  16980
+# 11 Secondary Access Road              7710 
+
+
+motorway_total_length = lon_os_road_link %>%
+  st_drop_geometry() %>%
+  group_by(BOROUGH) %>%
+  filter(roadClassification == "Motorway") %>%
+  select(length) %>%
+  summarise(total = sum(length))
+
+motorway_total_length_test = test %>%
+  st_drop_geometry() %>%
+  group_by(BOROUGH) %>%
+  filter(roadClassification == "Motorway") %>%
+  select(length) %>%
+  summarise(total = sum(length))
+
+lon_motorways = lon_os_road_link %>%
+  filter(roadClassification == "Motorway") 
+mapview(lon_motorways, zcol = "identifier") + mapview(lon_lad_2020)
+
+lon_a_roads = lon_os_road_link %>%
+  filter(roadClassification == "A Road")
+lon_a_road_length = lon_a_roads %>%
+  st_drop_geometry() %>%
+  group_by(BOROUGH) %>%
+  select(length) %>%
+  summarise(total = sum(length))
+
+mapview(lon_a_roads, lwd = 0.5) + mapview(lon_lad_2020, alpha.regions = 0.1,lwd = 0.5)
+ 
+
+
+# Road Classification:
+# Source: https://www.gov.uk/government/publications/guidance-on-road-classification-and-the-primary-route-network/guidance-on-road-classification-and-the-primary-route-network
+# A roads – major roads intended to provide large-scale transport links within or between areas
+# B roads – roads intended to connect different areas, and to feed traffic between A roads and smaller roads on the network
+# classified unnumbered – smaller roads intended to connect together unclassified roads with A and B roads, and often linking a housing estate or a village to the rest of the network. Similar to ‘minor roads’ on an Ordnance Survey map and sometimes known unofficially as C roads
+# unclassified – local roads intended for local traffic. The vast majority (60%) of roads in the UK fall within this category
+
+# not classified - Roads that have not been assigned a road classification at national or local level by a designation authority
+# Unknown - The classification of the road is unknown because the RoadLink is not a Motorway, A or B road and the RoadLink has not been matched to the National Street Gazetteer. 
+
+
 
 
 
@@ -548,3 +696,37 @@ unique(os_main_line$maintenanceResponsibility)
 # [2] "Not Maintained At Public Expense"                          
 # [3] "Prospectively Maintainable At Public Expense"              
 # [4] "Maintenance Responsibility Is To Another Highway Authority"
+
+# Spatially join road maintainance data to London Boroughs using inner join 
+# (ie only keep observations that are in both)
+lon_os_main_line = st_join(os_main_line, lon_lad_2020, left = FALSE)
+unique(lon_os_main_line$maintenanceAuthorityName)
+unique(lon_os_main_line$highwayAuthorityName)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+###OLD code
+
+# limit to city of London
+city = lon_os_road_link %>%
+  filter(BOROUGH == "City of London") # n = 1443
+
+mapview(city)
+tmap::qtm(city)
+tmap::qtm(lon_os_road_link)
