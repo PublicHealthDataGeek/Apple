@@ -111,7 +111,7 @@ lon_itn_road_link = lon_itn_road_link %>%
  
  
 # Save road link data - not on github
-saveRDS(lon_itn_road_link, file = "/home/bananafan/Documents/PhD/Datasets/lon_itn19_road_link")
+# saveRDS(lon_itn_road_link, file = "/home/bananafan/Documents/PhD/Datasets/lon_itn19_road_link")
 
 # #####################################################
 # # Examine London road dataset  variables and values #
@@ -156,24 +156,66 @@ lon_natureOfRoad_count = lon_itn_road_link %>%
 # 7 Traffic Island Link At Junction  15345
 
 
-
-
-# Finally check no road names include 'M'
-unique(lon_potential_cyclable$roadClassificationNumber)
-
 # Create potential cyclable road network
 itn_lon_potential_cyclable = lon_itn_road_link %>%
-   filter(natureOfRoad != "Enclosed Traffic Area Link") %>%  # remove car parks and other ETA
-   filter(descriptiveTerm != "Motorway" | descriptiveTerm != "Private Road - Publicly Accessible" | 
-             descriptiveTerm != "Private Road - Restricted Access") 
-# 288450 obs. of  12 variables:
+   filter(natureOfRoad != "Enclosed Traffic Area Link") %>%  # remove car parks and other ETA (4 local streets, rest form part of private roads)
+   filter(!descriptiveTerm %in% c("Motorway","Private Road - Publicly Accessible", "Private Road - Restricted Access")) 
+# 252805 obs. of  12 variables (drops 37855 via !descriptionTerm and a further 4 nonprivate roads that were ETA)
 
 # Save road link data - not on github
-saveRDS(itn_lon_potential_cyclable, file = "/home/bananafan/Documents/PhD/Datasets/itn_lon_potential_cyclable")
+# saveRDS(itn_lon_potential_cyclable, file = "/home/bananafan/Documents/PhD/Datasets/itn_lon_potential_cyclable")
 
 
-# Create dataset of private roads for STATS19 work
+   
+
+
+
+
+###########################
+# Work on smaller dataset
+############################
+
+mm_lon_potential_cyclable = readRDS(file = file = "/home/bananafan/Documents/PhD/Datasets/mm_lon_potential_cyclable")
+itn_lon_potential_cyclable = readRDS(file = "/home/bananafan/Documents/PhD/Datasets/itn_lon_potential_cyclable")
+# city_private_roads = lon_private_roads_itn %>%
+#    filter(BOROUGH == "City of London") # n = 88
+# 
+# mapview(city_private_roads)
+
+city_potential_cyclable_MM = mm_lon_potential_cyclable %>%
+   filter(BOROUGH == "City of London") # n = 1419
+# this has dropped motorways, ETAs and roads under construction
+
+
+city_potential_cyclable_ITN = itn_lon_potential_cyclable %>%
+   filter(BOROUGH == "City of London")# n = 1344
+# this has dropped motorways, ETAs and private roads
+
+y = city_potential_cyclable_MM %>%
+   st_drop_geometry() %>%
+   select(directionality) %>%
+   group_by(directionality) %>%
+   summarise(count = n())
+
+m1 = mapview(city_potential_cyclable_MM) 
+m2 = mapview(city_potential_cyclable_ITN$geometry, color = "red")
+leafsync::sync(m1,m2)
+city_potential_cyclable = st_join(city_potential_cyclable_ITN, city_potential_cyclable_MM, join = st_overlaps)
+# 1344 obs. of  51 variables:
+
+
+### BUT directionallity has been dropped -which versin of join should I use???
+city_directionality_count = city_potential_cyclable %>%
+   st_drop_geometry() %>%
+   select(directionality) %>%
+   group_by(directionality) %>%
+   summarise(count = n())
+
+####################################################
+# Create dataset of private roads for STATS19 work #
+####################################################
 lon_private_roads_itn = lon_itn_road_link %>%
    filter(descriptiveTerm == "Private Road - Publicly Accessible" | 
              descriptiveTerm == "Private Road - Restricted Access") 
-saveRDS(lon_private_roads_itn, file = "/home/bananafan/Documents/PhD/Datasets/lon_private_roads_itn")
+# Save road link data - not on github
+# saveRDS(lon_private_roads_itn, file = "/home/bananafan/Documents/PhD/Datasets/lon_private_roads_itn")

@@ -163,12 +163,13 @@ lon_os_road_link = lon_os_road_link %>%
 
 
 # Save road link data - not on github
-saveRDS(lon_os_road_link, file = "/home/bananafan/Documents/PhD/Datasets/lon_os_road_link")
+#saveRDS(lon_os_road_link, file = "/home/bananafan/Documents/PhD/Datasets/lon_os_road_link")
 
 
 #####################################################
 # Examine London road dataset  variables and values #
 #####################################################
+lon_os_road_link = readRDS(file = "/home/bananafan/Documents/PhD/Datasets/lon_os_road_link")
 
 str(lon_os_road_link) # 290664 obs. of  40 variables
 
@@ -339,14 +340,17 @@ unique(os_access_rest_inc$inclusion)
 ### No evidence of other routes where cycling is not allowed.  
 
 
-# Finally check no road names include 'M'
-unique(lon_potential_cyclable$roadClassificationNumber)
+
 
 # Create potential cyclable road network
 lon_potential_cyclable = lon_os_road_link %>%
-  filter(routeHierarchy != "Motorway") %>%  # remove motorways
-  filter(operationalState =="Open") %>%     # only include roads that are open
-  filter(formOfWay != "Enclosed Traffic Area")  # remove car parks and other ETA
+  filter(routeHierarchy != "Motorway") %>%  # remove motorways (420)
+  filter(operationalState =="Open") %>%     # only include roads that are open (74)
+  filter(formOfWay != "Enclosed Traffic Area")  # remove car parks and other ETA (2214) 
+# (NB due to filtering only 2707 removed - a link must have been in more than one above category)
+
+# Finally check no road names include 'M'
+unique(lon_potential_cyclable$roadClassificationNumber)
 
 # This gives 287957 road links
 
