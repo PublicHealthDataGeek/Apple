@@ -3,8 +3,8 @@
 # 
 # This code obtains the denominators for the following asset comparisons:
 # - ASL - occur at signalised junctions
-# - Traffic signals
-# - Crossings
+# - Signals - in CID only cycle signals at junctions are included as Signal assets
+# - Crossings - in the CID cycle signals at crossings eg pedestrian crossings are in the Crossings dataset
 # 
 # It does this by combiningin......
 # OSM - Jan 2019
@@ -48,7 +48,12 @@ gl_pbf19 = "/home/bananafan/Documents/PhD/Paper1/data/greater-london-190101.osm.
 # import May 2020 ONS LA boundary data (required for NA management)
 lon_lad_2020 = readRDS(file = "./map_data/lon_LAD_boundaries_May_2020_BFE.Rds")
                        
+## Create spatial object for all 33 boroughs
+london_union = st_union(lon_lad_2020) 
 
+## Create object with just Borough names and geometry
+lon_boroughs = lon_lad_2020 %>%
+  select(c("BOROUGH", "geometry"))  
 
 ####################################
 # Obtaining Traffic lights/signals #
@@ -328,7 +333,7 @@ signals_tl_1920_prop_rank = signals_tl_1920 %>%
 # Save these datasets for discussion with Roger
 saveRDS(asl_tl_1920_prop_rank, file = "/home/bananafan/Documents/PhD/Paper1/data/asl_tl_1910_prop_rank_comparison")
 saveRDS(signals_tl_1920_prop_rank, file = "/home/bananafan/Documents/PhD/Paper1/data/signals_tl_1910_prop_rank_comparison")
-
+saveRDS(traffic_signals20, file = "/home/bananafan/Documents/PhD/Paper1/data/osm_traffic_signals_20")
 
 
 ####################
