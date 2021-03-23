@@ -16,7 +16,7 @@ library(sf)
 # import May 2020 ONS LA boundary data
 lon_lad_2020 = readRDS(file = "./map_data/lon_LAD_boundaries_May_2020_BFE.Rds")
 
-#Get road network for London
+# Get route network for London
 lon_rnet = pct::get_pct_rnet(region = "london")
 
 # Change CRS to ONS CRS
@@ -41,9 +41,9 @@ lon_rnet$segment_length = as.numeric(sf::st_length(lon_rnet))
 # 0.00    1.00    6.00   53.33   25.00 4113.00 
 
 #Calculate daily km's cycled
-# calvulate daily metres cycled per day (multiple segment length by number of users)
+# calculate daily metres cycled per day (multiple segment length by number of users)
 lon_rnet$m_cycled_per_working_day = lon_rnet$segment_length * lon_rnet$bicycle
-
+lon_rnet_centroid = st_centroid(lon_rnet)  # check works - see if any difference with interseciton
 
 # Convert route network to centroids
 #AGGREGATE USING STCENTROID ????

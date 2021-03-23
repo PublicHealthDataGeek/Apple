@@ -185,12 +185,12 @@ itn_lon_potential_cyclable = readRDS(file = "/home/bananafan/Documents/PhD/Datas
 city_potential_cyclable_MM = mm_lon_potential_cyclable %>%
    filter(BOROUGH == "City of London") # n = 1419
 # this has dropped motorways, ETAs and roads under construction
-
+total_length_city_MM = sum(city_potential_cyclable_MM$length)
 
 city_potential_cyclable_ITN = itn_lon_potential_cyclable %>%
    filter(BOROUGH == "City of London")# n = 1344
 # this has dropped motorways, ETAs and private roads
-
+total_length_city_ITN = sum(city_potential_cyclable_ITN$length)
 y = city_potential_cyclable_MM %>%
    st_drop_geometry() %>%
    select(directionality) %>%
@@ -200,7 +200,8 @@ y = city_potential_cyclable_MM %>%
 m1 = mapview(city_potential_cyclable_MM) 
 m2 = mapview(city_potential_cyclable_ITN$geometry, color = "red")
 leafsync::sync(m1,m2)
-city_potential_cyclable = st_join(city_potential_cyclable_ITN, city_potential_cyclable_MM, join = st_overlaps)
+city_potential_cyclable = st_join(city_potential_cyclable_ITN, city_potential_cyclable_MM, join = st_equals)
+total_length_city_joined = sum(city_potential_cyclable$length.x)
 # 1344 obs. of  51 variables:
 
 

@@ -1,16 +1,32 @@
-##########################
-# Create maps of all assets
+#############################
+# Create maps of Safety assets
+#
+# This script creates maps for the paper
+# Needs to include for Journal of Transport Geography
+# - scale
+# - north
+# - legend
+# - TIFF JPEG EPS or PDF
+# - fonts - Arial (or Helvetica), Courier, Symbol, Times (or Times New Roman)
+# - Double column (full width) 	190 mm (539 pt) 	2244 	3740 	7480
 
 
 # install packages
 library(tidyverse)
 library(sf)
 library(mapview)
-library(leafsync)
+library(ggspatial) # get north arrow and bar
+library(patchwork) # arrange ggplots
+#library(leafsync)
 # library(leaflet)
 # library(leafem)
 # library(forcats)
 # library(units)
+#library(sp)
+#library(rmapshaper)
+#library(ggforce)
+#library(gridExtra)
+#library(geojsonsf)
 
 # set mapview options so that matches crs
 mapviewOptions(native.crs = TRUE, legend = FALSE)
@@ -18,86 +34,154 @@ mapviewOptions(native.crs = TRUE, legend = FALSE)
 # color options
 # https://www.pagetutor.com/common/bgcolors1536.png
 
-# import May 2020 ONS LA boundary data (required for NA management)
-lon_lad_2020 = readRDS(file = "./map_data/lon_LAD_boundaries_May_2020_BFE.Rds")
-
-# Create spatial data for Inner/Outer London areas
-Inner = c("City of London", "Camden", "Greenwich", "Hackney", "Hammersmith & Fulham", 
-          "Islington", "Kensington & Chelsea", "Lambeth", "Lewisham", "Southwark",  
-          "Tower Hamlets", "Wandsworth", "Westminster") 
-
-inner_outer_london = lon_lad_2020 %>%
-  mutate(London = ifelse(BOROUGH %in% Inner, "Inner", "Outer")) # 14 variables
-
-city_london = inner_outer_london %>%
-  filter(BOROUGH == "City of London")
-
-inner_london = inner_outer_london %>%
-  filter(London == "Inner")
-inner_london_union = sf::st_union(inner_london)
-
-outer_london = inner_outer_london %>%
-  filter(London == "Outer")
-outer_london_union = sf::st_union(outer_london)
-
-# # Example of city_inner_outer boundaries with pale blue background 
-# mapview(city_london, alpha.regions = 0.1, lwd = 0.5) + 
-#   mapview(inner_london_union, alpha.regions = 0.1, lwd = 0.5) + 
-#   mapview(outer_london_union,alpha.regions = 0.1, lwd = 0.5)
-
-
-
 
 # Load asset datasets - these datasets were downloaded from TFL 25th February 2021
 c_asl = readRDS(file = "/home/bananafan/Documents/PhD/Paper1/data/cleansed_asl")
 c_crossings = readRDS(file = "/home/bananafan/Documents/PhD/Paper1/data/cleansed_crossings")
 c_cyclelanetrack = readRDS(file = "/home/bananafan/Documents/PhD/Paper1/data/cleansed_cycle_lane_track")
-c_Rroutes = readRDS(file = "/home/bananafan/Documents/PhD/Paper1/data/cleansed_restricted_route")
-c_Rpoints = readRDS(file = "/home/bananafan/Documents/PhD/Paper1/data/cleansed_restrictedpoints")
-c_parking = readRDS(file = "/home/bananafan/Documents/PhD/Paper1/data/cleansed_parking")
-c_signage = readRDS(file = "/home/bananafan/Documents/PhD/Paper1/data/cleansed_signage")
 c_signals = readRDS(file = "/home/bananafan/Documents/PhD/Paper1/data/cleansed_signals")
 c_trafficcalming = readRDS(file = "/home/bananafan/Documents/PhD/Paper1/data/cleansed_trafficcalming")
 
-# Example maps
-# viridis points on viridis boroughs
-m1 = mapview(c_asl, zcol = "BOROUGH", cex = 2) + mapview(lon_lad_2020, alpha.regions = 0.1, zcol = "BOROUGH", lwd = 0.5)
-m1 = removeMapJunk(m1, c("zoomControl", "layersControl", "homeButton", "drawToolbar", "easyButton"))
+# convert certain assets to point data
+c_asl_point = st_centroid(c_asl)
+c_crossings_point = st_centroid(c_crossings)
+c_signals_point = st_centroid(c_signals)
+c_trafficcalming = st_centroid(c_trafficcalming)
 
-# black points on viridis 
-m2 = mapview(c_asl$geometry, color = "black", cex = 2) + mapview(lon_lad_2020, alpha.regions = 0.1, zcol = "BOROUGH", lwd = 0.5)
-m2 = removeMapJunk(m2, c("zoomControl", "layersControl", "homeButton", "drawToolbar", "easyButton"))
+# import May 2020 ONS LA boundary data (required for NA management)
+#lon_lad_2020 = readRDS(file = "./map_data/lon_LAD_boundaries_May_2020_BFE.Rds")
 
-# dark grey points on viridis 
-m3 = mapview(c_asl$geometry, color = "#555555", cex = 2) + mapview(lon_lad_2020, alpha.regions = 0.1, zcol = "BOROUGH", lwd = 0.5)
-m3 = removeMapJunk(m3, c("zoomControl", "layersControl", "homeButton", "drawToolbar", "easyButton"))
+# Create context for map
+boroughs <- st_read("/home/bananafan/Documents/PhD/Paper1/map_data/London_Borough_Excluding_MHW.shp")
+borough_areas <- rmapshaper::ms_simplify(boroughs, keep=0.015) #Simplify boroughs
 
-# city_inner_outer boundaries with pale blue background 
-m4 = mapview(c_asl, zcol = "BOROUGH", cex = 2) + 
-  mapview(inner_london_union, alpha.regions = 0.05, lwd = 1) + 
-  mapview(outer_london_union,alpha.regions = 0.2, lwd = 1)
-m4 = removeMapJunk(m4, c("zoomControl", "layersControl", "homeButton", "drawToolbar", "easyButton"))
+riverthames = st_read("/home/bananafan/Documents/PhD/Paper1/map_data/riverthames.shp")
+riverthames_simplify = rmapshaper::ms_simplify(riverthames)
 
-# viridis points on viridis boroughs
-m5 = mapview(c_cyclelanetrack, zcol = "BOROUGH", lwd = 0.9) + mapview(lon_lad_2020, alpha.regions = 0.1, zcol = "BOROUGH", lwd = 0.5)
-m5 = removeMapJunk(m5, c("zoomControl", "layersControl", "homeButton", "drawToolbar", "easyButton"))
-
-# black points on viridis 
-m6 = mapview(c_cyclelanetrack$geometry, color = "black", lwd = 0.9) + mapview(lon_lad_2020, alpha.regions = 0.1, zcol = "BOROUGH", lwd = 0.5)
-m6 = removeMapJunk(m6, c("zoomControl", "layersControl", "homeButton", "drawToolbar", "easyButton"))
-
-# dark grey points on viridis 
-m7 = mapview(c_cyclelanetrack$geometry, color = "#555555", lwd = 0.9) + mapview(lon_lad_2020, alpha.regions = 0.1, zcol = "BOROUGH", lwd = 0.5)
-m7 = removeMapJunk(m7, c("zoomControl", "layersControl", "homeButton", "drawToolbar", "easyButton"))
-
-# city_inner_outer boundaries with pale blue background 
-m8 = mapview(c_cyclelanetrack, zcol = "BOROUGH", lwd = 0.9) + 
-  mapview(inner_london_union, alpha.regions = 0.05, lwd = 1) + 
-  mapview(outer_london_union,alpha.regions = 0.1, lwd = 1)
-m8 = removeMapJunk(m8, c("zoomControl", "layersControl", "homeButton", "drawToolbar", "easyButton"))
-
-points_eg = latticeView(m1,m2,m3,m4, ncol = 4, sync = "none")
-lines_eg = latticeView(m5,m6,m7,m8, ncol = 4, sync = "none")
+motorways <- st_read("/home/bananafan/Documents/PhD/Paper1/map_data/motorways_outer.json") %>% 
+  st_transform(crs=27700) 
 
 
+
+
+# Create base maps
+ # with and without scales and arrows
+baseplot_arrow_scale = ggplot()+
+  geom_sf(data=motorways, fill="#EEEEEE",  colour="#EEEEEE")+
+  geom_sf(data=borough_areas, fill="#d4d4d4",  colour="#444444", alpha=0.3, size=0.05)+
+  geom_sf(data=riverthames_simplify, fill="#99CCEE",  colour="#99CCEE")+
+  theme_bw() +
+  coord_sf(crs=st_crs(riverthames_simplify), datum=NA) +
+  annotation_scale(location = "br", width_hint = 0.3, bar_cols = c("Gray83", "white"),
+                   text_cex = 0.5, line_width = 0.5, line_col = "#222222") +
+  annotation_north_arrow(location = "tr", which_north = "true", 
+                         height = unit(1.3, "cm"), width = unit(1.3, "cm"),
+                         #pad_x = unit(0.75, "in"), pad_y = unit(0.5, "in"),
+                         style = north_arrow_fancy_orienteering(line_width = 0.5, 
+                                                                line_col = "#222222",
+                                                                fill = c("white", "Gray83"),
+                                                                text_size = 8))
+
+baseplot = ggplot()+
+  geom_sf(data=motorways, fill="#EEEEEE",  colour="#EEEEEE")+
+  geom_sf(data=borough_areas, fill="#d4d4d4",  colour="#444444", alpha=0.3, size=0.05)+
+  geom_sf(data=riverthames_simplify, fill="#99CCEE",  colour="#99CCEE")+
+  theme_bw() +
+  coord_sf(crs=st_crs(riverthames_simplify), datum=NA)
+
+# ASL
+p1 = ggplot()+
+  geom_sf(data = motorways, fill = "#EEEEEE",  colour = "#EEEEEE") +
+  geom_sf(data = borough_areas, fill = "#d4d4d4",  colour = "#444444", alpha = 0.3, size = 0.05) +
+  geom_sf(data = riverthames_simplify, fill = "#99CCEE",  colour = "#99CCEE") +
+  geom_sf(data = c_asl_point, colour = "blue", size = 0.05) +
+  theme_bw() +
+  theme(plot.title = element_text(vjust = - 9, hjust = 0.1, size = 18), 
+        plot.margin = unit(c(0, 0.5, 0, 0.5), "cm")) +
+  ggtitle("ASL at traffic-controlled signals") +
+  coord_sf(crs = st_crs(riverthames_simplify), datum = NA) 
+
+p2 = ggplot()+
+  geom_sf(data = motorways, fill = "#EEEEEE",  colour = "#EEEEEE") +
+  geom_sf(data = borough_areas, fill = "#d4d4d4",  colour = "#444444", alpha = 0.3, size = 0.05) +
+  geom_sf(data = riverthames_simplify, fill = "#99CCEE",  colour = "#99CCEE") +
+  geom_sf(data = c_crossings_point, colour = "blue", size = 0.05) +
+  theme_bw() +
+  theme(plot.title = element_text(vjust = - 9, hjust = 0.1, size = 18),
+        plot.margin = unit(c(0, 0.5, 0, 0.5), "cm")) +  # makes bottom margin 0
+  ggtitle("Cycle crossings") +
+  coord_sf(crs = st_crs(riverthames_simplify), datum = NA) 
+
+p3 = ggplot()+
+  geom_sf(data = motorways, fill = "#EEEEEE",  colour = "#EEEEEE") +
+  geom_sf(data = borough_areas, fill = "#d4d4d4",  colour = "#444444", alpha = 0.3, size = 0.05) +
+  geom_sf(data = riverthames_simplify, fill = "#99CCEE",  colour = "#99CCEE") +
+  geom_sf(data = c_cyclelanetrack, colour = "blue") +
+  theme_bw() +
+  theme(plot.title = element_text(vjust = - 9, hjust = 0.1, size = 18),
+        plot.margin = unit(c(0, 0.5, 0, 0.5), "cm")) + 
+  ggtitle("Cycle lanes and tracks") +
+  coord_sf(crs = st_crs(riverthames_simplify), datum = NA) 
+
+
+p4 = ggplot()+
+  geom_sf(data = motorways, fill = "#EEEEEE",  colour = "#EEEEEE") +
+  geom_sf(data = borough_areas, fill = "#d4d4d4",  colour = "#444444", alpha = 0.3, size = 0.05) +
+  geom_sf(data = riverthames_simplify, fill = "#99CCEE",  colour = "#99CCEE") +
+  geom_sf(data = c_signals_point, colour = "blue", size = 0.05) +
+  theme_bw() +
+  theme(plot.title = element_text(vjust = - 9, hjust = 0.1, size = 18),
+        plot.margin = unit(c(0, 0.5, 0.5, 0.5), "cm")) + 
+  ggtitle("Traffic signals for cycles") +
+  coord_sf(crs = st_crs(riverthames_simplify), datum = NA) 
+
+p5 = ggplot()+
+  geom_sf(data=motorways, fill="#EEEEEE",  colour="#EEEEEE")+
+  geom_sf(data=borough_areas, fill="#d4d4d4",  colour="#444444", alpha=0.3, size=0.05)+
+  geom_sf(data=riverthames_simplify, fill="#99CCEE",  colour="#99CCEE") +
+  geom_sf(data = c_trafficcalming, colour = "blue", size = 0.05) +
+  theme_bw() +
+  theme(plot.title = element_text(vjust = - 9, hjust = 0.1, size = 18), 
+        plot.margin = unit(c(0, 0.5, 0.5, 0.5), "cm")) +
+  ggtitle("Traffic calming measures") +
+  coord_sf(crs=st_crs(riverthames_simplify), datum=NA) +
+  annotation_scale(location = "br", width_hint = 0.3, bar_cols = c("Gray83", "white"),
+                   text_cex = 1, line_width = 0.5, line_col = "#222222") +
+  annotation_north_arrow(location = "tr", which_north = "true", 
+                         height = unit(1.3, "cm"), width = unit(1.3, "cm"),
+                         pad_x = unit(0.5, "cm"), pad_y = unit(0.5, "cm"),
+                         style = north_arrow_fancy_orienteering(line_width = 0.5, 
+                                                                line_col = "#222222",
+                                                                fill = c("white", "Gray83"),
+                                                                text_size = 12))
+
+
+
+# Use patchwork to create plot
+locations_plot = (p1 | p2 | p3) / (p4 | p5)
+
+# Save image
+## GGSAVE NOT WORKING HAD SIMILAT ISSUE WHEN DOING INTERNSHIP
+##ggsave("/home/bananafan/Documents/PhD/Paper1/output/locations_map_plot.pdf", plot = locations_plot, 
+       dpi = 1000, width = 190 * (14/5), height = 142 * (14/5), units = "mm")
+
+
+
+  
+  
+  
+# # Getting river thames   
+# gl_pbf = "/home/bananafan/Documents/PhD/Paper1/data/greater-london-200101.osm.pbf"
+# gl_osm_multipolygons = oe_read(gl_pbf, quiet = FALSE, layer = "multipolygons") # 546748 features, 25 fields, multipolygon, crs= WGS84 
+# gl_osm_multipolygons = st_transform(gl_osm_multipolygons, crs=27700) 
+#water = gl_osm_multipolygons %>%
+#  filter(natural == "water")
+# riverthames = water %>%
+#   filter(name == "River Thames")
+# riverthames = st_union(riverthames)
+# m1 = mapview(riverthames)
+# rt_simplify <- rmapshaper::ms_simplify(riverthames)
+# m2 = mapview(rt_simplify)
+# leafsync::sync(m1,m2)
+# st_write(riverthames, "/home/bananafan/Documents/PhD/Paper1/map_data/riverthames.shp")
 
