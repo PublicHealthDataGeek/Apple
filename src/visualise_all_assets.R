@@ -54,12 +54,59 @@ c_trafficcalming = st_centroid(c_trafficcalming)
 # Create context for map
 boroughs <- st_read("/home/bananafan/Documents/PhD/Paper1/map_data/London_Borough_Excluding_MHW.shp")
 borough_areas <- rmapshaper::ms_simplify(boroughs, keep=0.015) #Simplify boroughs
+borough_areas = rename(boroughs, BOROUGH = NAME)
+borough_areas$SHORT = fct_recode(borough_areas$BOROUGH, 
+                                    "KNS" = "Kensington and Chelsea",
+                                    "BAR" = "Barking and Dagenham",
+                                    "HMS" = "Hammersmith and Fulham",
+                                    "KNG" = "Kingston upon Thames",
+                                    "RCH" = "Richmond upon Thames",
+                                    "CTY" = "City of London",
+                                    "WTH" = "Waltham Forest",
+                                    "CRD" = "Croydon",
+                                    "BRM" = "Bromley",
+                                    "HNS" = "Hounslow",
+                                    "ELG" = "Ealing",
+                                    "HVG" = "Havering",
+                                    "HDN" = "Hillingdon",
+                                    "HRW" = "Harrow",
+                                    "BRT" = "Brent",
+                                    "BRN" = "Barnet",
+                                    "LAM" = "Lambeth",
+                                    "SWR" = "Southwark", 
+                                    "LSH" = "Lewisham",
+                                    "GRN" = "Greenwich",
+                                    "BXL" = "Bexley",
+                                    "ENF" = "Enfield",
+                                    "RDB" = "Redbridge",
+                                    "STN" = "Sutton",
+                                    "MRT" = "Merton",
+                                    "WNS" = "Wandsworth",
+                                    "WST" = "Westminster",
+                                    "CMD" = "Camden",
+                                    "TOW" = "Tower Hamlets",
+                                    "ISL" = "Islington",
+                                    "HCK" = "Hackney",
+                                    "HGY" = "Haringey",
+                                    "NWM" = "Newham")
+### using short names in tmap
+# mapped_boroughs1 = tm_shape(mapping_boroughs) +
+#   tm_fill(col = "ivory2") +
+#   tm_borders() +
+#   tm_text("SHORT", size = 0.7) +
+#   tm_layout(bg.color = "lightblue")
 
 riverthames = st_read("/home/bananafan/Documents/PhD/Paper1/map_data/riverthames.shp")
 riverthames_simplify = rmapshaper::ms_simplify(riverthames)
 
 motorways <- st_read("/home/bananafan/Documents/PhD/Paper1/map_data/motorways_outer.json") %>% 
   st_transform(crs=27700) 
+box_new = c(xmin = 498745.5, ymin = 149044.6, xmax = 564000.0, ymax = 205391.0)
+motorways = st_crop(motorways, box_new)
+#box_orig = c(xmin = 498745.5, ymin = 149044.6, xmax = 569602.4, ymax = 205391.0)
+
+
+
 
 
 
@@ -89,12 +136,17 @@ baseplot = ggplot()+
   theme_bw() +
   coord_sf(crs=st_crs(riverthames_simplify), datum=NA)
 
-# ASL
+
+
+
+
+# Create all 5 plots
+# transparency = 0
 p1 = ggplot()+
   geom_sf(data = motorways, fill = "#EEEEEE",  colour = "#EEEEEE") +
   geom_sf(data = borough_areas, fill = "#d4d4d4",  colour = "#444444", alpha = 0.3, size = 0.05) +
   geom_sf(data = riverthames_simplify, fill = "#99CCEE",  colour = "#99CCEE") +
-  geom_sf(data = c_asl_point, colour = "blue", size = 0.05) +
+  geom_sf(data = c_asl_point, colour = "red", size = 0.1) +
   theme_bw() +
   theme(plot.title = element_text(vjust = - 9, hjust = 0.1, size = 18), 
         plot.margin = unit(c(0, 0.5, 0, 0.5), "cm")) +
@@ -105,7 +157,7 @@ p2 = ggplot()+
   geom_sf(data = motorways, fill = "#EEEEEE",  colour = "#EEEEEE") +
   geom_sf(data = borough_areas, fill = "#d4d4d4",  colour = "#444444", alpha = 0.3, size = 0.05) +
   geom_sf(data = riverthames_simplify, fill = "#99CCEE",  colour = "#99CCEE") +
-  geom_sf(data = c_crossings_point, colour = "blue", size = 0.05) +
+  geom_sf(data = c_crossings_point, colour = "red", size = 0.1) +
   theme_bw() +
   theme(plot.title = element_text(vjust = - 9, hjust = 0.1, size = 18),
         plot.margin = unit(c(0, 0.5, 0, 0.5), "cm")) +  # makes bottom margin 0
@@ -116,7 +168,7 @@ p3 = ggplot()+
   geom_sf(data = motorways, fill = "#EEEEEE",  colour = "#EEEEEE") +
   geom_sf(data = borough_areas, fill = "#d4d4d4",  colour = "#444444", alpha = 0.3, size = 0.05) +
   geom_sf(data = riverthames_simplify, fill = "#99CCEE",  colour = "#99CCEE") +
-  geom_sf(data = c_cyclelanetrack, colour = "blue") +
+  geom_sf(data = c_cyclelanetrack, colour = "red") +
   theme_bw() +
   theme(plot.title = element_text(vjust = - 9, hjust = 0.1, size = 18),
         plot.margin = unit(c(0, 0.5, 0, 0.5), "cm")) + 
@@ -128,7 +180,7 @@ p4 = ggplot()+
   geom_sf(data = motorways, fill = "#EEEEEE",  colour = "#EEEEEE") +
   geom_sf(data = borough_areas, fill = "#d4d4d4",  colour = "#444444", alpha = 0.3, size = 0.05) +
   geom_sf(data = riverthames_simplify, fill = "#99CCEE",  colour = "#99CCEE") +
-  geom_sf(data = c_signals_point, colour = "blue", size = 0.05) +
+  geom_sf(data = c_signals_point, colour = alpha("red", 0.2), size = 0.1) +
   theme_bw() +
   theme(plot.title = element_text(vjust = - 9, hjust = 0.1, size = 18),
         plot.margin = unit(c(0, 0.5, 0.5, 0.5), "cm")) + 
@@ -139,7 +191,7 @@ p5 = ggplot()+
   geom_sf(data=motorways, fill="#EEEEEE",  colour="#EEEEEE")+
   geom_sf(data=borough_areas, fill="#d4d4d4",  colour="#444444", alpha=0.3, size=0.05)+
   geom_sf(data=riverthames_simplify, fill="#99CCEE",  colour="#99CCEE") +
-  geom_sf(data = c_trafficcalming, colour = "blue", size = 0.05) +
+  geom_sf(data = c_trafficcalming, colour = "red", size = 0.1) +
   theme_bw() +
   theme(plot.title = element_text(vjust = - 9, hjust = 0.1, size = 18), 
         plot.margin = unit(c(0, 0.5, 0.5, 0.5), "cm")) +
@@ -160,10 +212,15 @@ p5 = ggplot()+
 # Use patchwork to create plot
 locations_plot = (p1 | p2 | p3) / (p4 | p5)
 
+
+#### CREATE NEW EAXMPLE WITH TRANSPARENCY _ below code alters transpoarent
+geom_sf(data = c_signals_point, colour = alpha("red", 0.2), size = 0.1) +
+
+
 # Save image
 ## GGSAVE NOT WORKING HAD SIMILAT ISSUE WHEN DOING INTERNSHIP
 ##ggsave("/home/bananafan/Documents/PhD/Paper1/output/locations_map_plot.pdf", plot = locations_plot, 
-       dpi = 1000, width = 190 * (14/5), height = 142 * (14/5), units = "mm")
+##       dpi = 1000, width = 190 * (14/5), height = 142 * (14/5), units = "mm")
 
 
 

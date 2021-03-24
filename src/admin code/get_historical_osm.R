@@ -177,8 +177,14 @@ check = st_intersection(gl_osm_points, london_union)
 
 
 
+# getting amenity data
+z = oe_get("Leeds", 
+           layer = "points", 
+           quiet = FALSE, extra_tags = "amenity")
 
-
+ElectricVehicles_leeds = z %>%
+  filter(amenity == "charging_station")
+# n = 76
 
 
 
@@ -259,17 +265,17 @@ str(gl_osm_multipolygons) # 546748 obs. of  26 variables
 
 unique(gl_osm_points$highway) # 33 unique names inc NA
 
-[1] NA                         "traffic_signals"          "crossing"                
-[4] "mini_roundabout"          "give_way"                 "speed_camera"            
-[7] "motorway_junction"        "turning_circle"           "milestone"               
-[10] "junction"                 "elevator"                 "stop"                    
-[13] "keep_clear"               "bus_stop"                 "turning_loop"            
-[16] "checkpoint"               "street_lamp"              "yield"                   
-[19] "services"                 "access"                   "passing_place"           
-[22] "steps"                    "sign"                     "lift"                    
-[25] "footway"                  "spiral_staircase"         "bus_stand"               
-[28] "crossing;traffic_signals" "path"                     "traffic_signals;crossing"
-[31] "noexit"                   "no_exit"                  "residential" 
+# [1] NA                         "traffic_signals"          "crossing"                
+# [4] "mini_roundabout"          "give_way"                 "speed_camera"            
+# [7] "motorway_junction"        "turning_circle"           "milestone"               
+# [10] "junction"                 "elevator"                 "stop"                    
+# [13] "keep_clear"               "bus_stop"                 "turning_loop"            
+# [16] "checkpoint"               "street_lamp"              "yield"                   
+# [19] "services"                 "access"                   "passing_place"           
+# [22] "steps"                    "sign"                     "lift"                    
+# [25] "footway"                  "spiral_staircase"         "bus_stand"               
+# [28] "crossing;traffic_signals" "path"                     "traffic_signals;crossing"
+# [31] "noexit"                   "no_exit"                  "residential" 
 
 
 
