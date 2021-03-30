@@ -37,29 +37,10 @@ names(lon_rnet)
 # Visualise pct data with London Borough boundaries -> some PCT data is outside London Boroughs
 mapview(lon_rnet, color = "red") + mapview(lon_lad_2020, zcol = "BOROUGH")
 
-# # Limit PCT data to Outer London Borough Boundaries
-# only_lon_rnet = st_intersection(lon_rnet, out_lon_union) # n = 69872 observations
-# mapview(only_lon_rnet, color = "red") + mapview(lon_lad_2020, zcol = "BOROUGH") # Now all in London Boroughs
-# 
-# # Calculate segment length
-# only_lon_rnet$segment_length = as.numeric(sf::st_length(only_lon_rnet))
 
-# names(only_lon_rnet)
-# [1] "local_id"       "bicycle"        "govtarget_slc"  "govnearmkt_slc"
-# [5] "gendereq_slc"   "dutch_slc"      "ebike_slc"      "geometry"      
-# [9] "segment_length"
-
-# summary(only_lon_rnet$segment_length)  ie shortest segment is 0.145m, longest is 4691m
-# Min.  1st Qu.   Median     Mean  3rd Qu.     Max. 
-# 0.145   43.452   98.923  148.411  195.906 4691.176 
-
-## For comparison
-## summary(lon_rnet$segment_length)
-## Min.   1st Qu.    Median      Mean   3rd Qu.      Max.
-## 0.145    44.753   103.081   170.911   207.936 11316.022
-
-#  Intersection segments by London Boroughs
+#  Split route network by London Boroughs boundaries into segments
 lon_rnet_intersection = st_intersection(lon_lad_2020, lon_rnet) # n = 71494 
+mapview(lon_rnet_intersection, color = "red") + mapview(lon_lad_2020, zcol = "BOROUGH") # now data is confined to London Boroughs
 # names(lon_rnet_intersection)
 # [1] "BOROUGH"        "objectid"       "lad20cd"        "lad20nmw"      
 # [5] "bng_e"          "bng_n"          "long"           "lat"           
@@ -67,7 +48,15 @@ lon_rnet_intersection = st_intersection(lon_lad_2020, lon_rnet) # n = 71494
 # [13] "govtarget_slc"  "govnearmkt_slc" "gendereq_slc"   "dutch_slc"     
 # [17] "ebike_slc"      "segment_length" "geometry"      
 
-# Find newly created segments by identifying local_id with more than one observation
+
+###################################################################################
+# Manage segments that cross Borough boundaries in order to assign the correct    #
+# amount of cycling along each segment to the Borough in which the segment exists #
+###################################################################################
+
+# Find newly created segments that cross Borough boundaries by identifying 
+# local_id with more than one observation
+# (1 observation with 1 local_id means it doesnt cross a Borough boundary)
 multi_local_id_segments = lon_rnet_intersection %>%
   st_drop_geometry() %>%
   group_by(local_id) %>%
@@ -96,33 +85,40 @@ new_segments = lon_rnet_intersection %>%
 # 1600 + 1600 (these segmented into two) 
 # 11 + 11 + 11 (these segmented into 3
 
-# Visualise
+# Visualise these new segments (coloured by Borough) - can see they are all occuring cross boundary
 mapview(new_segments, zcol = "BOROUGH") + 
   mapview(lon_lad_2020, alpha.regions = 0.1, zcol = "BOROUGH", legend = FALSE, lwd = 1)
 
 # Update segment length by inserting new segment length into that column
 new_segments$segment_length = as.numeric(sf::st_length(new_segments))
-sum(new_segments$segment_length) # = 437975.4m (n = 3233) - ie matches that of the original segments with these local_ids
+sum(new_segments$segment_length) # = 437975.4m (n = 3233) - ie matches that of the original segments with these local_ids 
+# (see below for validation code)
 
-# # Validate this against  the total length of these rnet before intersection
+# # # Validate this against  the total length of these rnet before intersection
+# only_lon_rnet = st_intersection(lon_rnet, out_lon_union) # Limit PCT data to Outer London Borough Boundaries
 # x = only_lon_rnet %>%
-#   filter(local_id %in% multi_feature_id_list) # (number of obs is 1611 ie before the split)
+#   filter(local_id %in% multi_feature_id_list) # limit to those obs that cross boundaries, n = 1611
 # x$segment_length = as.numeric(sf::st_length(x))
 # sum(x$segment_length) # total length of the new segments should be 437975.4
 
-# calculate total segment length per local_id
+# Calculate total segment length per local_id (and add a new column)
 new_segments = new_segments %>%
   group_by(local_id) %>%
   mutate(total_segment_length = sum(segment_length)) %>%
   ungroup()
 
-# obtain proportion of total segment length for each individual segment
+# Obtain proportion of total segment length for each individual segment
 new_segments$length_prop = new_segments$segment_length / new_segments$total_segment_length
 
+# Obtain proportional estimate of number of cyclist using that segment
 # calculate m cycled per working day by multiple number of cyclists by the proportion of length in that segment
 new_segments$m_cycled_per_working_day = new_segments$length_prop * new_segments$bicycle
 
 
+############################################################################
+# Create df of segments that dont cross boundaries and add the new columns #
+# so that can easily join to new_segments df                               #
+############################################################################
 
 # Create dataset containing the observations that dont have multiple id's
 old_segments = lon_rnet_intersection %>%
@@ -138,9 +134,13 @@ old_segments$length_prop = round(old_segments$segment_length / old_segments$tota
 old_segments$m_cycled_per_working_day = old_segments$length_prop * old_segments$bicycle
 
 
+#########################################################
+# Create new final dataframe and get Borough level data #
+#########################################################
+
 # Join old_segments to new_segments to get full London Borough dataset 
 lon_rnet_pct_cycling_data = rbind(old_segments, new_segments)
-# n = 71494 ? is this correct????  
+ 
 
 # Obtain kms cycled for commuting per year (200 = number of working days)
 lon_rnet_pct_cycling_data$km_cycled_for_commuting_per_year_estimated = lon_rnet_pct_cycling_data$m_cycled_per_working_day * 
@@ -181,8 +181,16 @@ test_df$length_prop = test_df$segment_length / test_df$total_segment_length
 # calculate m cycled per working day
 test_df$m_cycled_per_working_day = round((test_df$length_prop * test_df$bicycle))
 
+############
+# Save RDS #
+############
+# saveRDS(Borough_commuting, file = "/home/bananafan/Documents/PhD/Paper1/data/Borough_commuting")
 
 
+
+
+
+### Compare with st_centroid
 
 
 
@@ -278,8 +286,7 @@ Borough_commuting = lon_lad_2020 %>%
 
 
 
-# Save RDS
-# saveRDS(Borough_commuting, file = "/home/bananafan/Documents/PhD/Paper1/data/Borough_commuting")
+
 
 
 # import Robins split file
