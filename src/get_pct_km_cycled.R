@@ -140,7 +140,8 @@ old_segments$m_cycled_per_working_day = old_segments$length_prop * old_segments$
 
 # Join old_segments to new_segments to get full London Borough dataset 
 lon_rnet_pct_cycling_data = rbind(old_segments, new_segments)
- 
+# sum(lon_rnet_pct_cycling_data$segment_length)
+#[1] 10369759
 
 # Obtain kms cycled for commuting per year (200 = number of working days)
 lon_rnet_pct_cycling_data$km_cycled_for_commuting_per_year_estimated = lon_rnet_pct_cycling_data$m_cycled_per_working_day * 
@@ -154,15 +155,21 @@ Borough_commuting = lon_rnet_pct_cycling_data %>%
   group_by(BOROUGH) %>%
   summarise(total_km_cycled_for_commuting_per_year_estimated = sum(km_cycled_for_commuting_per_year_estimated))
 
+############
+# Save RDS #
+############
+# saveRDS(Borough_commuting, file = "/home/bananafan/Documents/PhD/Paper1/data/Borough_commuting")
 
 
 
 
 
-
+########################################################################
+# Code development 2 - managing new segments - using a smaller dataset #
+########################################################################
 
 # Developing code for the new segments on a smaller dataset
-test_ids = c(74621, 74611, 40899)
+test_ids = c(74621, 74611, 40899) # these local_ids have 2 or 3 segments
 test_df = new_segments %>%
   filter(local_id %in% test_ids) # n = 7
 
@@ -181,37 +188,24 @@ test_df$length_prop = test_df$segment_length / test_df$total_segment_length
 # calculate m cycled per working day
 test_df$m_cycled_per_working_day = round((test_df$length_prop * test_df$bicycle))
 
-############
-# Save RDS #
-############
-# saveRDS(Borough_commuting, file = "/home/bananafan/Documents/PhD/Paper1/data/Borough_commuting")
+
 
 
 
 
 
 ### Compare with st_centroid
+only_lon_rnet = st_intersection(lon_rnet, out_lon_union) # Limit PCT data to Outer London Borough Boundaries
+cen_test = only_lon_rnet
+cen_test$segment_length = as.numeric(sf::st_length(cen_test))
+cen_test$m_cycled_per_working_day = cen_test$segment_length * cen_test$bicycle
+cen_test = st_centroid(cen_test) 
+sum(cen_test$segment_length) # 10369759 matches the sum of the lon_rnet_pct_cycling_data 
+cycle_m_per_borough = aggregate(cen_test["m_cycled_per_working_day"], lon_lad_2020, FUN = sum)
 
-
-
-sum(test_df$segment_length)/2 
-sum(test_df$New_segment_length)
-
-mapview(test_df,  zcol = "BOROUGH") + 
-  mapview(lon_lad_2020, alpha.regions = 0.1, zcol = "BOROUGH", legend = FALSE, lwd = 1)
-
-mapview(test_df)
-
-mapview(lon_rnet_intersection$geometry)
-plot(lon_rnet_intersection)
-
-borough_count = lon_rnet_intersection %>%
-  st_drop_geometry()%>%
-  group_by(BOROUGH) %>%
-  summarise(count = n())
 
 # #Calculate road length
-# lon_rnet$segment_length = as.numeric(sf::st_length(lon_rnet))
+test$segment_length = as.numeric(sf::st_length(test))
 # 
 # #summary(lon_rnet$segment_length)
 # # Min.   1st Qu.    Median      Mean   3rd Qu.      Max. 
