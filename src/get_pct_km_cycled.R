@@ -59,7 +59,7 @@ mapview(lon_rnet, color = "red") + mapview(lon_lad_2020, zcol = "BOROUGH")
 ## 0.145    44.753   103.081   170.911   207.936 11316.022
 
 #  Intersection segments by London Boroughs
-lon_rnet_intersection = st_intersection(lon_lad_2020, only_lon_rnet) # n = 71494 
+lon_rnet_intersection = st_intersection(lon_lad_2020, lon_rnet) # n = 71494 
 # names(lon_rnet_intersection)
 # [1] "BOROUGH"        "objectid"       "lad20cd"        "lad20nmw"      
 # [5] "bng_e"          "bng_n"          "long"           "lat"           
@@ -88,7 +88,7 @@ multi_feature_id_list = lon_rnet_intersection %>%
   group_by(num_obs) %>%
   filter(num_obs >= 2) %>%
   ungroup() %>%
-  pull(local_id)
+  pull(local_id)  # n = 1611
 
 # Create dataset containing the observations with these local_ids
 new_segments = lon_rnet_intersection %>%
