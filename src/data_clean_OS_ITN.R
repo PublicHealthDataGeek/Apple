@@ -96,13 +96,13 @@ lon_itn_road_link = st_intersection(itn_road_link, london_union)
 lon_boroughs = lon_lad_2020 %>%
    select(c("BOROUGH", "geometry"))  
 
-# Spatially join London road link data to London Borough names 
+# Spatially join London road link data to get London Borough names for each segment 
 lon_itn_road_link = st_join(lon_itn_road_link, lon_boroughs)
  
  
-# #3) Data wrangling
+# 3) Data wrangling
 
-# Create list of columnd to factor 
+# Create list of columns to factor 
 columns2factor = c("natureOfRoad", "descriptiveTerm")
 
 #Factor columns
@@ -171,12 +171,122 @@ itn_lon_potential_cyclable = lon_itn_road_link %>%
 
 
 
+# CAN WE JOIN ITN TO MM IN ORDER TO THEN HAVE DIRECTION 
+mm_lon_potential_cyclable = readRDS(file = "/home/bananafan/Documents/PhD/Datasets/mm_lon_potential_cyclable")
+itn_lon_potential_cyclable = readRDS(file = "/home/bananafan/Documents/PhD/Datasets/itn_lon_potential_cyclable")
+
+# names(mm_lon_potential_cyclable)
+# [1] "TOID"                           "identifier"                     "identifierVersionId"           
+# [4] "beginLifespanVersion"           "fictitious"                     "validFrom"                     
+# [7] "reasonForChange"                "roadClassification"             "routeHierarchy"                
+# [10] "formOfWay"                      "trunkRoad"                      "primaryRoute"                  
+# [13] "roadClassificationNumber"       "roadName1"                      "roadName2"                     
+# [16] "roadName1_Language"             "roadName2_Language"             "operationalState"              
+# [19] "provenance"                     "directionality"                 "length"                        
+# [22] "matchStatus"                    "alternateIdentifier1"           "alternateIdentifier2"          
+# [25] "alternateIdentifier3"           "alternateIdentifier4"           "alternateIdentifier5"          
+# [28] "startGradeSeparation"           "endGradeSeparation"             "roadStructure"                 
+# [31] "cycleFacility"                  "roadWidthMinimum"               "roadWidthAverage"              
+# [34] "elevationGainInDirection"       "elevationGainOppositeDirection" "startNode"                     
+# [37] "endNode"                        "SHAPE_Length"                   "BOROUGH"                       
+# [40] "SHAPE"   
+
+names(itn_lon_potential_cyclable)
+# [1] "fid"              "version"          "versionDate"      "theme"            "descriptiveGroup" "descriptiveTerm" 
+# [7] "natureOfRoad"     "length"           "changeDate"       "reasonForChange"  "BOROUGH"          "geometry"  
+
+# WOrk on smaller dataset - City of London only
+
+city_potential_cyclable_MM = mm_lon_potential_cyclable %>%
+   filter(BOROUGH == "City of London") # n = 1419
+city_potential_cyclable_ITN = itn_lon_potential_cyclable %>%
+   filter(BOROUGH == "City of London")# n = 1344
+
+m1 = mapview(city_potential_cyclable_ITN)
+m2 = mapview(city_potential_cyclable_MM)
+leafsync::sync(m1,m2) # can see that there are extra roads in MM e.g. Middle Temple - which is a restricated access road - ? private
+
+# create columns from MM I want
+city_mm_want = city_potential_cyclable_MM %>%
+   select(c("directionality", "SHAPE"))
+
+#city_test = city_potential_cyclable_ITN[city_potential_cyclable_MM,] ~doesnt work
+
+#city_test2 = st_join(city_potential_cyclable_ITN, city_potential_cyclable_MM["directionality"], join = st_overlaps) doesnt work
+
+city_test3 = st_join(city_potential_cyclable_ITN, city_potential_cyclable_MM["directionality"], join = st_nearest_feature)
+# st_nearest feature seems to work
+
+
+
+city_Test3_directionality_count = city_test3 %>%
+   group_by(directionality) %>%
+   summarise(count = n())
+
+print(city_Test3_directionality_count)
+
+
+# create smaller dataset
+keep = c("fid", "descriptiveTerm", "natureOfRoad", "length", "BOROUGH", "directionality", "geometry")
+city_test4 = city_test3 %>%
+   select(matches(keep))
+
+city_test4$new_segment_length = round(digits = 2, st_length(city_test4))
+#check new_segment_length matches length column - YES it does
+city_test4$length = units::set_units(city_test4$length, m) # converts length to units metres (currently it is just numeric)
+
+# create new column for number of lanes
+levels(city_test4$natureOfRoad)
+city_test5 = city_test4 %>%
+   mutate(lanes = as.numeric(as.character(fct_collapse(natureOfRoad, 
+                         "2" = "Dual Carriageway",
+                         "1" = c("Enclosed Traffic Area Link", "Roundabout",
+                                 "Single Carriageway", "Slip Road", 
+                                 "Traffic Island Link", 
+                                 "Traffic Island Link At Junction")))))
+# need to use as.numeric(as.character()) as if just use as.numeric then the number represents the factor level not the "2" or "1"
+
+# create new column for number of directions
+levels(city_test4$directionality)
+city_test6 = city_test5 %>%
+   mutate(direction = as.numeric(as.character(fct_collapse(directionality, 
+                                                       "2" = "bothDirections",
+                                                       "1" = c("inDirection", "inOppositeDirection")))))
+# need to use as.numeric(as.character()) as if just use as.numeric then the number represents the factor level not the "2" or "1"
+
+## Therefore to calculate road availability
+# multiple segment length by number of lanes (1 or 2) and by direction (1 or 2)
+# so a dual carriageway which is recorded with travel in both directions would multipl segment length by 4 
+
+city_test6$road_segment_equivalent_length = (city_test6$length * city_test6$lanes) * city_test6$direction
+# total road segment equivalent length for city of london 
+sum(city_test6$road_segment_equivalent_length) # =118713.5 [m]
+ 
+sum(city_potential_cyclable_MM$length)
+#[1] 72479.96
+sum(city_potential_cyclable_ITN$length)
+#[1] 67989.73
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 ###########################
 # Work on smaller dataset
 ############################
 
-mm_lon_potential_cyclable = readRDS(file = file = "/home/bananafan/Documents/PhD/Datasets/mm_lon_potential_cyclable")
-itn_lon_potential_cyclable = readRDS(file = "/home/bananafan/Documents/PhD/Datasets/itn_lon_potential_cyclable")
+
 # city_private_roads = lon_private_roads_itn %>%
 #    filter(BOROUGH == "City of London") # n = 88
 # 
