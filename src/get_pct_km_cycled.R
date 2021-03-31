@@ -57,7 +57,7 @@ mapview(lon_rnet_intersection, color = "red") + mapview(lon_lad_2020, zcol = "BO
 # Find newly created segments that cross Borough boundaries by identifying 
 # local_id with more than one observation
 # (1 observation with 1 local_id means it doesnt cross a Borough boundary)
-multi_local_id_segments = lon_rnet_intersection %>%
+lon_rnet_intersection %>%
   st_drop_geometry() %>%
   group_by(local_id) %>%
   summarise(num_obs = n())%>%
@@ -85,7 +85,7 @@ new_segments = lon_rnet_intersection %>%
 # 1600 + 1600 (these segmented into two) 
 # 11 + 11 + 11 (these segmented into 3
 
-# Visualise these new segments (coloured by Borough) - can see they are all occuring cross boundary
+# Visualise these new segments (coloured by Borough) - can see they are all occurring cross boundary
 mapview(new_segments, zcol = "BOROUGH") + 
   mapview(lon_lad_2020, alpha.regions = 0.1, zcol = "BOROUGH", legend = FALSE, lwd = 1)
 
@@ -94,44 +94,30 @@ new_segments$segment_length = as.numeric(sf::st_length(new_segments))
 sum(new_segments$segment_length) # = 437975.4m (n = 3233) - ie matches that of the original segments with these local_ids 
 # (see below for validation code)
 
-# # # Validate this against  the total length of these rnet before intersection
-# only_lon_rnet = st_intersection(lon_rnet, out_lon_union) # Limit PCT data to Outer London Borough Boundaries
+# # # # Validate this against  the total length of these rnet before intersection
+# only_lon_rnet = st_intersection(lon_rnet, out_lon_union) # Limit PCT data to Outer London Borough Boundaries, n = 69872 
 # x = only_lon_rnet %>%
 #   filter(local_id %in% multi_feature_id_list) # limit to those obs that cross boundaries, n = 1611
 # x$segment_length = as.numeric(sf::st_length(x))
 # sum(x$segment_length) # total length of the new segments should be 437975.4
 
-# Calculate total segment length per local_id (and add a new column)
-new_segments = new_segments %>%
-  group_by(local_id) %>%
-  mutate(total_segment_length = sum(segment_length)) %>%
-  ungroup()
-
-# Obtain proportion of total segment length for each individual segment
-new_segments$length_prop = new_segments$segment_length / new_segments$total_segment_length
-
-# Obtain proportional estimate of number of cyclist using that segment
-# calculate m cycled per working day by multiple number of cyclists by the proportion of length in that segment
-new_segments$m_cycled_per_working_day = new_segments$length_prop * new_segments$bicycle
+# Calculate metres cycled per working day for the new segments
+new_segments$m_cycled_per_working_day = new_segments$segment_length * new_segments$bicycle
 
 
-############################################################################
-# Create df of segments that dont cross boundaries and add the new columns #
-# so that can easily join to new_segments df                               #
-############################################################################
+####################################################
+# Create df of segments that dont cross boundaries #
+####################################################
 
 # Create dataset containing the observations that dont have multiple id's
 old_segments = lon_rnet_intersection %>%
-  filter(!local_id %in% multi_feature_id_list) # n = 68261 
+  filter(!local_id %in% multi_feature_id_list) # n = 68261 (68261 +3233 = 71494)
 
-# add the other columns that the new_segments df contains
+# Calculate segment length
 old_segments$segment_length = as.numeric(sf::st_length(old_segments))
-old_segments = old_segments %>%
-  group_by(local_id) %>%
-  mutate(total_segment_length = sum(segment_length)) %>%
-  ungroup()
-old_segments$length_prop = round(old_segments$segment_length / old_segments$total_segment_length) # NB all = 1 ie 100%
-old_segments$m_cycled_per_working_day = old_segments$length_prop * old_segments$bicycle
+
+# Calculate metres cycled per working day for the new segments
+old_segments$m_cycled_per_working_day = old_segments$segment_length * old_segments$bicycle 
 
 
 #########################################################
@@ -140,7 +126,7 @@ old_segments$m_cycled_per_working_day = old_segments$length_prop * old_segments$
 
 # Join old_segments to new_segments to get full London Borough dataset 
 lon_rnet_pct_cycling_data = rbind(old_segments, new_segments)
-# sum(lon_rnet_pct_cycling_data$segment_length)
+#sum(lon_rnet_pct_cycling_data$segment_length)
 #[1] 10369759
 
 # Obtain kms cycled for commuting per year (200 = number of working days)
@@ -159,6 +145,47 @@ Borough_commuting = lon_rnet_pct_cycling_data %>%
 # Save RDS #
 ############
 # saveRDS(Borough_commuting, file = "/home/bananafan/Documents/PhD/Paper1/data/Borough_commuting")
+
+
+
+####################################################################################
+# Methodological comparison - results obtained using st_centroid v st_intersection #
+####################################################################################
+
+
+### Compare with st_centroid
+# only_lon_rnet = st_intersection(lon_rnet, out_lon_union) # Limit PCT data to Outer London Borough Boundaries
+cen_test = only_lon_rnet
+cen_test$segment_length = as.numeric(sf::st_length(cen_test)) # calculate segment lengths
+cen_test$m_cycled_per_working_day = cen_test$segment_length * cen_test$bicycle # calculate m_cycled
+cen_test = st_centroid(cen_test) # convert geometry to centroid
+
+sum(cen_test$segment_length) # 10369759 matches the sum of the lon_rnet_pct_cycling_data 
+
+cycle_m_per_borough = aggregate(cen_test["m_cycled_per_working_day"], lon_lad_2020, FUN = sum) # aggregate to borough (borough names are dropped)
+
+lon_lad_2020$km_cycled_for_commuting_per_year_estimated = cycle_m_per_borough$m_cycled_per_working_day * 
+  2 * 200 / # estimate of trips days per year, morning and afternoon
+  1000 # to get km  ( and put in lon_lad_2020 so linked back to actual boroughs)
+
+lon_lad_2020 = lon_lad_2020 %>%
+  st_drop_geometry() %>%
+  select(c("BOROUGH", "km_cycled_for_commuting_per_year_estimated")) %>%
+  rename("CENTROIDkm_cycled_for_commuting_per_year_estimated" = "km_cycled_for_commuting_per_year_estimated")
+
+lon_lad_2020 = lon_lad_2020 %>%
+  rename("CENTROIDkm_cycled_for_commuting_per_year_estimated" = "km_cycled_for_commuting_per_year_estimated")
+
+comparison = left_join(lon_lad_2020, Borough_commuting)
+comparison = comparison %>%
+  rename("INTERSECTIONkm_cycled_for_commuting_per_year_estimated" = "total_km_cycled_for_commuting_per_year_estimated")
+comparison$difference = round(comparison$total_km_cycled_for_commuting_per_year_estimated - 
+  comparison$CENTROIDkm_cycled_for_commuting_per_year_estimated)
+sum(comparison$INTERSECTIONkm_cycled_for_commuting_per_year_estimated) # = 166777094
+sum(comparison$CENTROIDkm_cycled_for_commuting_per_year_estimated) # = 166777094
+
+sum(comparison$difference)
+comparison$per_difference = round(comparison$difference/comparison$total_km_cycled_for_commuting_per_year_estimated *100)
 
 
 
@@ -193,15 +220,6 @@ test_df$m_cycled_per_working_day = round((test_df$length_prop * test_df$bicycle)
 
 
 
-
-### Compare with st_centroid
-only_lon_rnet = st_intersection(lon_rnet, out_lon_union) # Limit PCT data to Outer London Borough Boundaries
-cen_test = only_lon_rnet
-cen_test$segment_length = as.numeric(sf::st_length(cen_test))
-cen_test$m_cycled_per_working_day = cen_test$segment_length * cen_test$bicycle
-cen_test = st_centroid(cen_test) 
-sum(cen_test$segment_length) # 10369759 matches the sum of the lon_rnet_pct_cycling_data 
-cycle_m_per_borough = aggregate(cen_test["m_cycled_per_working_day"], lon_lad_2020, FUN = sum)
 
 
 # #Calculate road length
