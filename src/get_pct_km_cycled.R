@@ -1,12 +1,15 @@
-##############
-#  Code to explore PCT in order to get Borough level kilometers cycled
-#
-# Created 19/3/20
-#
-##############
+#################################################################################
+# Get PCT cycling data                                                          #
+#                                                                               #
+# THis code obtains the estimated amount of commuting cycling on route network  #
+# segments in London using the Census 2011 commuting data.                     #
+# It is upscaled from metre to kilometre.                                       #
+# There is also Borough level estimates where the amount of cycling on the      #
+# segments that fall within each London Borough is aggregated.                  #
+#                                                                               #
+# Created 19/3/20                                                               #
+#################################################################################
 
-
-# https://itsleeds.github.io/pct/articles/pct_training.html
 
 #load packages
 library(tidyverse)
@@ -144,7 +147,10 @@ Borough_commuting = lon_rnet_pct_cycling_data %>%
 ############
 # Save RDS #
 ############
-# saveRDS(Borough_commuting, file = "/home/bananafan/Documents/PhD/Paper1/data/Borough_commuting")
+# saveRDS(Borough_commuting, file = "/home/bananafan/Documents/PhD/Paper1/data/Borough_commuting.rds")
+# saveRDS(lon_rnet_pct_cycling_data, "/home/bananafan/Documents/PhD/Paper1/data/lon_rnet_pct_cycling.rds")
+
+
 
 
 
@@ -187,12 +193,20 @@ sum(comparison$CENTROIDkm_cycled_for_commuting_per_year_estimated) # = 166777094
 sum(comparison$difference)
 comparison$per_difference = round(comparison$difference/comparison$total_km_cycled_for_commuting_per_year_estimated *100)
 
+ggplot(comparison) +
+  geom_col(aes(x = BOROUGH, y = reorder(per_difference))) +
+  lab
 
-
-
+centroid_intersection_comparision_plot = ggplot(comparison) +
+  geom_col(aes(reorder(BOROUGH, per_difference), per_difference)) +
+  coord_flip() +
+  labs(y = "Percentage difference", x = "Borough", title = "Percentage difference in kilometres cycled per year when calculated by st_centroid and st_intersection", 
+       subtitle =  "Negative percentage means that st_centroid overestimated when compared to st_intersection")
+ggsave(centroid_intersection_comparision_plot, filename = "centroid_intersection_comparision_plot.png",
+       path = "/home/bananafan/Documents/PhD/Paper1/output/", height = 6.14, width = 10, units = "in")
 
 ########################################################################
-# Code development 2 - managing new segments - using a smaller dataset #
+# Code development - managing new segments - using a smaller dataset #
 ########################################################################
 
 # Developing code for the new segments on a smaller dataset
@@ -203,105 +217,8 @@ test_df = new_segments %>%
 # need to create new segment_length
 test_df$segment_length = as.numeric(sf::st_length(test_df))
 
-# calculate total segment length per local_id
-test_df = test_df %>%
-  group_by(local_id) %>%
-  mutate(total_segment_length = sum(segment_length)) %>%
-  ungroup()
-
-# obtain proportion of total segment length for each individual segment
-test_df$length_prop = test_df$segment_length / test_df$total_segment_length
-
 # calculate m cycled per working day
-test_df$m_cycled_per_working_day = round((test_df$length_prop * test_df$bicycle))
+test_df$m_cycled_per_working_day = round(test_df$segment_length * test_df$bicycle)
 
 
 
-
-
-
-
-
-# #Calculate road length
-test$segment_length = as.numeric(sf::st_length(test))
-# 
-# #summary(lon_rnet$segment_length)
-# # Min.   1st Qu.    Median      Mean   3rd Qu.      Max. 
-# # 0.145    44.753   103.081   170.911   207.936 11316.022 
-# 
-# # summary(lon_rnet$bicycle)
-# # Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
-# # 0.00    1.00    6.00   53.33   25.00 4113.00 
-# 
-# #Calculate daily km's cycled
-# # calculate daily metres cycled per day (multiple segment length by number of users of that segment)
-# lon_rnet$m_cycled_per_working_day = lon_rnet$segment_length * lon_rnet$bicycle
-# 
-# # calculate using centroid, n = 74624  # BUT IT HAS PCT DATA FOR OUTSIDE LONDONO BOROUGHS 
-# lon_rnet_centroid = st_centroid(lon_rnet)  # check works - see if any difference with interseciton 
-# sum(lon_rnet_centroid$segment_length) # [1] 12754025
-# mapview(lon_rnet, color = "red") + mapview(lon_lad_2020, zcol = "BOROUGH") # shows the orginal pct data
-# mapview(lon_rnet_centroid)+ mapview(lon_lad_2020, zcol = "BOROUGH") # shows the centroids
-# 
-
-
-# Therefore would be better to limite rnet to lonond boundaries before doing anything.  
-# Limit rnet to London Borough boundaries
-lon_rnet2 = pct::get_pct_rnet(region = "london") # n = 74624
-lon_rnet2 = st_transform(lon_rnet2, crs=27700) 
-lon_rnet_intersection = st_intersection(x = lon_rnet2, y = lon_lad_2020) # n = 71494 
-mapview(lon_rnet_intersection, color = "red") + mapview(lon_lad_2020, zcol = "BOROUGH") # now pct data is limited to london boundaries
-
-city_rnet_intersection = lon_rnet_intersection %>%
-  filter(BOROUGH == "City of London")
-
-mapview(city_rnet_intersection)
-
-city_rnet_intersection$segment_length = as.numeric(sf::st_length(city_rnet_intersection)) # n = 336
-sum(city_rnet_intersection$segment_length) # n = 36841.98
-sum(city_rnet_intersection$bicycle) # n = 195272
-
-city_rnet_intersection$m_cycled_per_working_day = city_rnet_intersection$segment_length * city_rnet_intersection$bicycle
-sum(city_rnet_intersection$m_cycled_per_working_day)
-
-# Aggregate cycling to Borough level
-cycled_m_per_Borough_centroid = aggregate(lon_rnet_centroid["m_cycled_per_working_day"], lon_lad_2020, FUN = sum)
-
-# join to borough details to get borough labels
-cycled_m_per_Borough_centroid_labelled = st_join(cycled_m_per_Borough_centroid, lon_lad_2020) %>%
-  st_drop_geometry() %>%
-  group_by(BOROUGH)
-
-
-
-# OBtain million kms cycled for commuting per year (200 = number of working days)
-lon_lad_2020$millionkm_cycled_for_commuting_per_year_estimated = cycled_m_per_Borough$m_cycled_per_working_day * 
-  2 * 200 / # estimate of trips days per year, morning and afternoon
-  1e9 # to get million km
-
-# Convert route network to centroids
-#AGGREGATE USING STCENTROID ????
-# convert the route network to centroids using the function st_centroid() before aggregating to avoid double counting
-# as each point can only be in one region unlike linestrings which can be in multiple
-# this allocates the whole length of route to that zone the centroid is in.  
-# WILL NEED TO BE CLEAR WHAT THE DENOMINATOR IS SHOWING - IS IT THE PEOPLE WHO CYCLE IN THAT BOROUGH OR THE NUMBER OF KM CYCLED TRHOUGH THAT BOROUGH?
-
-
-
-
-# Create dataset of Boroughs and estimated cycling
-Borough_commuting = lon_lad_2020 %>%
-  st_drop_geometry() %>%
-  select(c(BOROUGH, millionkm_cycled_for_commuting_per_year_estimated))
-
-
-
-
-
-
-
-
-# import Robins split file
-robin_split = readRDS(file = "/home/bananafan/Downloads/rnet_split.Rds")
-names(robin_split)
-unique(robin_split$cat)
