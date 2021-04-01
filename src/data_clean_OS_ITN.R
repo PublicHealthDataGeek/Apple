@@ -37,9 +37,9 @@ st_layers("/home/bananafan/Downloads/os_ITN/mastermap-itn_3994768/mastermap-itn_
 # 
 # 
 # 
-# #####################################
-# # Import and wrangle road_link data #
-# #####################################
+# #########################################################
+# # Import and wrangle road_link data and limit to London #
+# #########################################################
 # 
 # 
 # # 1) Read in road link layer
@@ -90,12 +90,19 @@ lon_lad_2020 = readRDS(file = "./map_data/lon_LAD_boundaries_May_2020_BFE.Rds")
 lon_boroughs = lon_lad_2020 %>%
    select(c("BOROUGH", "geometry"))  
 
-# Split road links by Borough boundaries
-lon_itn_road_link = st_intersection(itn_road_link, lon_boroughs)
+# Split road links by Borough boundaries 
+lon_itn_road_link = st_intersection(itn_road_link, lon_boroughs) # n = 290701
 
-x = lon_itn_road_link2 %>%
-   st_drop_geometry() %>%
-   rename("TOID" = "fid")
+# Calculate new road link length (due to spliting length by borough boundaries)
+lon_itn_road_link$segment_length = sf::st_length(lon_itn_road_link)
+lon_itn_road_link$total_toid_length = lon_itn_road_link$length
+sum(lon_itn_road_link$segment_length) #19698080 [m]
+
+#### Validation step - Check total road link length is what expect
+# lon_itn_road_link_union = st_intersection(itn_road_link, london_union)
+# sum(lon_itn_road_link_union$length) # 19747651
+# sum(units::set_units(lon_itn_road_link_union$length, "m")) - sum(lon_itn_road_link$length) # 49571.54 [m] 
+# #ie 49 km - this is acceptable in terms of all roads across Greater London
 
 # 3) Data wrangling
 
@@ -104,20 +111,22 @@ columns2factor = c("natureOfRoad", "descriptiveTerm")
 
 #Factor columns
 lon_itn_road_link = lon_itn_road_link %>%
-   mutate_at(columns2factor, as.factor)
+   mutate_at(columns2factor, as.factor) %>%
+   select(-c("length")) # and drop length column to minimise confusion
  
  
 # Save road link data - not on github
-#saveRDS(lon_itn_road_link, file = "/home/bananafan/Documents/PhD/Datasets/lon_itn19_road_link")
+saveRDS(lon_itn_road_link, file = "/home/bananafan/Documents/PhD/Datasets/lon_itn19_road_link")
 
-# #####################################################
-# # Examine London road dataset  variables and values #
-# #####################################################
+
+#################################################################
+# Create potentially cyclable ITN road links dataset for London #
+#################################################################
  
 str(lon_itn_road_link) # 290701 obs. of  12 variables
 
 # a) Road descriptive term
-lon_road_desc_count = lon_itn_road_link %>%
+lon_itn_road_link %>%
    st_drop_geometry() %>%
    select(descriptiveTerm) %>%
    group_by(descriptiveTerm) %>%
@@ -136,7 +145,7 @@ lon_road_desc_count = lon_itn_road_link %>%
 # 9 Private Road - Restricted Access    33678
 
 # b) natureOfRoad
-lon_natureOfRoad_count = lon_itn_road_link %>%
+lon_itn_road_link %>%
    st_drop_geometry() %>%
    select(natureOfRoad) %>%
    group_by(natureOfRoad) %>%
@@ -156,72 +165,69 @@ lon_natureOfRoad_count = lon_itn_road_link %>%
 # Create potential cyclable road network
 itn_lon_potential_cyclable = lon_itn_road_link %>%
    filter(natureOfRoad != "Enclosed Traffic Area Link") %>%  # remove car parks and other ETA (4 local streets, rest form part of private roads)
-   filter(!descriptiveTerm %in% c("Motorway","Private Road - Publicly Accessible", "Private Road - Restricted Access")) 
+   filter(!descriptiveTerm %in% c("Motorway","Private Road - Publicly Accessible", 
+                                  "Private Road - Restricted Access")) 
 # 252839 obs. of  12 variables 
+
+# identify list of road links that have the same fid(TOID)
+same_fid = lon_itn_road_link %>%
+   st_drop_geometry() %>%
+   group_by(fid) %>%
+   summarise(count = n()) %>%
+   filter(count > 1) # n = 3235 so have 3235 TOIDS have > 1 segment
 
 # Save road link data - not on github
 #saveRDS(itn_lon_potential_cyclable, file = "/home/bananafan/Documents/PhD/Datasets/itn_lon_potential_cyclable")
 
 
-   
+###################################
+# Join ITN to MM to get direction #
+###################################
+# Open ITN london potential cyclable data
+#itn_lon_potential_cyclable = readRDS(file = "/home/bananafan/Documents/PhD/Datasets/itn_lon_potential_cyclable")
 
+# # Read in OS Highways Master Map road link layer
+# os_HMM_road_links = st_read("/home/bananafan/Downloads/os_highways/MasterMap Highways Network_3984103/Highways_Data_March19.gdb",
+#                        layer = "RoadLink")
+# 
+# os_HMM_road_links = os_HMM_road_links %>%
+#    st_drop_geometry() %>%
+#    select(c("TOID", "directionality", "roadWidthMinimum")) # n = 287957
 
+# # Save OS HMM road link data for joining - not on github
+# saveRDS(os_HMM_road_links, file = "/home/bananafan/Documents/PhD/Datasets/os_HMM_road_links")
 
+# load os_HMM_road_links to join
+os_HMM_road_links = readRDS(file = "/home/bananafan/Documents/PhD/Datasets/os_HMM_road_links")
 
-# CAN WE JOIN ITN TO MM IN ORDER TO THEN HAVE DIRECTION 
-mm_lon_potential_cyclable = readRDS(file = "/home/bananafan/Documents/PhD/Datasets/mm_lon_potential_cyclable")
-itn_lon_potential_cyclable = readRDS(file = "/home/bananafan/Documents/PhD/Datasets/itn_lon_potential_cyclable")
-
-# names(mm_lon_potential_cyclable)
-# [1] "TOID"                           "identifier"                     "identifierVersionId"           
-# [4] "beginLifespanVersion"           "fictitious"                     "validFrom"                     
-# [7] "reasonForChange"                "roadClassification"             "routeHierarchy"                
-# [10] "formOfWay"                      "trunkRoad"                      "primaryRoute"                  
-# [13] "roadClassificationNumber"       "roadName1"                      "roadName2"                     
-# [16] "roadName1_Language"             "roadName2_Language"             "operationalState"              
-# [19] "provenance"                     "directionality"                 "length"                        
-# [22] "matchStatus"                    "alternateIdentifier1"           "alternateIdentifier2"          
-# [25] "alternateIdentifier3"           "alternateIdentifier4"           "alternateIdentifier5"          
-# [28] "startGradeSeparation"           "endGradeSeparation"             "roadStructure"                 
-# [31] "cycleFacility"                  "roadWidthMinimum"               "roadWidthAverage"              
-# [34] "elevationGainInDirection"       "elevationGainOppositeDirection" "startNode"                     
-# [37] "endNode"                        "SHAPE_Length"                   "BOROUGH"                       
-# [40] "SHAPE"   
-
-names(itn_lon_potential_cyclable)
-# [1] "fid"              "version"          "versionDate"      "theme"            "descriptiveGroup" "descriptiveTerm" 
-# [7] "natureOfRoad"     "length"           "changeDate"       "reasonForChange"  "BOROUGH"          "geometry"  
-
-# START TO DEVELOP FINAL CODE
-
-potential_cyclable_MM = mm_lon_potential_cyclable %>%
-   st_drop_geometry() %>%
-   select(c("TOID", "directionality", "roadWidthMinimum")) # n = 287957
-
+# fiddle with ITN dataset
 potential_cyclable_ITN = itn_lon_potential_cyclable %>%
    rename("TOID" = "fid") %>%  # so will be able to join with MM
-   select(c("TOID", "descriptiveTerm", "natureOfRoad", "length", "BOROUGH", 
-            "geometry"))  # n = 252805
+   select(c("TOID", "BOROUGH", "descriptiveTerm", "natureOfRoad", "segment_length", "total_toid_length",  
+            "geometry"))  # n = 252839
 
 # Join datasets by TOID 
-joined_potential_cyclable_links = left_join(potential_cyclable_ITN, potential_cyclable_MM, by = "TOID") # n = 258721
+joined_potential_cyclable_links = left_join(potential_cyclable_ITN, os_HMM_road_links, by = "TOID") # n = 252839
+
+# THIS IS WHERE I FINISHED ON THURSDAY NEED TO WORK ON THE BELOW TO ENSURE ALL CORRECT
+saveRDS(joined_potential_cyclable_links, file = "/home/bananafan/Documents/PhD/Datasets/joined_potential_cyclable_links")
+
+
 # Ths is more than initially started with ITN so examine further
 x = joined_potential_cyclable_links %>%
    st_drop_geometry() %>%
    group_by(TOID) %>%
    summarise(count = n()) %>%
-   filter(count > 1) # n = 2932 so have 2932 TOIDS have 
-
-original_TOIDS = potential_cyclable_ITN %>%
-   st_drop_geometry() %>%
-   group_by(TOID) %>%
-   summarise(count = n()) %>%
-   filter(count > 1)
+   filter(count > 1) # n = 2945 so have 2945 TOIDS have 
 
 toids = c("osgb4000000030101748", "osgb5000005241400576")
-duplicate_toids_eg = potential_cyclable_ITN %>%
+duplicate_toids_eg = joined_potential_cyclable_links %>%
    filter(TOID %in% toids) # represent being split by Borough BUT LENGTH IS THE SAME FOR EACH SEGMENT.  NOT APPROPRIATE
 
+y = joined_potential_cyclable_links %>%
+   st_drop_geometry() %>%
+   group_by(TOID) %>%
+   summarise(totallength = sum(segment_length))
 
 
 
