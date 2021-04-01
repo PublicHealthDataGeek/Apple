@@ -86,20 +86,17 @@ unique(itn_road_link$descriptiveTerm)
 # import May 2020 ONS LA boundary data
 lon_lad_2020 = readRDS(file = "./map_data/lon_LAD_boundaries_May_2020_BFE.Rds")
  
-# Create spatial object for all 33 boroughs
-london_union = st_union(lon_lad_2020) 
-
-# Limit road links to within the Outer London Boundary
-lon_itn_road_link = st_intersection(itn_road_link, london_union)
- 
-# # Create object with just Borough names and geometry
+# Create object with just Borough names and geometry
 lon_boroughs = lon_lad_2020 %>%
    select(c("BOROUGH", "geometry"))  
 
-# Spatially join London road link data to get London Borough names for each segment 
-lon_itn_road_link = st_join(lon_itn_road_link, lon_boroughs)
- 
- 
+# Split road links by Borough boundaries
+lon_itn_road_link = st_intersection(itn_road_link, lon_boroughs)
+
+x = lon_itn_road_link2 %>%
+   st_drop_geometry() %>%
+   rename("TOID" = "fid")
+
 # 3) Data wrangling
 
 # Create list of columns to factor 
@@ -111,13 +108,13 @@ lon_itn_road_link = lon_itn_road_link %>%
  
  
 # Save road link data - not on github
-# saveRDS(lon_itn_road_link, file = "/home/bananafan/Documents/PhD/Datasets/lon_itn19_road_link")
+#saveRDS(lon_itn_road_link, file = "/home/bananafan/Documents/PhD/Datasets/lon_itn19_road_link")
 
 # #####################################################
 # # Examine London road dataset  variables and values #
 # #####################################################
  
-str(lon_itn_road_link) # 290664 obs. of  12 variables
+str(lon_itn_road_link) # 290701 obs. of  12 variables
 
 # a) Road descriptive term
 lon_road_desc_count = lon_itn_road_link %>%
@@ -128,14 +125,14 @@ lon_road_desc_count = lon_itn_road_link %>%
  
 # descriptiveTerm                     count
 # * <fct>                               <int>
-# 1 A Road                              42486
+# 1 A Road                              42501
 # 2 Alley                               24690
 # 3 B Road                              10683
-# 4 Local Street                       145365
-# 5 Minor Road                          29395
+# 4 Local Street                       145378
+# 5 Minor Road                          29401
 # 6 Motorway                              420
 # 7 Pedestrianised Street                 190
-# 8 Private Road - Publicly Accessible   3757
+# 8 Private Road - Publicly Accessible   3760
 # 9 Private Road - Restricted Access    33678
 
 # b) natureOfRoad
@@ -147,23 +144,23 @@ lon_natureOfRoad_count = lon_itn_road_link %>%
  
 # natureOfRoad                     count
 # * <fct>                            <int>
-# 1 Dual Carriageway                 11384
-# 2 Enclosed Traffic Area Link        2214
+# 1 Dual Carriageway                 11391
+# 2 Enclosed Traffic Area Link        2215
 # 3 Roundabout                        5539
-# 4 Single Carriageway              246817
+# 4 Single Carriageway              246844
 # 5 Slip Road                         2171
 # 6 Traffic Island Link               7194
-# 7 Traffic Island Link At Junction  15345
+# 7 Traffic Island Link At Junction  15347
 
 
 # Create potential cyclable road network
 itn_lon_potential_cyclable = lon_itn_road_link %>%
    filter(natureOfRoad != "Enclosed Traffic Area Link") %>%  # remove car parks and other ETA (4 local streets, rest form part of private roads)
    filter(!descriptiveTerm %in% c("Motorway","Private Road - Publicly Accessible", "Private Road - Restricted Access")) 
-# 252805 obs. of  12 variables (drops 37855 via !descriptionTerm and a further 4 nonprivate roads that were ETA)
+# 252839 obs. of  12 variables 
 
 # Save road link data - not on github
-# saveRDS(itn_lon_potential_cyclable, file = "/home/bananafan/Documents/PhD/Datasets/itn_lon_potential_cyclable")
+#saveRDS(itn_lon_potential_cyclable, file = "/home/bananafan/Documents/PhD/Datasets/itn_lon_potential_cyclable")
 
 
    
@@ -194,6 +191,108 @@ itn_lon_potential_cyclable = readRDS(file = "/home/bananafan/Documents/PhD/Datas
 names(itn_lon_potential_cyclable)
 # [1] "fid"              "version"          "versionDate"      "theme"            "descriptiveGroup" "descriptiveTerm" 
 # [7] "natureOfRoad"     "length"           "changeDate"       "reasonForChange"  "BOROUGH"          "geometry"  
+
+# START TO DEVELOP FINAL CODE
+
+potential_cyclable_MM = mm_lon_potential_cyclable %>%
+   st_drop_geometry() %>%
+   select(c("TOID", "directionality", "roadWidthMinimum")) # n = 287957
+
+potential_cyclable_ITN = itn_lon_potential_cyclable %>%
+   rename("TOID" = "fid") %>%  # so will be able to join with MM
+   select(c("TOID", "descriptiveTerm", "natureOfRoad", "length", "BOROUGH", 
+            "geometry"))  # n = 252805
+
+# Join datasets by TOID 
+joined_potential_cyclable_links = left_join(potential_cyclable_ITN, potential_cyclable_MM, by = "TOID") # n = 258721
+# Ths is more than initially started with ITN so examine further
+x = joined_potential_cyclable_links %>%
+   st_drop_geometry() %>%
+   group_by(TOID) %>%
+   summarise(count = n()) %>%
+   filter(count > 1) # n = 2932 so have 2932 TOIDS have 
+
+original_TOIDS = potential_cyclable_ITN %>%
+   st_drop_geometry() %>%
+   group_by(TOID) %>%
+   summarise(count = n()) %>%
+   filter(count > 1)
+
+toids = c("osgb4000000030101748", "osgb5000005241400576")
+duplicate_toids_eg = potential_cyclable_ITN %>%
+   filter(TOID %in% toids) # represent being split by Borough BUT LENGTH IS THE SAME FOR EACH SEGMENT.  NOT APPROPRIATE
+
+
+
+
+# VAlidation for whole dataset - TO DO ONCE SORT OUT ISSUE RE REPEATING TOIDS
+# Check that length in df is correct by utilising st_length
+houns_test3$length2 = st_length(houns_test3)   
+
+# check no dual caaragw has both directions
+valid_directions = houns_test5 %>%
+   st_drop_geometry() %>%
+   group_by(natureOfRoad, directionality) %>%
+   summarise(count = n())  # this looks ok
+
+
+# convert road width minimum into numeric 
+houns_test3$roadWidthMinimum2 = as.numeric(substr(houns_test3$roadWidthMinimum, 1, nchar(houns_test3$roadWidthMinimum) -1))
+units(houns_test3$roadWidthMinimum2) = "m"
+units(houns_test3$length) = "m"
+
+# create new column for number of lanes
+levels(houns_test3$natureOfRoad)
+houns_test4 = houns_test3 %>%
+   mutate(lanes = as.numeric(as.character(fct_collapse(natureOfRoad, 
+                                                       "2" = "Dual Carriageway",
+                                                       "1" = c("Enclosed Traffic Area Link", "Roundabout",
+                                                               "Single Carriageway", "Slip Road", 
+                                                               "Traffic Island Link", 
+                                                               "Traffic Island Link At Junction")))))
+# need to use as.numeric(as.character()) as if just use as.numeric then the number represents the factor level not the "2" or "1"
+
+# create new column for number of directions
+levels(houns_test4$directionality)
+houns_test5 = houns_test4 %>%
+   mutate(direction = as.numeric(as.character(fct_collapse(directionality, 
+                                                           "2" = "bothDirections",
+                                                           "1" = c("inDirection", "inOppositeDirection")))))
+# need to use as.numeric(as.character()) as if just use as.numeric then the number represents the factor level not the "2" or "1"
+
+# Identify segments that dont have  direction
+houns_no_direction = houns_test5 %>%
+   filter(is.na(direction))
+
+#correct their direction
+houns_test5$direction[is.na(houns_test5$direction)] = 2 
+
+## Therefore to calculate road availability
+# multiple segment length by number of lanes (1 or 2) and by direction (1 or 2)
+# so a dual carriageway which is recorded with travel in both directions would multipl segment length by 4 
+
+
+
+houns_test5$road_segment_equivalent_length = (houns_test5$length * houns_test5$lanes) * houns_test5$direction
+# total road segment equivalent length for city of london 
+
+units::drop_units(houns_test5$road_segment_equivalent_length)
+sum(houns_test5$road_segment_equivalent_length)
+
+sum(houns_test5$length)
+sum(houns_test5$length2)
+sum(hounslow_potential_cyclable_MM$length)
+#[1] 72479.96
+sum(hounslow_potential_cyclable_ITN$length)
+#[1] 67989.73
+
+
+
+
+
+
+
+
 
 # WOrk on smaller dataset - City of London only
 
@@ -271,15 +370,94 @@ sum(city_potential_cyclable_ITN$length)
 
 
 
+### REpeat on outer london borough
+
+hounslow_potential_cyclable_MM = mm_lon_potential_cyclable %>%
+   st_drop_geometry() %>%
+   filter(BOROUGH == "Hounslow") %>%
+   select(c("TOID", "directionality", "roadWidthMinimum")) # n = 11356
+
+hounslow_potential_cyclable_ITN = itn_lon_potential_cyclable %>%
+   filter(BOROUGH == "Hounslow") %>%
+   rename("TOID" = "fid") %>%
+   select(c("TOID", "descriptiveTerm", "natureOfRoad", "length", "BOROUGH", 
+            "geometry"))  # n = 9960 
+
+# Join datasets by TOID 
+houns_test3 = left_join(by = "TOID", hounslow_potential_cyclable_ITN, hounslow_potential_cyclable_MM)
+
+# convert road width minimum into numeric 
+houns_test3$roadWidthMinimum2 = as.numeric(substr(houns_test3$roadWidthMinimum, 1, nchar(houns_test3$roadWidthMinimum) -1))
+units(houns_test3$roadWidthMinimum2) = "m"
+units(houns_test3$length) = "m"
+
+# create new column for number of lanes
+levels(houns_test3$natureOfRoad)
+houns_test4 = houns_test3 %>%
+   mutate(lanes = as.numeric(as.character(fct_collapse(natureOfRoad, 
+                                                       "2" = "Dual Carriageway",
+                                                       "1" = c("Enclosed Traffic Area Link", "Roundabout",
+                                                               "Single Carriageway", "Slip Road", 
+                                                               "Traffic Island Link", 
+                                                               "Traffic Island Link At Junction")))))
+# need to use as.numeric(as.character()) as if just use as.numeric then the number represents the factor level not the "2" or "1"
+
+# create new column for number of directions
+levels(houns_test4$directionality)
+houns_test5 = houns_test4 %>%
+   mutate(direction = as.numeric(as.character(fct_collapse(directionality, 
+                                                           "2" = "bothDirections",
+                                                           "1" = c("inDirection", "inOppositeDirection")))))
+# need to use as.numeric(as.character()) as if just use as.numeric then the number represents the factor level not the "2" or "1"
+
+# Identify segments that dont have  direction
+houns_no_direction = houns_test5 %>%
+   filter(is.na(direction))
+
+#correct their direction
+houns_test5$direction[is.na(houns_test5$direction)] = 2 
+
+## Therefore to calculate road availability
+# multiple segment length by number of lanes (1 or 2) and by direction (1 or 2)
+# so a dual carriageway which is recorded with travel in both directions would multipl segment length by 4 
+
+
+
+houns_test5$road_segment_equivalent_length = (houns_test5$length * houns_test5$lanes) * houns_test5$direction
+# total road segment equivalent length for city of london 
+
+units::drop_units(houns_test5$road_segment_equivalent_length)
+sum(houns_test5$road_segment_equivalent_length)
+
+sum(houns_test5$length)
+sum(houns_test5$length2)
+sum(hounslow_potential_cyclable_MM$length)
+#[1] 72479.96
+sum(hounslow_potential_cyclable_ITN$length)
+#[1] 67989.73
 
 
 
 
+# VAlidation
+# Check that length in df is correct by utilising st_length
+houns_test3$length2 = st_length(houns_test3)   
 
 
 
 
+links = c("osgb4000000030081765", "osgb4000000030096169", "osgb4000000030322085",
+        "osgb4000000030081765", "osgb5000005191034519", "osgb5000005230509527")
 
+houns_small_test = houns_test3 %>%
+   filter(TOID %in% links)
+
+# validation checks
+# check no dual caaragw has both directions
+valid_directions = houns_test5 %>%
+   st_drop_geometry() %>%
+   group_by(natureOfRoad, directionality) %>%
+   summarise(count = n())  # this looks ok
 
 
 ###########################
