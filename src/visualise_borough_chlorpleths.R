@@ -12,6 +12,7 @@ library(mapview)
 library(tmap)
 library(cowplot)
 library(patchwork)
+library(sf)
 
 
 # Load and manipulate datasets
@@ -177,7 +178,7 @@ signals_chloro = tm_shape(safety_borough_counts) +
 signals_chloro = tmap_grob(signals_chloro)
 
 
-# Generate barchart ATTEMPT 2
+# Generate barchart
 # Generate new column that divides signal count into groups
 
 safety_borough_counts <- safety_borough_counts %>%
@@ -214,28 +215,186 @@ signals_chloro_bar = ggdraw() +
             x = 0.57, y = 0.19)
 
 
+
+
+
+###################
+# Traffic calming #   THIS ONE WILL NEED CHANGING AS IT DOESNT WORK QUITE RIGHT ? worth changing bbox for all chloropleths? 
+###################
+
+# make some bbox magic
+bbox_new <- st_bbox(safety_borough_counts) # current bounding box
+
+xrange <- bbox_new$xmax - bbox_new$xmin # range of x values
+yrange <- bbox_new$ymax - bbox_new$ymin # range of y values
+
+bbox_new[1] <- bbox_new[1] - (0.5 * xrange) # xmin - left
+bbox_new[3] <- bbox_new[3] + (0.2 * xrange) # xmax - right
+#bbox_new[2] <- bbox_new[2] - (0.2 * yrange) # ymin - bottom
+bbox_new[4] <- bbox_new[4] + (0.25 * yrange) # ymax - top
+
+bbox_new <- bbox_new %>%  # take the bounding box ...
+  st_as_sfc() # ... and make it a sf polygon
+
+# create chloropleth
+traffic_calming_chloro = tm_shape(safety_borough_counts, bbox = bbox_new) +
+  tm_polygons("TrafficCalming", title = "Count") +
+  tm_layout(title = "Traffic calming",
+            legend.title.size = 1,
+            legend.text.size = 0.7,
+            legend.position = c("left","bottom"),
+            legend.bg.alpha = 1,
+            inner.margins = c(0.05,0.05,0.05,0.52), # creates wide right margin for barchart
+            frame = FALSE)
+ 
+# # convert chloro to grob
+traffic_calming_chloro = tmap_grob(traffic_calming_chloro) 
+
+# Generate barchart
+# Generate new column that divides traffic calming count into groups
+safety_borough_counts <- safety_borough_counts %>%
+  mutate(traffic_calming_group = cut(TrafficCalming,
+                         breaks = seq(1, 4001, by = 500),
+                         labels = c("1 to 500", "501 to 1000", "1001 to 1500", "1501 to 2000",
+                                    "2001 to 2500", "2501 to 3000", "3001 to 3500", "3501 to 4000"),
+                         right = FALSE))
+
+# Create vector of colours that match the chloropleth
+my_colours_traffic_calming = c("#ffffe5","#fff7bc", "#fee391", "#fec44f", "#fe9929", 
+                               "#ec7014", "#cc4c02", "#8c2d04")
+ 
+# create Bar chart
+traffic_calming_bar = ggplot(safety_borough_counts, aes(x = reorder(BOROUGH_short, -TrafficCalming), y = TrafficCalming, fill = traffic_calming_group)) +
+  geom_bar(stat = "identity", color = "black", size = 0.1) + # adds borders to bars
+  coord_flip() +
+  labs(y = "Count", x = NULL) +
+  theme_classic() +
+  scale_y_continuous(limits = c(0, 4000), expand = c(0,0), 
+                     breaks = c(0, 1000, 2000, 3000)) +  # ensures axis starts at 0 so no gap
+  scale_fill_manual(values = my_colours_traffic_calming) +
+  theme(axis.line.y = element_blank(),
+        axis.ticks.y = element_blank(),
+        axis.line.x = element_blank(),
+        legend.position = "none")
+
+# Create cowplot of both plots
+traffic_calming_chloro_bar = ggdraw() +
+  draw_plot(traffic_calming_chloro) +
+  draw_plot(traffic_calming_bar,
+            width = 0.3, height = 0.6,
+            x = 0.57, y = 0.19)
+
+
+
+###################################
+# Cycle lanes and Tracks - LENGTH #
+###################################
+
+# Convert clt length to integer (and rounded) so that intervals are plotted ok
+safety_borough_counts$CLT_km_integer = as.integer(round(units::drop_units(safety_borough_counts$CycleLaneTrack_km)))
+
+# create chloropleth
+clt_chloro = tm_shape(safety_borough_counts) +
+  tm_polygons("CLT_km_integer", title = "Total length (km)") +
+  tm_layout(title = "Cycle lanes and tracks",
+            legend.title.size = 1,
+            legend.text.size = 0.7,
+            legend.position = c("left","bottom"),
+            legend.bg.alpha = 1,
+            inner.margins = c(0.05,0.05,0.05,0.42), # creates wide right margin for barchart
+            frame = FALSE)
+# 
+# # # convert chloro to grob
+clt_chloro = tmap_grob(clt_chloro) 
+
+# Generate barchart
+#Generate new column that divides CLT length into groups
+safety_borough_counts <- safety_borough_counts %>%
+  mutate(clt_group = cut(CycleLaneTrack_km,
+                         breaks = seq(21, 141, by = 20),
+                         labels = c("21 to 40", "41 to 60", "61 to 80", "81 to 100",
+                                    "101 to 120", "121 to 140"),
+                         right = FALSE)) # this means that 50 is included in 1 to 50
+
+# # Create vector of colours that match the chloropleth
+my_colours_clt = c("#ffffd4","#fee391", "#fec44f", "#fe9929", "#d95f0e", "#993404")
+
+# create Bar chart
+clt_bar = ggplot(safety_borough_counts, aes(x = reorder(BOROUGH_short, -CLT_km_integer), 
+                                  y = CLT_km_integer, fill = clt_group)) +
+  geom_bar(stat = "identity", color = "black", size = 0.1) +  # adds borders to bars
+  coord_flip() +
+  labs(y = "Length in km", x = NULL) +
+  theme_classic() +
+  scale_y_continuous(limits = c(0, 150), expand = c(0,0)) +  # ensures axis starts at 0 so no gap
+  scale_fill_manual(values = my_colours_clt) +
+  theme(axis.line.y = element_blank(),
+        axis.ticks.y = element_blank(),
+        axis.line.x = element_blank(),
+        legend.position = "none")
+
+# Create cowplot of both plots
+clt_chloro_bar = ggdraw() +
+  draw_plot(clt_chloro) +
+  draw_plot(clt_bar,
+            width = 0.3, height = 0.6,
+            x = 0.57, y = 0.19)
+
+
+
+
+
+
+
+
+
+
+
 ####################################################
 # Use patchwork to create arrangement of all plots #
 ####################################################
 
-# Use patchwork to create plot
-# locations_plot = (p1 | p2 | p3) / (p4 | p5)
+# Use patchwork to create plot of all plots
+all_chloro_bar_plots = (asl_chloro_bar | crossings_chloro_bar) / 
+  (signals_chloro_bar | traffic_calming_chloro_bar) /  
+  clt_chloro_bar
+
 
 
 ##################
 # SAVE ALL PLOTS #
 ##################
 
-aspect_ratio = 1.6
+ggsave("/home/bananafan/Documents/PhD/Paper1/output/all_chloro_bar_plots.pdf", plot = all_chloro_bar_plots, 
+       dpi = 1000, width = 210 * (14/5), height = 190 * (14/5), units = "mm")
 
-ggsave("/home/bananafan/Documents/PhD/Paper1/output/asl_chloro_bar.png", plot = asl_chloro_bar,
-       height = 170, width = 170 * aspect_ratio, unit = "mm")
+# # try cowplot to save
+# cowplot = plot_grid(asl_chloro_bar, crossings_chloro_bar, signals_chloro_bar, traffic_calming_chloro_bar, clt_chloro_bar)
+# save_plot("/home/bananafan/Documents/PhD/Paper1/output/all_chloro_bar_plots.jpeg", 
+#           cowplot,
+#           ncol = 1, nrow = 5)
 
-ggsave("/home/bananafan/Documents/PhD/Paper1/output/crossings_chloro_bar.png", plot = crossings_chloro_bar,
-       height = 170, width = 170 * aspect_ratio, unit = "mm")
+# ggsave("/home/bananafan/Documents/PhD/Paper1/output/asl_chloro_bar.png", plot = asl_chloro_bar,
+#        height = 170, width = 170 * aspect_ratio, unit = "mm")
+# 
+# ggsave("/home/bananafan/Documents/PhD/Paper1/output/crossings_chloro_bar.png", plot = crossings_chloro_bar,
+#        height = 170, width = 170 * aspect_ratio, unit = "mm")
+# 
+# ggsave("/home/bananafan/Documents/PhD/Paper1/output/signals_chloro_bar.png", plot = signals_chloro_bar,
+#        height = 170, width = 170 * aspect_ratio, unit = "mm")
 
-ggsave("/home/bananafan/Documents/PhD/Paper1/output/signals_chloro_bar.png", plot = signals_chloro_bar,
-       height = 170, width = 170 * aspect_ratio, unit = "mm")
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 #Colour schemes
