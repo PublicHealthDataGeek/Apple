@@ -42,10 +42,10 @@ CID_length_safety = CID_length %>%
 safety_borough_counts = left_join(CID_count_safety, CID_length_safety) 
 safety_borough_counts = left_join(lon_lad_2020_c2c, safety_borough_counts)
 
+#######
+# ASL #
+#######
 
-
-# Test with ASL - will need to alter values for position for other assets I think
-#  1) Attempt 1 - using geom_col
 # create chloropleth
 asl_chloro = tm_shape(safety_borough_counts) +
   tm_polygons("ASL", title = "Count") + 
@@ -54,32 +54,13 @@ asl_chloro = tm_shape(safety_borough_counts) +
             legend.text.size = 0.7,
             legend.position = c("left","bottom"),
             legend.bg.alpha = 1,
-            inner.margins = c(0.05,0.05,0.05,0.4)) # creates wide right margin for barchart
+            inner.margins = c(0.05,0.05,0.05,0.42), # creates wide right margin for barchart
+            frame = FALSE) 
 
-# create ggplot - use geom_col
-asl_bar1 = ggplot(safety_borough_counts) +
-  geom_col(aes(reorder(BOROUGH_short, -ASL), y = ASL)) +
-  coord_flip() +
-  labs(y = "Count", x = NULL) +
-  theme_classic() + 
-  scale_y_continuous(limits = c(0, 350), expand = c(0,0)) +
-  theme(axis.line.y = element_blank(), 
-        axis.ticks.y = element_blank(),
-        axis.line.x = element_blank())
-
-# convert chloro to grob
+# # convert chloro to grob
 asl_chloro = tmap_grob(asl_chloro) 
 
-# combine chlorpleth and bar chart using cowplot
-asl1 = ggdraw() +
-  draw_plot(asl_chloro) +
-  draw_plot(asl_bar1,
-            width = 0.3, height = 0.6,
-            x = 0.58, y = 0.16) # position bar chart to the right of the chloropleth
-asl1
-
-
-# 2) Attempt 2 following RB feebback - use bar chart and colour the bars to match chloropleth
+# Generate barchart
 # Generate new column that divides ASL count into groups
 safety_borough_counts <- safety_borough_counts %>%
   mutate(asl_group = cut(ASL,
@@ -89,12 +70,11 @@ safety_borough_counts <- safety_borough_counts %>%
                          right = FALSE)) # this means that 50 is included in 1 to 50
 
 # Create vector of colours that match the chloropleth
-my_colours = c("#ffffd4" = "1-50",
-               "#fee391" = "51-", "#fec44f", "#fe9929", 
+my_colours = c("#ffffd4","#fee391", "#fec44f", "#fe9929", 
                "#ec7014", "#cc4c02", "#8c2d04")
 
 # create Bar chart
-asl_bar2 = ggplot(safety_borough_counts, aes(x = reorder(BOROUGH_short, -ASL), y = ASL, fill = asl_group)) +
+asl_bar = ggplot(safety_borough_counts, aes(x = reorder(BOROUGH_short, -ASL), y = ASL, fill = asl_group)) +
   geom_bar(stat = "identity", color = "black", size = 0.1) +  # adds borders to bars
   coord_flip() +
   labs(y = "Count", x = NULL) +
@@ -107,12 +87,17 @@ asl_bar2 = ggplot(safety_borough_counts, aes(x = reorder(BOROUGH_short, -ASL), y
         legend.position = "none")
 
 # Create cowplot of both plots
-asl2 = ggdraw() +
+asl_chloro_bar = ggdraw() +
   draw_plot(asl_chloro) +
-  draw_plot(asl_bar2,
+  draw_plot(asl_bar,
             width = 0.3, height = 0.6,
-            x = 0.578, y = 0.16) 
+            x = 0.57, y = 0.19) 
 
+# Save plots
+aspect_ratio = 1.6
+
+ggsave("/home/bananafan/Documents/PhD/Paper1/output/asl_chloro_bar.png", plot = asl_chloro_bar,
+       height = 170, width = 170 * aspect_ratio, unit = "mm")
 
 
 
@@ -131,4 +116,30 @@ asl2 = ggdraw() +
 #   $palette-color5: #ec7014;
 #   $palette-color6: #cc4c02;
 #   $palette-color7: #8c2d04;
+
+
+
+#Initial code - probably can be deleted
+
+# # create ggplot - use geom_col
+# asl_bar1 = ggplot(safety_borough_counts) +
+#   geom_col(aes(reorder(BOROUGH_short, -ASL), y = ASL)) +
+#   coord_flip() +
+#   labs(y = "Count", x = NULL) +
+#   theme_classic() + 
+#   scale_y_continuous(limits = c(0, 350), expand = c(0,0)) +
+#   theme(axis.line.y = element_blank(), 
+#         axis.ticks.y = element_blank(),
+#         axis.line.x = element_blank())
+# 
+# # convert chloro to grob
+# asl_chloro = tmap_grob(asl_chloro) 
+# 
+# # combine chlorpleth and bar chart using cowplot
+# asl1 = ggdraw() +
+#   draw_plot(asl_chloro) +
+#   draw_plot(asl_bar1,
+#             width = 0.3, height = 0.6,
+#             x = 0.58, y = 0.16) # position bar chart to the right of the chloropleth
+# asl1
 
