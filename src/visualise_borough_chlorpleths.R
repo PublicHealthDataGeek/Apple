@@ -113,7 +113,7 @@ crossings_chloro = tm_shape(safety_borough_counts) +
 crossings_chloro = tmap_grob(crossings_chloro) 
  
 # Generate barchart
-# Generate new column that divides ASL count into groups
+# Generate new column that divides Crossing count into groups
 safety_borough_counts <- safety_borough_counts %>%
   mutate(crossings_group = cut(Crossings,
                                breaks = seq(1, 141, by = 20),
@@ -147,7 +147,64 @@ crossings_chloro_bar = ggdraw() +
              x = 0.57, y = 0.19) 
 
 
+###########
+# Signals #
+###########
 
+# Change value of 0 to NA so that colours map well
+safety_borough_counts$Signals[safety_borough_counts$Signals == 0] = NA
+
+# # create chloropleth - NB this only has 6 categories
+signals_chloro = tm_shape(safety_borough_counts) +
+  tm_polygons("Signals", legend.show = FALSE) +
+  tm_layout(title = "Signals",
+            legend.title.size = 1,
+            legend.text.size = 0.7,
+            legend.position = c("left","bottom"),
+            legend.bg.alpha = 1,
+            inner.margins = c(0.05,0.05,0.05,0.42), # creates wide right margin for barchart
+            frame = FALSE) +
+  tm_add_legend(type = "fill", 
+    labels = c("0", "1 to 20", "21 to 40", "41 to 60", "61 to 80", "81 to 100"),
+    col = c("grey", "#ffffd4", "#fed98e", "#fe9929", "#d95f0e", "#993404"),
+    border.lwd = 0.5,
+    title = "Count")
+
+# # convert chloro to grob
+#asl_chloro = tmap_grob(asl_chloro)
+
+# Generate barchart
+# Generate new column that divides signal count into groups
+# safety_borough_counts <- safety_borough_counts %>%
+#   mutate(asl_group = cut(Signals,
+#                          breaks = seq(1, 100, by = 20),
+#                          labels = c("1 to 50", "51 to 100", "101 to 150", "151 to 200",
+#                                     "201 to 250", "251 to 300", "301 to 350"),
+#                          right = FALSE)) # this means that 50 is included in 1 to 50
+# 
+# # Create vector of colours that match the chloropleth
+# my_colours = c("#ffffd4","#fee391", "#fec44f", "#fe9929", 
+#                "#ec7014", "#cc4c02", "#8c2d04")
+# 
+# # create Bar chart
+# asl_bar = ggplot(safety_borough_counts, aes(x = reorder(BOROUGH_short, -ASL), y = ASL, fill = asl_group)) +
+#   geom_bar(stat = "identity", color = "black", size = 0.1) +  # adds borders to bars
+#   coord_flip() +
+#   labs(y = "Count", x = NULL) +
+#   theme_classic() + 
+#   scale_y_continuous(limits = c(0, 350), expand = c(0,0)) +  # ensures axis starts at 0 so no gap
+#   scale_fill_manual(values = my_colours) +
+#   theme(axis.line.y = element_blank(), 
+#         axis.ticks.y = element_blank(),
+#         axis.line.x = element_blank(),
+#         legend.position = "none")
+# 
+# # Create cowplot of both plots
+# asl_chloro_bar = ggdraw() +
+#   draw_plot(asl_chloro) +
+#   draw_plot(asl_bar,
+#             width = 0.3, height = 0.6,
+#             x = 0.57, y = 0.19) 
 
 
 
