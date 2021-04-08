@@ -93,13 +93,78 @@ asl_chloro_bar = ggdraw() +
             width = 0.3, height = 0.6,
             x = 0.57, y = 0.19) 
 
-# Save plots
+
+#############
+# Crossings #
+#############
+
+# create chloropleth
+crossings_chloro = tm_shape(safety_borough_counts) +
+  tm_polygons("Crossings", title = "Count") + 
+  tm_layout(title = "Crossings",
+            legend.title.size = 1,
+            legend.text.size = 0.7,
+            legend.position = c("left","bottom"),
+            legend.bg.alpha = 1,
+            inner.margins = c(0.05,0.05,0.05,0.42), # creates wide right margin for barchart
+            frame = FALSE) 
+
+# # # convert chloro to grob
+crossings_chloro = tmap_grob(crossings_chloro) 
+ 
+# Generate barchart
+# Generate new column that divides ASL count into groups
+safety_borough_counts <- safety_borough_counts %>%
+  mutate(crossings_group = cut(Crossings,
+                               breaks = seq(1, 141, by = 20),
+                               labels = c("1 to 20", "21 to 40", "41 to 60", "61 to 80", 
+                                     "81 to 100", "101 to 120", "121 to 140"), 
+                               right = FALSE)) # this means that 20 is included in 1 to 20
+ 
+# # Create vector of colours that match the chloropleth - only 6 colours as 6th category had no values
+my_colours_crossings = c("#ffffd4","#fee391", "#fec44f", "#fe9929", "#ec7014", "#8c2d04")
+
+# create Bar chart
+crossings_bar = ggplot(safety_borough_counts, aes(x = reorder(BOROUGH_short, -Crossings), y = Crossings, 
+                                                  fill = crossings_group)) +
+  geom_bar(stat = "identity", color = "black", size = 0.1) +  # adds borders to bars
+  coord_flip() +
+  labs(y = "Count", x = NULL) +
+  theme_classic() +
+  scale_y_continuous(limits = c(0, 140), expand = c(0,0), 
+                     breaks = c(0, 40, 80, 120)) +  # ensures axis starts at 0 so no gap
+  scale_fill_manual(values = my_colours_crossings) +
+  theme(axis.line.y = element_blank(),
+        axis.ticks.y = element_blank(),
+        axis.line.x = element_blank(),
+        legend.position = "none")
+
+# # Create cowplot of both plots
+crossings_chloro_bar = ggdraw() +
+   draw_plot(crossings_chloro) +
+   draw_plot(crossings_bar,
+             width = 0.3, height = 0.6,
+             x = 0.57, y = 0.19) 
+
+
+
+
+
+
+
+
+
+##################
+# SAVE ALL PLOTS #
+##################
+
 aspect_ratio = 1.6
 
 ggsave("/home/bananafan/Documents/PhD/Paper1/output/asl_chloro_bar.png", plot = asl_chloro_bar,
        height = 170, width = 170 * aspect_ratio, unit = "mm")
 
-
+ggsave("/home/bananafan/Documents/PhD/Paper1/output/crossings_chloro_bar.png", plot = crossings_chloro_bar,
+       height = 170, width = 170 * aspect_ratio, unit = "mm")
 
 #Colour schemes
 # 
