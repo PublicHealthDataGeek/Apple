@@ -11,6 +11,7 @@ library(tidyverse)
 library(mapview)
 library(tmap)
 library(cowplot)
+library(patchwork)
 
 
 # Load and manipulate datasets
@@ -151,8 +152,10 @@ crossings_chloro_bar = ggdraw() +
 # Signals #
 ###########
 
-# Change value of 0 to NA so that colours map well
+# Create new column (Signals2) where NAs are changed to 0 for mapping
+safety_borough_counts$Signals2 = safety_borough_counts$Signals
 safety_borough_counts$Signals[safety_borough_counts$Signals == 0] = NA
+
 
 # # create chloropleth - NB this only has 6 categories
 signals_chloro = tm_shape(safety_borough_counts) +
@@ -170,45 +173,53 @@ signals_chloro = tm_shape(safety_borough_counts) +
     border.lwd = 0.5,
     title = "Count")
 
-# # convert chloro to grob
-#asl_chloro = tmap_grob(asl_chloro)
+# convert chloro to grob
+signals_chloro = tmap_grob(signals_chloro)
 
-# Generate barchart
+
+# Generate barchart ATTEMPT 2
 # Generate new column that divides signal count into groups
-# safety_borough_counts <- safety_borough_counts %>%
-#   mutate(asl_group = cut(Signals,
-#                          breaks = seq(1, 100, by = 20),
-#                          labels = c("1 to 50", "51 to 100", "101 to 150", "151 to 200",
-#                                     "201 to 250", "251 to 300", "301 to 350"),
-#                          right = FALSE)) # this means that 50 is included in 1 to 50
-# 
+
+safety_borough_counts <- safety_borough_counts %>%
+  mutate(signals_group = cut(Signals2,
+                             breaks = seq(1, 101, by = 20),
+                             labels = c("1 to 20", "21 to 40", "41 to 60", "61 to 80",
+                                        "81 to 100"),
+                             right = FALSE))
+
+
 # # Create vector of colours that match the chloropleth
-# my_colours = c("#ffffd4","#fee391", "#fec44f", "#fe9929", 
-#                "#ec7014", "#cc4c02", "#8c2d04")
-# 
+my_colours_signals = c("#ffffd4", "#fed98e", "#fe9929", "#993404")
+
 # # create Bar chart
-# asl_bar = ggplot(safety_borough_counts, aes(x = reorder(BOROUGH_short, -ASL), y = ASL, fill = asl_group)) +
-#   geom_bar(stat = "identity", color = "black", size = 0.1) +  # adds borders to bars
-#   coord_flip() +
-#   labs(y = "Count", x = NULL) +
-#   theme_classic() + 
-#   scale_y_continuous(limits = c(0, 350), expand = c(0,0)) +  # ensures axis starts at 0 so no gap
-#   scale_fill_manual(values = my_colours) +
-#   theme(axis.line.y = element_blank(), 
-#         axis.ticks.y = element_blank(),
-#         axis.line.x = element_blank(),
-#         legend.position = "none")
-# 
+signals_bar = ggplot(safety_borough_counts, aes(x = reorder(BOROUGH_short, -Signals), y = Signals2, fill = signals_group)) +
+  geom_bar(stat = "identity", color = "black", size = 0.1) +
+  coord_flip() +
+  labs(y = "Count", x = NULL) +
+  theme_classic() +
+  scale_y_continuous(limits = c(0, 100), expand = c(0,0), 
+                     breaks = c(0, 20, 40, 60, 80)) +  # ensures axis starts at 0 so no gap
+  scale_fill_manual(values = my_colours_signals) +
+  theme(axis.ticks.y = element_blank(),
+        axis.line.y = element_blank(),
+        axis.line.x = element_blank(),
+        legend.position = "none")
+#axis.line.y = element_line(size = 0.2),
+
 # # Create cowplot of both plots
-# asl_chloro_bar = ggdraw() +
-#   draw_plot(asl_chloro) +
-#   draw_plot(asl_bar,
-#             width = 0.3, height = 0.6,
-#             x = 0.57, y = 0.19) 
+signals_chloro_bar = ggdraw() +
+  draw_plot(signals_chloro) +
+  draw_plot(signals_bar,
+            width = 0.3, height = 0.6,
+            x = 0.57, y = 0.19)
 
 
+####################################################
+# Use patchwork to create arrangement of all plots #
+####################################################
 
-
+# Use patchwork to create plot
+# locations_plot = (p1 | p2 | p3) / (p4 | p5)
 
 
 ##################
@@ -222,6 +233,10 @@ ggsave("/home/bananafan/Documents/PhD/Paper1/output/asl_chloro_bar.png", plot = 
 
 ggsave("/home/bananafan/Documents/PhD/Paper1/output/crossings_chloro_bar.png", plot = crossings_chloro_bar,
        height = 170, width = 170 * aspect_ratio, unit = "mm")
+
+ggsave("/home/bananafan/Documents/PhD/Paper1/output/signals_chloro_bar.png", plot = signals_chloro_bar,
+       height = 170, width = 170 * aspect_ratio, unit = "mm")
+
 
 #Colour schemes
 # 
@@ -265,3 +280,32 @@ ggsave("/home/bananafan/Documents/PhD/Paper1/output/crossings_chloro_bar.png", p
 #             x = 0.58, y = 0.16) # position bar chart to the right of the chloropleth
 # asl1
 
+
+
+
+# # Generate barchart ATEEMPT 1
+# # Generate new column that divides signal count into groups
+# safety_borough_counts$Signals[is.na(safety_borough_counts$Signals)] = 0 # convert NA to 0
+# safety_borough_counts <- safety_borough_counts %>%
+#   mutate(signals_group = cut(Signals,
+#                              breaks = c(0, 1, 20, 40, 60, 80, 100),
+#                              labels = c("0", "1 to 20", "21 to 40", "41 to 60", "61 to 80",
+#                                         "81 to 100"),
+#                              right = FALSE))
+# 
+# 
+# # # Create vector of colours that match the chloropleth
+# my_colours_signals = c("#ffffd4", "#fed98e", "#fe9929", "#d95f0e", "#993404")
+# # create Bar chart  ### THIS DOESNT WORK AS THE COLOURS ARE WRONG DUE TO 0 (zeros are dropped)
+# ggplot(safety_borough_counts, aes(x = reorder(BOROUGH_short, -Signals), y = Signals, fill = signals_group)) +
+#   geom_bar(stat = "identity", color = "black", size = 0.1) +
+#   coord_flip() +
+#   labs(y = "Count", x = NULL) +
+#   theme_classic() +
+#   scale_y_continuous(limits = c(0, 100), expand = c(0,0), 
+#                      breaks = c(0, 20, 40, 60, 80, 100)) +  # ensures axis starts at 0 so no gap
+#   scale_fill_manual(values = my_colours_signals) +
+#   theme(axis.line.y = element_line(size = 0.2),
+#         axis.ticks.y = element_blank(),
+#         axis.line.x = element_line(size = 0.1),
+#         legend.position = "none")
