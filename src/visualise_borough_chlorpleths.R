@@ -1,5 +1,5 @@
-#####################################################
-# Visualising borough counts/lengths by chloropleth #
+###################################################################
+# Visualising borough counts/lengths by chloropleth and bar chart #
 #
 # Code development started on 7/4/21
 # 
@@ -14,21 +14,75 @@ library(cowplot)
 library(patchwork)
 library(sf)
 
+################################
+# Load and manipulate datasets #
+################################
 
-# Load and manipulate datasets
-# import May 2020 ONS LA boundary data clipped to coastline
+# 1) Local Authority spatial data
+
+# import May 2020 ONS LA boundary data clipped to coastline (used so that River Thames appears)
 lon_lad_2020_c2c = readRDS(file = "./map_data/lon_LAD_boundaries_May_2020_BFC.Rds")
-lon_lad_2020_c2c <- rmapshaper::ms_simplify(lon_lad_2020_c2c, keep=0.015) #Simplify boroughs
-lon_lad_2020_c2c$BOROUGH_short = fct_recode(lon_lad_2020_c2c$BOROUGH, 
-                                      "Kens & Chel" = "Kensington & Chelsea",
-                                      "Bark & Dage" = "Barking & Dagenham",
-                                      "Hamm & Fulh" = "Hammersmith & Fulham",
-                                      "Kingston" = "Kingston upon Thames",
-                                      "Richmond" = "Richmond upon Thames",
-                                      "City" = "City of London",
-                                      "T Hamlets" = "Tower Hamlets",
-                                      "W Forest" = "Waltham Forest") # rename Boroughs to reduce text length
 
+# simply borough shapes
+lon_lad_2020_c2c <- rmapshaper::ms_simplify(lon_lad_2020_c2c, keep=0.015) #Simplify boroughs
+# lon_lad_2020_c2c$BOROUGH_short = fct_recode(lon_lad_2020_c2c$BOROUGH, 
+#                                       "Kens & Chel" = "Kensington & Chelsea",
+#                                       "Bark & Dage" = "Barking & Dagenham",
+#                                       "Hamm & Fulh" = "Hammersmith & Fulham",
+#                                       "Kingston" = "Kingston upon Thames",
+#                                       "Richmond" = "Richmond upon Thames",
+#                                       "City" = "City of London",
+#                                       "T Hamlets" = "Tower Hamlets",
+#                                       "W Forest" = "Waltham Forest") # rename Boroughs to reduce text length
+
+# Create new variable that labels the Boroughs by number (matches the overall map)
+lon_lad_2020_c2c$Borough_number = fct_recode(lon_lad_2020_c2c$BOROUGH, 
+                                      "7" = "Kensington & Chelsea",
+                                      "32" = "Barking & Dagenham",
+                                      "8" = "Hammersmith & Fulham",
+                                      "25" = "Kingston upon Thames",
+                                      "24" = "Richmond upon Thames",
+                                      "1" = "City of London",
+                                      "15" = "Waltham Forest",
+                                      "28" = "Croydon",
+                                      "29" = "Bromley",
+                                      "23" = "Hounslow",
+                                      "20" = "Ealing",
+                                      "31" = "Havering",
+                                      "22" = "Hillingdon",
+                                      "21" = "Harrow",
+                                      "19" = "Brent",
+                                      "18" = "Barnet",
+                                      "10" = "Lambeth",
+                                      "11" = "Southwark", 
+                                      "12" = "Lewisham",
+                                      "13" = "Greenwich",
+                                      "30" = "Bexley",
+                                      "17" = "Enfield",
+                                      "33" = "Redbridge",
+                                      "27" = "Sutton",
+                                      "26" = "Merton",
+                                      "9" = "Wandsworth",
+                                      "6" = "Westminster",
+                                      "5" = "Camden",
+                                      "2" = "Tower Hamlets",
+                                      "4" = "Islington",
+                                      "3" = "Hackney",
+                                      "16" = "Haringey",
+                                      "14" = "Newham")
+
+# Convert borough area into km^2 from m^2 
+lon_lad_2020_c2c$Shape__Are = units::set_units(lon_lad_2020_c2c$Shape__Are, m^2)
+lon_lad_2020_c2c = lon_lad_2020_c2c %>%
+  mutate(Borough_Area_km2 = (units::set_units(lon_lad_2020_c2c$Shape__Are, km^2)))# change area units to km^2 from m^2
+
+
+# Select variables of interest
+lon_lad_2020_c2c_reduced = lon_lad_2020_c2c %>%
+  select(c("BOROUGH", "Borough_number", "Borough_Area_km2", "geometry"))
+
+
+# 2) CID data
 
 # Import CID borough counts - these datasets were created 2_3_2021 from TFL datasets downloaded 25/2/21
 CID_count = readRDS(file = "/home/bananafan/Documents/PhD/Paper1/data/CID_count_by_borough")
@@ -38,11 +92,43 @@ CID_length = readRDS(file = "/home/bananafan/Documents/PhD/Paper1/data/CID_lengt
 CID_count_safety = CID_count %>%
   select(c("BOROUGH", "ASL", "Crossings", "CycleLanesAndTracks", "Signals", "TrafficCalming"))
 CID_length_safety = CID_length %>%
-  select(c("BOROUGH", "CycleLaneTrack_m", "CycleLaneTrack_km"))
+  select(c("BOROUGH", "CycleLaneTrack_km"))
+
+# 3) Population estimates
+# ONS Mid year population estimates 2013-2019 
+download.file("https://www.ons.gov.uk/file?uri=%2fpeoplepopulationandcommunity%2fpopulationandmigration%2fpopulationestimates%2fdatasets%2fpopulationestimatesforukenglandandwalesscotlandandnorthernireland%2fmid2019april2020localauthoritydistrictcodes/ukmidyearestimates20192020ladcodes.xls",
+              "/home/bananafan/Downloads/ONS_pop_estimates")
+
+ons_pop_estimates = readxl::read_excel("/home/bananafan/Downloads/ONS_pop_estimates", 
+                                       sheet = "MYE 5", skip = 3) # skip top few excel rows that arent relevent
+lon_pop_estimates_2019 = ons_pop_estimates %>%
+  filter(Geography1 == "London Borough") %>% # select London Boroughs
+  select(c("Name", "Estimated Population mid-2019")) %>% # keep 2019 data only
+  rename("BOROUGH" = "Name") %>% # rename to match CID
+  rename("Population" = "Estimated Population mid-2019")
+
+# rename values to match those names used in CID
+lon_pop_estimates_2019$BOROUGH[lon_pop_estimates_2019$BOROUGH == "Kensington and Chelsea"] <- "Kensington & Chelsea"
+lon_pop_estimates_2019$BOROUGH[lon_pop_estimates_2019$BOROUGH == "Barking and Dagenham"] <- "Barking & Dagenham"
+lon_pop_estimates_2019$BOROUGH[lon_pop_estimates_2019$BOROUGH == "Hammersmith and Fulham"] <- "Hammersmith & Fulham"
+
+# 4) PCT data
+# The code for obtaining this data is in: get_pct_km_cycled.R file
+pct_borough_commuting = readRDS(file = "/home/bananafan/Documents/PhD/Paper1/data/Borough_commuting.rds")
+
+
+# 5) STATS19 data 
+# ? 3 years beofre CID?
+  
+
+
 
 # Join datasets together
-safety_borough_counts = left_join(CID_count_safety, CID_length_safety) 
-safety_borough_counts = left_join(lon_lad_2020_c2c, safety_borough_counts)
+CID_counts = left_join(CID_count_safety, CID_length_safety) 
+denominators = left_join(lon_lad_2020_c2c_reduced, lon_pop_estimates_2019) %>%
+  left_join(pct_borough_commuting)
+
+chloropleth_dataset = left_join(denominators, CID_counts)
 
 #######
 # ASL #
