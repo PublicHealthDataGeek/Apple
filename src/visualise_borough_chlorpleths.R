@@ -89,11 +89,18 @@ lon_lad_2020_c2c_reduced = lon_lad_2020_c2c %>%
 CID_count = readRDS(file = "/home/bananafan/Documents/PhD/Paper1/data/CID_count_by_borough")
 CID_length = readRDS(file = "/home/bananafan/Documents/PhD/Paper1/data/CID_length_by_borough")
 
+
+# Create new column (Signals2) where NAs are changed to 0 for mapping
+CID_count$SignalsNA = CID_count$Signals
+CID_count$SignalsNA[CID_count$SignalsNA == 0] = NA
+
 # keep safety related assets
 CID_count_safety = CID_count %>%
-  select(c("BOROUGH", "ASL", "Crossings", "CycleLanesAndTracks", "Signals", "TrafficCalming"))
+  select(c("BOROUGH", "ASL", "Crossings", "CycleLanesAndTracks", "Signals", "SignalsNA", "TrafficCalming"))
 CID_length_safety = CID_length %>%
   select(c("BOROUGH", "CycleLaneTrack_km"))
+
+
 
 # 3) Population estimates
 # ONS Mid year population estimates 2013-2019 
@@ -134,16 +141,18 @@ denominators = left_join(lon_lad_2020_c2c_reduced, lon_pop_estimates_2019) %>%
 chloropleth_dataset = left_join(denominators, CID_counts)
 
 
+#??? CONSIDER DROPPING KM2 units here rather that at each chloropleth - ?will need to do same for cycled distance
+# need to drop km2 for the barcharts
 
 # produce counts by area and per head population (NB may want to consider per 100,000 pop at some point)
 chloropleth_dataset <- chloropleth_dataset %>%
-  mutate(across(.cols = c("ASL", "Crossings", "CycleLanesAndTracks", "Signals", "TrafficCalming"),
+  mutate(across(.cols = c("ASL", "Crossings", "CycleLanesAndTracks", "Signals", "SignalsNA", "TrafficCalming"),
                 .fns = ~.x/Borough_Area_km2,
                 .names = "{.col}_by_area")) %>%
-  mutate(across(.cols = c("ASL", "Crossings", "CycleLanesAndTracks", "Signals", "TrafficCalming"),
+  mutate(across(.cols = c("ASL", "Crossings", "CycleLanesAndTracks", "Signals", "SignalsNA", "TrafficCalming"),
                 .fns = ~.x/Population_100000,
                 .names = "{.col}_per_100000pop")) %>%
-  mutate(across(.cols = c("ASL", "Crossings", "CycleLanesAndTracks", "Signals", "TrafficCalming"),
+  mutate(across(.cols = c("ASL", "Crossings", "CycleLanesAndTracks", "Signals","SignalsNA", "TrafficCalming"),
                 .fns = ~.x/total_100000km_cycled_for_commuting_per_year_estimated,
                 .names = "{.col}_per_100000km_cycled"))
 
@@ -275,7 +284,7 @@ chloropleth_dataset$Signals[chloropleth_dataset$Signals == 0] = NA
 
 # # create chloropleth - NB this only has 6 categories
 signals_raw_chloro = tm_shape(chloropleth_dataset) +
-  tm_polygons("Signals", legend.show = FALSE) +
+  tm_polygons("SignalsNA", legend.show = FALSE) +
   tm_layout(title = "Signals",
             legend.title.size = 1,
             legend.text.size = 0.7,
@@ -297,7 +306,7 @@ signals_raw_chloro = tmap_grob(signals_raw_chloro)
 # Generate new column that divides signal count into groups
 
 chloropleth_dataset <- chloropleth_dataset %>%
-  mutate(signals_group = cut(Signals2,
+  mutate(signals_group = cut(SignalsNA,
                              breaks = seq(1, 101, by = 20),
                              labels = c("1 to 20", "21 to 40", "41 to 60", "61 to 80",
                                         "81 to 100"),
@@ -308,7 +317,7 @@ chloropleth_dataset <- chloropleth_dataset %>%
 signals_raw_colours = c("#ffffd4", "#fed98e", "#fe9929", "#993404")
 
 # # create Bar chart
-signals_raw_bar = ggplot(chloropleth_dataset, aes(x = reorder(Borough_number, -Signals), y = Signals2, fill = signals_group)) +
+signals_raw_bar = ggplot(chloropleth_dataset, aes(x = reorder(Borough_number, -Signals), y = SignalsNA, fill = signals_group)) +
   geom_bar(stat = "identity", color = "black", size = 0.1) +
   coord_flip() +
   labs(y = "Count", x = NULL) +
@@ -472,20 +481,22 @@ clt_raw_chloro_bar = ggdraw() +
 # ASL #
 #######
 
-### NEED TO SORT AS CITY HAS VALUE OF 42 so difficult to visualise any of the other boroughs
-# also legend goes 0 2 etc - legned.format digits looks to be it but ?only for tm_fil; therefore ? will need to do tm_border and tm_fil l to do it?
-chloropleth_dataset$ASL_by_area_numeric = round(units::drop_units(chloropleth_dataset$ASL_by_area), digits = 2) # gets 
 
-# Pull out City row
+
+chloropleth_dataset$ASL_by_area_numeric = round(units::drop_units(chloropleth_dataset$ASL_by_area), digits = 2) 
+
+# Pull out City data as not comparable to other Boroughs (42 versus less than 14 for the rest)
 city_asl_chloropleth_dataset = chloropleth_dataset %>%
   filter(BOROUGH == "City of London")
 
 # # create chloropleth
 asl_area_chloro = tm_shape(chloropleth_dataset) +
-  tm_polygons("ASL_by_area_numeric", title = "Count per km^2", palette = "Blues",
-              breaks = c(0, 2, 4, 6, 8, 10, 12, 14), legend.format(digits = 2)) +
+  tm_polygons("ASL_by_area", title = "Count per km^2", palette = "Blues",
+              breaks = c(0, 2, 4, 6, 8, 10, 12, 14),
+              legend.format = list(text.separator = "<")) +
   tm_shape(city_asl_chloropleth_dataset) +
-  tm_polygons("ASL_by_area_numeric", title = "", palette = "inferno", breaks = c(40, 50)) +
+  tm_polygons("ASL_by_area", title = "", palette = "inferno", breaks = c(42, 44),
+              legend.format = list(text.separator = "<")) +
   tm_layout(title = "ASL",
             legend.title.size = 1,
             legend.text.size = 0.7,
@@ -494,139 +505,160 @@ asl_area_chloro = tm_shape(chloropleth_dataset) +
             inner.margins = c(0.1,0.1,0.1,0.42), # creates wide right margin for barchart
             frame = FALSE) 
 
+# convert chloro to grob
+asl_area_chloro = tmap_grob(asl_area_chloro) 
+ 
+# Generate barchart
+# Generate new column that divides ASL count into groups
+chloropleth_dataset <- chloropleth_dataset %>%
+   mutate(asl_area_group = cut(ASL_by_area_numeric,
+                         breaks = c(0, 2, 4, 6, 8, 10, 12, 14, 43),
+                         labels = c("0 < 2", "2 < 4", "4 < 6", "6 < 8",
+                                    "8 < 10", "10 < 12", "12 < 14", "42 < 44"),
+                         right = FALSE)) 
 
+# create variable that identifies Boroughs that need to be in facet based on a value (in this example City)
+#chloropleth_dataset$asl_area_facet <- (chloropleth_dataset$ASL_by_area_numeric >= 20.00)
 
-
-# # # convert chloro to grob
-# asl_raw_chloro = tmap_grob(asl_raw_chloro) 
-# 
-# # Generate barchart
-# # Generate new column that divides ASL count into groups
-# chloropleth_dataset <- chloropleth_dataset %>%
-#   mutate(asl_group = cut(ASL,
-#                          breaks = seq(1, 351, by = 50),
-#                          labels = c("1 to 50", "51 to 100", "101 to 150", "151 to 200", 
-#                                     "201 to 250", "251 to 300", "301 to 350"),
-#                          right = FALSE)) # this means that 50 is included in 1 to 50
-# 
 # # Create vector of colours that match the chloropleth
-# asl_raw_colours = c("#ffffd4","#fee391", "#fec44f", "#fe9929", 
-#                     "#ec7014", "#cc4c02", "#8c2d04")
-# 
-# # create Bar chart
-# asl_raw_bar = ggplot(chloropleth_dataset, aes(x = reorder(Borough_number, -ASL), y = ASL, fill = asl_group)) +
-#   geom_bar(stat = "identity", color = "black", size = 0.1) +  # adds borders to bars
-#   coord_flip() +
-#   labs(y = "Count", x = NULL) +
-#   theme_classic() + 
-#   scale_y_continuous(limits = c(0, 350), expand = c(0,0)) +  # ensures axis starts at 0 so no gap
-#   scale_fill_manual(values = asl_raw_colours) +
-#   theme(axis.line.y = element_blank(), 
-#         axis.ticks.y = element_blank(),
-#         axis.line.x = element_blank(),
-#         legend.position = "none")
-# 
+asl_area_colours = c("#eff3ff","#c6dbef", "#9ecae1", "#6baed6", 
+                     "#4292c6", "#2171b5", "#084594", "black")
+
+asl_area_bar = ggplot(chloropleth_dataset, aes(x = reorder(Borough_number, -ASL_by_area_numeric), y = ASL_by_area_numeric, fill = asl_area_group)) +
+  geom_bar(stat = "identity", color = "black", size = 0.1) +  # adds borders to bars )
+  #facet_grid(.~ asl_area_facet, scales ="free", space="free") +
+  coord_flip() +
+  #theme(strip.text.x = element_blank()) # get rid of the facet labels +
+  labs(y = "Count", x = NULL) +
+  theme_classic() +
+  scale_y_continuous(expand = c(0,0)) +  # ensures axis starts at 0 so no gap
+  scale_fill_manual(values = asl_area_colours) +
+  theme(axis.line.y = element_blank(),
+        axis.ticks.y = element_blank(),
+        axis.line.x = element_blank(),
+        legend.position = "none", 
+        strip.text.x = element_blank())
+
 # # Create cowplot of both plots
-# asl_raw_chloro_bar = ggdraw() +
-#   draw_plot(asl_raw_chloro) +
-#   draw_plot(asl_raw_bar,
-#             width = 0.3, height = 0.6,
-#             x = 0.57, y = 0.19) 
-# 
-# 
-# #############
-# # Crossings #
-# #############
-# 
-# # create chloropleth
-# crossings_raw_chloro = tm_shape(chloropleth_dataset) +
-#   tm_polygons("Crossings", title = "Count") + 
-#   tm_layout(title = "Crossings",
-#             legend.title.size = 1,
-#             legend.text.size = 0.7,
-#             legend.position = c("left","bottom"),
-#             legend.bg.alpha = 1,
-#             inner.margins = c(0.1,0.1,0.1,0.42), # creates wide right margin for barchart
-#             frame = FALSE) 
-# 
-# # # # convert chloro to grob
-# crossings_raw_chloro = tmap_grob(crossings_raw_chloro) 
-# 
-# # Generate barchart
-# # Generate new column that divides Crossing count into groups
-# chloropleth_dataset <- chloropleth_dataset %>%
-#   mutate(crossings_group = cut(Crossings,
-#                                breaks = seq(1, 141, by = 20),
-#                                labels = c("1 to 20", "21 to 40", "41 to 60", "61 to 80", 
-#                                           "81 to 100", "101 to 120", "121 to 140"), 
-#                                right = FALSE)) # this means that 20 is included in 1 to 20
-# 
-# # # Create vector of colours that match the chloropleth - only 6 colours as 6th category had no values
-# crossings_raw_colours = c("#ffffd4","#fee391", "#fec44f", "#fe9929", "#ec7014", "#8c2d04")
-# 
-# # create Bar chart
-# crossings_raw_bar = ggplot(chloropleth_dataset, aes(x = reorder(Borough_number, -Crossings), y = Crossings, 
-#                                                     fill = crossings_group)) +
-#   geom_bar(stat = "identity", color = "black", size = 0.1) +  # adds borders to bars
-#   coord_flip() +
-#   labs(y = "Count", x = NULL) +
-#   theme_classic() +
-#   scale_y_continuous(limits = c(0, 140), expand = c(0,0), 
-#                      breaks = c(0, 40, 80, 120)) +  # ensures axis starts at 0 so no gap
-#   scale_fill_manual(values = crossings_raw_colours) +
-#   theme(axis.line.y = element_blank(),
-#         axis.ticks.y = element_blank(),
-#         axis.line.x = element_blank(),
-#         legend.position = "none")
-# 
+asl_area_chloro_bar = ggdraw() +
+   draw_plot(asl_area_chloro) +
+   draw_plot(asl_area_bar,
+             width = 0.3, height = 0.6,
+             x = 0.57, y = 0.19) 
+ 
+
+#############
+# Crossings #
+#############
+
+# Drop units and round so that intervals are plotted ok
+chloropleth_dataset$crossings_by_area_numeric = round(units::drop_units(chloropleth_dataset$Crossings_by_area), digits = 2)
+
+# create chloropleth
+crossings_area_chloro = tm_shape(chloropleth_dataset) +
+  tm_polygons("Crossings_by_area", title = "Count per km^2", palette = "Blues", 
+              legend.format = list(text.separator = "<")) +
+  tm_layout(title = "Crossings",
+            legend.title.size = 1,
+            legend.text.size = 0.7,
+            legend.position = c("left","bottom"),
+            legend.bg.alpha = 1,
+            inner.margins = c(0.1,0.1,0.1,0.42), # creates wide right margin for barchart
+            frame = FALSE)
+
+# convert chloro to grob
+crossings_area_chloro = tmap_grob(crossings_area_chloro) 
+
+# Generate barchart
+# Generate new column that divides Crossing count into groups
+chloropleth_dataset <- chloropleth_dataset %>%
+  mutate(crossings_area_group = cut(crossings_by_area_numeric,
+                               breaks = seq(0, 5, by = 1),
+                               labels = c("0 < 1", "1 < 2", "2 < 3", "3 < 4", "4 < 5"),
+                               right = FALSE))
+
+# # Create vector of colours that match the chloropleth 
+crossings_area_colours = c("#eff3ff","#bdd7e7", "#6baed6", "#3182bd", "#08519c")
+
+# create Bar chart
+crossings_area_bar = ggplot(chloropleth_dataset, aes(x = reorder(Borough_number, -crossings_by_area_numeric), y = crossings_by_area_numeric,
+                                                    fill = crossings_area_group)) +
+  geom_bar(stat = "identity", color = "black", size = 0.1) +  # adds borders to bars
+  coord_flip() +
+  labs(y = "Count", x = NULL) +
+  theme_classic() +
+  scale_y_continuous(limits = c(0, 5), expand = c(0,0)) +
+  scale_fill_manual(values = crossings_area_colours) +
+  theme(axis.line.y = element_blank(),
+        axis.ticks.y = element_blank(),
+        axis.line.x = element_blank(),
+        legend.position = "none")
+
 # # # Create cowplot of both plots
-# crossings_raw_chloro_bar = ggdraw() +
-#   draw_plot(crossings_raw_chloro) +
-#   draw_plot(crossings_raw_bar,
-#             width = 0.3, height = 0.6,
-#             x = 0.57, y = 0.19) 
+crossings_area_chloro_bar = ggdraw() +
+   draw_plot(crossings_area_chloro) +
+   draw_plot(crossings_area_bar,
+             width = 0.3, height = 0.6,
+             x = 0.57, y = 0.19) 
 # 
 # 
 # ###########
 # # Signals #
 # ###########
-# 
-# # Create new column (Signals2) where NAs are changed to 0 for mapping
-# chloropleth_dataset$Signals2 = chloropleth_dataset$Signals
-# chloropleth_dataset$Signals[chloropleth_dataset$Signals == 0] = NA
-# 
-# 
-# # # create chloropleth - NB this only has 6 categories
-# signals_raw_chloro = tm_shape(chloropleth_dataset) +
-#   tm_polygons("Signals", legend.show = FALSE) +
-#   tm_layout(title = "Signals",
-#             legend.title.size = 1,
-#             legend.text.size = 0.7,
-#             legend.position = c("left","bottom"),
-#             legend.bg.alpha = 1,
-#             inner.margins = c(0.1,0.1,0.1,0.42), # creates wide right margin for barchart
-#             frame = FALSE) +
-#   tm_add_legend(type = "fill", 
-#                 labels = c("0", "1 to 20", "21 to 40", "41 to 60", "61 to 80", "81 to 100"),
-#                 col = c("grey", "#ffffd4", "#fed98e", "#fe9929", "#d95f0e", "#993404"),
-#                 border.lwd = 0.5,
-#                 title = "Count")
-# 
+
+# Pull out City data as not comparable to other Boroughs (20 versus less than 5 for the rest)
+city_signals_area_chloropleth_dataset = chloropleth_dataset %>%
+  filter(BOROUGH == "City of London")
+
+# # create chloropleth - 
+signals_area_chloro = tm_shape(chloropleth_dataset) +
+  tm_polygons("SignalsNA_by_area", palette = "Blues", 
+              breaks = c(0, 1, 2, 3, 4, 5),
+              legend.show = FALSE) +  
+  tm_shape(city_signals_area_chloropleth_dataset) +
+  tm_polygons("SignalsNA_by_area", title = "", palette = "inferno", breaks = c(20, 21),
+              legend.show = FALSE) +
+  tm_layout(title = "Signals",
+            legend.title.size = 1,
+            legend.text.size = 0.7,
+            legend.position = c("left","bottom"),
+            legend.bg.alpha = 1,
+            inner.margins = c(0.1,0.1,0.1,0.42), # creates wide right margin for barchart
+            frame = FALSE) +
+  tm_add_legend(type = "fill",
+                labels = c("0", "> 0 < 1", "1 < 2", "2 < 3", "3 < 4", "4 < 5", "20 < 21"),
+                col = c("grey", "#eff3ff", "#bdd7e7", "#6baed6", "#3182bd", "#08519c", "black"),
+                border.lwd = 0.5,
+                title = "Count per km^2")
+
 # # convert chloro to grob
-# signals_raw_chloro = tmap_grob(signals_raw_chloro)
-# 
-# 
+signals_area_chloro = tmap_grob(signals_area_chloro)
+ 
 # # Generate barchart
 # # Generate new column that divides signal count into groups
 # 
-# chloropleth_dataset <- chloropleth_dataset %>%
-#   mutate(signals_group = cut(Signals2,
-#                              breaks = seq(1, 101, by = 20),
-#                              labels = c("1 to 20", "21 to 40", "41 to 60", "61 to 80",
-#                                         "81 to 100"),
-#                              right = FALSE))
-# 
-# 
+
+
+#####THIS IS WHERE I GOT TO
+
+chloropleth_dataset <- chloropleth_dataset %>%
+  mutate(signals_group = cut(SignalsNA_by_area,
+  breaks = c(0, 1, 2, 3, 4, 5, 21),
+  labels = c("> 0 < 1", "1 < 2", "2 < 3", "3 < 4", "4 < 5", "20 < 21"),
+  right = FALSE)) %>%
+replace_na(chloropleth_dataset$signals_group, value = 0)
+
+chloropleth_dataset$signals_group[is.na(chloropleth_dataset$signals_group)] = 0
+
+
+# Generate new column that divides ASL count into groups
+#example code
+chloropleth_dataset <- chloropleth_dataset %>%
+  mutate(asl_area_group = cut(ASL_by_area_numeric,
+                              breaks = c(0, 2, 4, 6, 8, 10, 12, 14, 43),
+                              labels = c("0 < 2", "2 < 4", "4 < 6", "6 < 8",
+                                         "8 < 10", "10 < 12", "12 < 14", "42 < 44"),
+                              right = FALSE)) # this means that 50 is included in 1 to 50
 # # # Create vector of colours that match the chloropleth
 # signals_raw_colours = c("#ffffd4", "#fed98e", "#fe9929", "#993404")
 # 
@@ -939,3 +971,23 @@ ggsave("/home/bananafan/Documents/PhD/Paper1/output/all_chloro_bar_plots.pdf", p
 #         axis.ticks.y = element_blank(),
 #         axis.line.x = element_line(size = 0.1),
 #         legend.position = "none")
+
+
+# facet plots to cope with difference in scale of values
+# https://stackoverflow.com/questions/7194688/using-ggplot2-can-i-insert-a-break-in-the-axis?noredirect=1&lq=1
+
+# df <- data.frame(myLetter=LETTERS[1:4], myValue=runif(12) + rep(c(4,0,0),2))  # cluster a few values well above 1
+# df$myFacet <- df$myValue > 3
+# (ggplot(df, aes(y=myLetter, x=myValue)) 
+#   + geom_point() 
+#   + facet_grid(. ~ myFacet, scales="free", space="free")
+#   + scale_x_continuous(breaks = seq(0, 5, .25)) # this gives both facets equal interval spacing.
+#   + theme(strip.text.x = element_blank()) # get rid of the facet labels
+# 
+
+# other code that might enable split axis
+# 
+# library(plotrix)
+# gap.barplot(df$a, gap=c(5,495),horiz=T)
+# 
+# scale_x_discrete(labels=c("5", "", "","", "Extremely\ndifficult")) # this can alter the axis label
