@@ -90,7 +90,7 @@ CID_count = readRDS(file = "/home/bananafan/Documents/PhD/Paper1/data/CID_count_
 CID_length = readRDS(file = "/home/bananafan/Documents/PhD/Paper1/data/CID_length_by_borough")
 
 
-# Create new column (Signals2) where NAs are changed to 0 for mapping
+# Create new column (SignalsNA) where 0 are changed to NA - Signals is the only dataset where some Boroughs have 0 assets
 CID_count$SignalsNA = CID_count$Signals
 CID_count$SignalsNA[CID_count$SignalsNA == 0] = NA
 
@@ -277,12 +277,8 @@ crossings_raw_chloro_bar = ggdraw() +
 # Signals #
 ###########
 
-# Create new column (Signals2) where NAs are changed to 0 for mapping
-chloropleth_dataset$Signals2 = chloropleth_dataset$Signals
-chloropleth_dataset$Signals[chloropleth_dataset$Signals == 0] = NA
 
-
-# # create chloropleth - NB this only has 6 categories
+# # create chloropleth - use SignalsNA as the polygon as this then colours the NAs grey (missing)
 signals_raw_chloro = tm_shape(chloropleth_dataset) +
   tm_polygons("SignalsNA", legend.show = FALSE) +
   tm_layout(title = "Signals",
@@ -293,7 +289,7 @@ signals_raw_chloro = tm_shape(chloropleth_dataset) +
             inner.margins = c(0.1,0.1,0.1,0.42), # creates wide right margin for barchart
             frame = FALSE) +
   tm_add_legend(type = "fill", 
-    labels = c("0", "1 to 20", "21 to 40", "41 to 60", "61 to 80", "81 to 100"),
+    labels = c("0", "1 to 20", "21 to 40", "41 to 60", "61 to 80", "81 to 100"), # enables relabelling of 'Missing/NA' as 0
     col = c("grey", "#ffffd4", "#fed98e", "#fe9929", "#d95f0e", "#993404"),
     border.lwd = 0.5,
     title = "Count")
@@ -306,7 +302,7 @@ signals_raw_chloro = tmap_grob(signals_raw_chloro)
 # Generate new column that divides signal count into groups
 
 chloropleth_dataset <- chloropleth_dataset %>%
-  mutate(signals_group = cut(SignalsNA,
+  mutate(signals_raw_group = cut(SignalsNA,
                              breaks = seq(1, 101, by = 20),
                              labels = c("1 to 20", "21 to 40", "41 to 60", "61 to 80",
                                         "81 to 100"),
@@ -317,7 +313,9 @@ chloropleth_dataset <- chloropleth_dataset %>%
 signals_raw_colours = c("#ffffd4", "#fed98e", "#fe9929", "#993404")
 
 # # create Bar chart
-signals_raw_bar = ggplot(chloropleth_dataset, aes(x = reorder(Borough_number, -Signals), y = SignalsNA, fill = signals_group)) +
+signals_raw_bar = ggplot(chloropleth_dataset, aes(x = reorder(Borough_number, -Signals), 
+                                                  y = SignalsNA, # this means those that are missing are shown with no bars
+                                                  fill = signals_raw_group)) +
   geom_bar(stat = "identity", color = "black", size = 0.1) +
   coord_flip() +
   labs(y = "Count", x = NULL) +
@@ -481,10 +479,6 @@ clt_raw_chloro_bar = ggdraw() +
 # ASL #
 #######
 
-
-
-chloropleth_dataset$ASL_by_area_numeric = round(units::drop_units(chloropleth_dataset$ASL_by_area), digits = 2) 
-
 # Pull out City data as not comparable to other Boroughs (42 versus less than 14 for the rest)
 city_asl_chloropleth_dataset = chloropleth_dataset %>%
   filter(BOROUGH == "City of London")
@@ -508,7 +502,10 @@ asl_area_chloro = tm_shape(chloropleth_dataset) +
 # convert chloro to grob
 asl_area_chloro = tmap_grob(asl_area_chloro) 
  
-# Generate barchart
+##  Generate barchart
+# create new column where units (km^2) are removed (need units to be removed to draw bar chart)
+chloropleth_dataset$ASL_by_area_numeric = round(units::drop_units(chloropleth_dataset$ASL_by_area), digits = 2) 
+
 # Generate new column that divides ASL count into groups
 chloropleth_dataset <- chloropleth_dataset %>%
    mutate(asl_area_group = cut(ASL_by_area_numeric,
@@ -634,60 +631,45 @@ signals_area_chloro = tm_shape(chloropleth_dataset) +
 # # convert chloro to grob
 signals_area_chloro = tmap_grob(signals_area_chloro)
  
+
 # # Generate barchart
+# Drop units and round so that intervals are plotted ok
+chloropleth_dataset$SignalsNA_by_area_numeric = round(units::drop_units(chloropleth_dataset$SignalsNA_by_area), digits = 2)
+
 # # Generate new column that divides signal count into groups
-# 
-
-
-#####THIS IS WHERE I GOT TO
-
 chloropleth_dataset <- chloropleth_dataset %>%
-  mutate(signals_group = cut(SignalsNA_by_area,
-  breaks = c(0, 1, 2, 3, 4, 5, 21),
-  labels = c("> 0 < 1", "1 < 2", "2 < 3", "3 < 4", "4 < 5", "20 < 21"),
-  right = FALSE)) %>%
-replace_na(chloropleth_dataset$signals_group, value = 0)
+  mutate(signals_area_group = cut(SignalsNA_by_area_numeric,
+                              breaks = c(0, 1, 2, 3, 4, 5, 21),
+                              labels = c("> 0 < 1", "1 < 2", "2 < 3", "3 < 4", "4 < 5", "20 < 21"),
+                              right = FALSE))
 
-chloropleth_dataset$signals_group[is.na(chloropleth_dataset$signals_group)] = 0
+# # Create vector of colours that match the chloropleth 
+signals_area_colours = c("#eff3ff", "#bdd7e7", "#6baed6", "#08519c", "black")
 
 
-# Generate new column that divides ASL count into groups
-#example code
-chloropleth_dataset <- chloropleth_dataset %>%
-  mutate(asl_area_group = cut(ASL_by_area_numeric,
-                              breaks = c(0, 2, 4, 6, 8, 10, 12, 14, 43),
-                              labels = c("0 < 2", "2 < 4", "4 < 6", "6 < 8",
-                                         "8 < 10", "10 < 12", "12 < 14", "42 < 44"),
-                              right = FALSE)) # this means that 50 is included in 1 to 50
-# # # Create vector of colours that match the chloropleth
-# signals_raw_colours = c("#ffffd4", "#fed98e", "#fe9929", "#993404")
-# 
-# # # create Bar chart
-# signals_raw_bar = ggplot(chloropleth_dataset, aes(x = reorder(Borough_number, -Signals), y = Signals2, fill = signals_group)) +
-#   geom_bar(stat = "identity", color = "black", size = 0.1) +
-#   coord_flip() +
-#   labs(y = "Count", x = NULL) +
-#   theme_classic() +
-#   scale_y_continuous(limits = c(0, 100), expand = c(0,0), 
-#                      breaks = c(0, 20, 40, 60, 80)) +  # ensures axis starts at 0 so no gap
-#   scale_fill_manual(values = signals_raw_colours) +
-#   theme(axis.ticks.y = element_blank(),
-#         axis.line.y = element_blank(),
-#         axis.line.x = element_blank(),
-#         legend.position = "none")
-# #axis.line.y = element_line(size = 0.2),
-# 
-# # # Create cowplot of both plots
-# signals_raw_chloro_bar = ggdraw() +
-#   draw_plot(signals_raw_chloro) +
-#   draw_plot(signals_raw_bar,
-#             width = 0.3, height = 0.6,
-#             x = 0.57, y = 0.19)
-# 
-# 
-# 
-# 
-# 
+signals_area_bar = ggplot(chloropleth_dataset, 
+                          aes(x = reorder(Borough_number, -SignalsNA_by_area_numeric), 
+                              y = SignalsNA_by_area_numeric, fill = signals_area_group)) +
+  geom_bar(stat = "identity", color = "black", size = 0.1) +
+  coord_flip() +
+  labs(y = "Count by km^2", x = NULL) +
+  theme_classic() +
+  scale_y_continuous(limits = c(0, 25), expand = c(0,0),
+                     breaks = c(0, 5, 10, 15, 20)) +  # ensures axis starts at 0 so no gap
+  scale_fill_manual(values = signals_area_colours) +
+  theme(axis.ticks.y = element_blank(),
+        axis.line.y = element_blank(),
+        axis.line.x = element_blank(),
+        legend.position = "none")
+
+# # Create cowplot of both plots
+signals_area_chloro_bar = ggdraw() +
+  draw_plot(signals_area_chloro) +
+  draw_plot(signals_area_bar,
+            width = 0.3, height = 0.6,
+            x = 0.57, y = 0.19)
+
+
 # ###################
 # # Traffic calming #   THIS ONE WILL NEED CHANGING AS IT DOESNT WORK QUITE RIGHT ? worth changing bbox for all chloropleths? 
 # ###################
@@ -991,3 +973,76 @@ ggsave("/home/bananafan/Documents/PhD/Paper1/output/all_chloro_bar_plots.pdf", p
 # gap.barplot(df$a, gap=c(5,495),horiz=T)
 # 
 # scale_x_discrete(labels=c("5", "", "","", "Extremely\ndifficult")) # this can alter the axis label
+
+
+###############################################################################
+###############################################################################
+# Problem solving code for managing NAs, units etc
+
+# # FOr ASL all values > 0
+# # For raw - we cut from 1 upwards for bar chart
+# # for area, units are in km^2 so had to drop units and round to 2dp in order to do the cut into categories for the bar chart
+# # the parameters for cut were:
+# #breaks = c(0, 2, 4, 6, 8, 10, 12, 14, 43),
+# #labels = c("0 < 2", "2 < 4", "4 < 6", "6 < 8",
+# #           "8 < 10", "10 < 12", "12 < 14", "42 < 44"),
+# 
+# # FOr signals, we have values of 0 (signals) and NA (signalsNA)
+# # can chloropleth SignalsNA_by_area ok with breaks at 0, 1 and then adding a legend that relabels grey missing as 0
+# # Issue is then with generating the bar chart
+# # PLan is to try different ways of cutting and potentially converting to numeric etc to see what works to generate bar chart
+# 
+# # atttempt 1)
+# 
+# smaller_dataset <- smaller_dataset %>%
+#   mutate(signals_group1 = cut(Signals_by_area,
+#                               breaks = c(0, 1, 2, 3, 4, 5, 21),
+#                               labels = c("> 0 < 1", "1 < 2", "2 < 3", "3 < 4", "4 < 5", "20 < 21"),
+#                               right = FALSE)) 
+# 
+# # attempt 2)
+# # Drop units and round so that intervals are plotted ok
+# smaller_dataset$Signals_by_area_numeric = round(units::drop_units(smaller_dataset$Signals_by_area), digits = 2)
+# 
+# smaller_dataset <- smaller_dataset %>%
+#   mutate(signals_group2 = cut(Signals_by_area_numeric ,
+#                               breaks = c(0, 1, 2, 3, 4, 5, 21),
+#                               labels = c("> 0 < 1", "1 < 2", "2 < 3", "3 < 4", "4 < 5", "20 < 21"),
+#                               right = FALSE)) 
+# 
+# # attempts 1 and 2 result in the right groups for everything > 1 but values of 0 and <1 are grouped together
+# 
+# # attemp 3) using SIgnalsNA_by_narea
+# smaller_dataset <- smaller_dataset %>%
+#   mutate(signals_group3 = cut(SignalsNA_by_area,
+#                               breaks = c(0, 1, 2, 3, 4, 5, 21),
+#                               labels = c("> 0 < 1", "1 < 2", "2 < 3", "3 < 4", "4 < 5", "20 < 21"),
+#                               right = FALSE))  
+# #-> 0s labelled as NA, but other groups done ok.  
+# 
+# # try barchar with this
+# ggplot(smaller_dataset, 
+#        aes(x = reorder(Borough_number, -SignalsNA_by_area), 
+#            y = SignalsNA_by_area, fill = signals_group3)) +
+#   geom_bar(stat = "identity", color = "black", size = 0.1)   # adds borders to bars )
+# # Don't know how to automatically pick scale for object of type units. Defaulting to continuous.
+# # Error in Ops.units(x, range[1]) : 
+# #   both operands of the expression should be "units" objects
+# 
+# # attempt 4)
+# # as above doesnt work as SignalsNA_by_area is in units then remove units
+# smaller_dataset$SignalsNA_by_area_numeric = round(units::drop_units(smaller_dataset$SignalsNA_by_area), digits = 2) 
+# 
+# # now need to recut
+# smaller_dataset <- smaller_dataset %>%
+#   mutate(signals_group4 = cut(SignalsNA_by_area_numeric,
+#                               breaks = c(0, 1, 2, 3, 4, 5, 21),
+#                               labels = c("> 0 < 1", "1 < 2", "2 < 3", "3 < 4", "4 < 5", "20 < 21"),
+#                               right = FALSE))
+# 
+# # now try bar chart again
+# ggplot(smaller_dataset, 
+#        aes(x = reorder(Borough_number, -SignalsNA_by_area_numeric), 
+#            y = SignalsNA_by_area_numeric, fill = signals_group3)) +
+#   geom_bar(stat = "identity", color = "black", size = 0.1)   # adds borders to bars ) # THis looks to work
+
