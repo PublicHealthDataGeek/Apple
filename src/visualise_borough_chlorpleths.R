@@ -466,7 +466,7 @@ clt_raw_bar = ggplot(chloropleth_dataset, aes(x = reorder(Borough_number, -clt_r
                                   y = clt_raw_numeric, fill = clt_raw_group)) +
   geom_bar(stat = "identity", color = "black", size = 0.1) +  # adds borders to bars
   coord_flip() +
-  labs(y = "Length in km", x = NULL) +
+  labs(y = "Total length in km", x = NULL) +
   theme_classic() +
   scale_y_continuous(limits = c(0, 150), expand = c(0,0)) +  # ensures axis starts at 0 so no gap
   scale_fill_manual(values = clt_raw_colours) +
@@ -762,62 +762,64 @@ tc_raw_chloro_bar = ggdraw() +
             x = 0.57, y = 0.19)
 
  
-# ###################################
-# # Cycle lanes and Tracks - LENGTH #
-# ###################################
-
- # Convert clt length to integer (and rounded) so that intervals are plotted ok
-chloropleth_dataset$CLT_by_area_numeric = as.integer(round(units::drop_units(chloropleth_dataset$CycleLanesAndTracks_by_area)))
  
-# # create chloropleth
-# clt_raw_chloro = tm_shape(chloropleth_dataset) +
-#   tm_polygons("CLT_km_integer", title = "Total length (km)") +
-#   tm_layout(title = "Cycle lanes and tracks",
-#             legend.title.size = 1,
-#             legend.text.size = 0.7,
-#             legend.position = c("left","bottom"),
-#             legend.bg.alpha = 1,
-#             inner.margins = c(0.1,0.1,0.1,0.42), # creates wide right margin for barchart
-#             frame = FALSE)
-# # 
-# # # # convert chloro to grob
-# clt_raw_chloro = tmap_grob(clt_raw_chloro) 
-# 
-# # Generate barchart
-# #Generate new column that divides CLT length into groups
-# chloropleth_dataset <- chloropleth_dataset %>%
-#   mutate(clt_group = cut(CycleLaneTrack_km,
-#                          breaks = seq(21, 141, by = 20),
-#                          labels = c("21 to 40", "41 to 60", "61 to 80", "81 to 100",
-#                                     "101 to 120", "121 to 140"),
-#                          right = FALSE)) # this means that 50 is included in 1 to 50
-# 
-# # # Create vector of colours that match the chloropleth
-# clt_raw_colours = c("#ffffd4","#fee391", "#fec44f", "#fe9929", "#d95f0e", "#993404")
-# 
-# # create Bar chart
-# clt_raw_bar = ggplot(chloropleth_dataset, aes(x = reorder(Borough_number, -CLT_km_integer), 
-#                                               y = CLT_km_integer, fill = clt_group)) +
-#   geom_bar(stat = "identity", color = "black", size = 0.1) +  # adds borders to bars
-#   coord_flip() +
-#   labs(y = "Length in km", x = NULL) +
-#   theme_classic() +
-#   scale_y_continuous(limits = c(0, 150), expand = c(0,0)) +  # ensures axis starts at 0 so no gap
-#   scale_fill_manual(values = clt_raw_colours) +
-#   theme(axis.line.y = element_blank(),
-#         axis.ticks.y = element_blank(),
-#         axis.line.x = element_blank(),
-#         legend.position = "none")
-# 
-# # Create cowplot of both plots
-# clt_raw_chloro_bar = ggdraw() +
-#   draw_plot(clt_raw_chloro) +
-#   draw_plot(clt_raw_bar,
-#             width = 0.3, height = 0.6,
-#             x = 0.57, y = 0.19)
 
+###################################
+# Cycle lanes and Tracks - LENGTH #
+###################################
 
+# create chloropleth
+clt_area_chloro = tm_shape(chloropleth_dataset) +
+  tm_polygons("CycleLaneTrack_km_by_area", title = "Total length (km) by area (km^2)", 
+              legend.format = list(text.separator = "<"),
+              breaks = c(0, 1.5, 3, 4.5, 6, 7.5, 9),
+              palette = "Blues") +
+  tm_layout(title = "Cycle lanes and tracks",
+            legend.title.size = 1,
+            legend.text.size = 0.7,
+            legend.position = c("left","bottom"),
+            legend.bg.alpha = 1,
+            inner.margins = c(0.1,0.1,0.1,0.42), # creates wide right margin for barchart
+            frame = FALSE)
 
+# # # convert chloro to grob
+clt_area_chloro = tmap_grob(clt_area_chloro) 
+
+# Generate barchart
+
+# create new column where units (km^2) are removed (need units to be removed to draw bar chart)
+chloropleth_dataset$clt_area_numeric = round(units::drop_units(chloropleth_dataset$CycleLaneTrack_km_by_area), digits = 2)
+
+chloropleth_dataset <- chloropleth_dataset %>%
+  mutate(clt_area_group = cut(clt_area_numeric,
+                             breaks = seq(0, 9, by = 1.5),
+                             labels = c("> 0 < 1.5", "1.5 < 3.0", "3.0 < 4.5", "4.5 < 6",
+                                        "6 < 7.5", "7.5 < 9"),
+                             right = FALSE)) 
+
+# # Create vector of colours that match the chloropleth
+clt_area_colours = c("#eff3ff", "#c6dbef", "#9ecae1", "#6baed6", "#08519c")
+
+# create Bar chart
+clt_area_bar = ggplot(chloropleth_dataset, aes(x = reorder(Borough_number, -clt_area_numeric), 
+                                              y = clt_area_numeric, fill = clt_area_group)) +
+  geom_bar(stat = "identity", color = "black", size = 0.1) +  # adds borders to bars
+  coord_flip() +
+  labs(y = "Total length (km) by area (km^2)", x = NULL) +
+  theme_classic() +
+  scale_y_continuous(limits = c(0, 9), expand = c(0,0)) +  # ensures axis starts at 0 so no gap
+  scale_fill_manual(values = clt_area_colours) +
+  theme(axis.line.y = element_blank(),
+        axis.ticks.y = element_blank(),
+        axis.line.x = element_blank(),
+        legend.position = "none")
+
+# Create cowplot of both plots
+clt_area_chloro_bar = ggdraw() +
+  draw_plot(clt_area_chloro) +
+  draw_plot(clt_area_bar,
+            width = 0.3, height = 0.6,
+            x = 0.57, y = 0.19)
 
 
 
