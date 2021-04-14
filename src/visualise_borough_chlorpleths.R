@@ -548,9 +548,6 @@ asl_area_chloro_bar = ggdraw() +
 # Crossings #
 #############
 
-# Drop units and round so that intervals are plotted ok
-chloropleth_dataset$crossings_by_area_numeric = round(units::drop_units(chloropleth_dataset$Crossings_by_area), digits = 2)
-
 # create chloropleth
 crossings_area_chloro = tm_shape(chloropleth_dataset) +
   tm_polygons("Crossings_by_area", title = "Count per km^2", palette = "Blues", 
@@ -567,6 +564,9 @@ crossings_area_chloro = tm_shape(chloropleth_dataset) +
 crossings_area_chloro = tmap_grob(crossings_area_chloro) 
 
 # Generate barchart
+# Drop units and round so that intervals are plotted ok
+chloropleth_dataset$crossings_by_area_numeric = round(units::drop_units(chloropleth_dataset$Crossings_by_area), digits = 2)
+
 # Generate new column that divides Crossing count into groups
 chloropleth_dataset <- chloropleth_dataset %>%
   mutate(crossings_area_group = cut(crossings_by_area_numeric,
@@ -692,54 +692,59 @@ signals_area_chloro_bar = ggdraw() +
 # #tc_raw_chloro = tm_shape(chloropleth_dataset, bbox = bbox_new) +
 # 
 # 
-# # create chloropleth
-# tc_raw_chloro = tm_shape(chloropleth_dataset) +
-#   tm_polygons("TrafficCalming", title = "Count") +
-#   tm_layout(title = "Traffic calming",
-#             legend.title.size = 1,
-#             legend.text.size = 0.7,
-#             legend.position = c("left","bottom"),
-#             legend.bg.alpha = 1,
-#             inner.margins = c(0.1,0.1,0.1,0.42), # creates wide right margin for barchart
-#             frame = FALSE)
-# 
-# # # convert chloro to grob
-# tc_raw_chloro = tmap_grob(tc_raw_chloro) 
-# 
+# create chloropleth
+tc_area_chloro = tm_shape(chloropleth_dataset) +
+  tm_polygons("TrafficCalming_by_area", title = "Count by km^2", palette = "Blues",
+              breaks = (c(0, 40, 80, 120, 160)),
+              legend.format = list(text.separator = "<")) +
+  tm_layout(title = "Traffic calming",
+            legend.title.size = 1,
+            legend.text.size = 0.7,
+            legend.position = c("left","bottom"),
+            legend.bg.alpha = 1,
+            inner.margins = c(0.1,0.1,0.1,0.42), # creates wide right margin for barchart
+            frame = FALSE)
+
+# # convert chloro to grob
+tc_area_chloro = tmap_grob(tc_area_chloro)
+
 # # Generate barchart
-# # Generate new column that divides traffic calming count into groups
-# chloropleth_dataset <- chloropleth_dataset %>%
-#   mutate(traffic_calming_group = cut(TrafficCalming,
-#                                      breaks = seq(1, 4001, by = 500),
-#                                      labels = c("1 to 500", "501 to 1000", "1001 to 1500", "1501 to 2000",
-#                                                 "2001 to 2500", "2501 to 3000", "3001 to 3500", "3501 to 4000"),
-#                                      right = FALSE))
-# 
+# # Drop units and round so that intervals are plotted ok
+chloropleth_dataset$TrafficCalming_by_area_numeric = round(units::drop_units(chloropleth_dataset$TrafficCalming_by_area), digits = 2)
+
+# Generate new column that divides traffic calming count into groups
+chloropleth_dataset <- chloropleth_dataset %>%
+  mutate(tc_area_group = cut(TrafficCalming_by_area_numeric,
+                             breaks = seq(0, 160, by = 40),
+                             labels = c("> 0 < 40", "40 < 80", "80 < 120", "120 < 140"),
+                             right = FALSE))
+
 # # Create vector of colours that match the chloropleth
-# tc_raw_colours = c("#ffffe5","#fff7bc", "#fee391", "#fec44f", "#fe9929", 
-#                    "#ec7014", "#cc4c02", "#8c2d04")
+tc_area_colours = c("#eff3ff", "#bdd7e7", "#6baed6", "#2171b5")
 # 
 # # create Bar chart
-# tc_raw_bar = ggplot(chloropleth_dataset, aes(x = reorder(Borough_number, -TrafficCalming), y = TrafficCalming, fill = traffic_calming_group)) +
-#   geom_bar(stat = "identity", color = "black", size = 0.1) + # adds borders to bars
-#   coord_flip() +
-#   labs(y = "Count", x = NULL) +
-#   theme_classic() +
-#   scale_y_continuous(limits = c(0, 4000), expand = c(0,0), 
-#                      breaks = c(0, 1000, 2000, 3000)) +  # ensures axis starts at 0 so no gap
-#   scale_fill_manual(values = tc_raw_colours) +
-#   theme(axis.line.y = element_blank(),
-#         axis.ticks.y = element_blank(),
-#         axis.line.x = element_blank(),
-#         legend.position = "none")
-# 
-# # Create cowplot of both plots
-# tc_raw_chloro_bar = ggdraw() +
-#   draw_plot(tc_raw_chloro) +
-#   draw_plot(tc_raw_bar,
-#             width = 0.3, height = 0.6,
-#             x = 0.57, y = 0.19)
-# 
+tc_area_bar = ggplot(chloropleth_dataset, aes(x = reorder(Borough_number, -TrafficCalming_by_area_numeric), 
+                                y = TrafficCalming_by_area_numeric, 
+                                fill = tc_area_group)) +
+  geom_bar(stat = "identity", color = "black", size = 0.1) + # adds borders to bars
+  coord_flip() +
+  labs(y = "Count per km^2", x = NULL) +
+  theme_classic() +
+  scale_y_continuous(limits = c(0, 160), expand = c(0,0),
+                     breaks = c(0, 40, 80, 120, 160)) +  # ensures axis starts at 0 so no gap
+  scale_fill_manual(values = tc_area_colours) +
+  theme(axis.line.y = element_blank(),
+        axis.ticks.y = element_blank(),
+        axis.line.x = element_blank(),
+        legend.position = "none")
+ 
+# Create cowplot of both plots
+tc_raw_chloro_bar = ggdraw() +
+  draw_plot(tc_area_chloro) +
+  draw_plot(tc_area_bar,
+            width = 0.3, height = 0.6,
+            x = 0.57, y = 0.19)
+
 # 
 # 
 # ###################################
