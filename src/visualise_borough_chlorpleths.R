@@ -96,7 +96,7 @@ CID_count$SignalsNA[CID_count$SignalsNA == 0] = NA
 
 # keep safety related assets
 CID_count_safety = CID_count %>%
-  select(c("BOROUGH", "ASL", "Crossings", "CycleLanesAndTracks", "Signals", "SignalsNA", "TrafficCalming"))
+  select(c("BOROUGH", "ASL", "Crossings", "Signals", "SignalsNA", "TrafficCalming"))
 CID_length_safety = CID_length %>%
   select(c("BOROUGH", "CycleLaneTrack_km"))
 
@@ -146,13 +146,13 @@ chloropleth_dataset = left_join(denominators, CID_counts)
 
 # produce counts by area and per head population (NB may want to consider per 100,000 pop at some point)
 chloropleth_dataset <- chloropleth_dataset %>%
-  mutate(across(.cols = c("ASL", "Crossings", "CycleLanesAndTracks", "Signals", "SignalsNA", "TrafficCalming"),
+  mutate(across(.cols = c("ASL", "Crossings", "CycleLaneTrack_km", "Signals", "SignalsNA", "TrafficCalming"),
                 .fns = ~.x/Borough_Area_km2,
                 .names = "{.col}_by_area")) %>%
-  mutate(across(.cols = c("ASL", "Crossings", "CycleLanesAndTracks", "Signals", "SignalsNA", "TrafficCalming"),
+  mutate(across(.cols = c("ASL", "Crossings", "CycleLaneTrack_km", "Signals", "SignalsNA", "TrafficCalming"),
                 .fns = ~.x/Population_100000,
                 .names = "{.col}_per_100000pop")) %>%
-  mutate(across(.cols = c("ASL", "Crossings", "CycleLanesAndTracks", "Signals","SignalsNA", "TrafficCalming"),
+  mutate(across(.cols = c("ASL", "Crossings", "CycleLaneTrack_km", "Signals","SignalsNA", "TrafficCalming"),
                 .fns = ~.x/total_100000km_cycled_for_commuting_per_year_estimated,
                 .names = "{.col}_per_100000km_cycled"))
 
@@ -416,12 +416,25 @@ tc_raw_chloro_bar = ggdraw() +
 # Cycle lanes and Tracks - LENGTH #
 ###################################
 
+# Commented code may be deleted if subsequent code works best
 # Convert clt length to integer (and rounded) so that intervals are plotted ok
-chloropleth_dataset$CLT_km_integer = as.integer(round(units::drop_units(chloropleth_dataset$CycleLaneTrack_km)))
+#chloropleth_dataset$CLT_km_integer = as.integer(round(units::drop_units(chloropleth_dataset$CycleLaneTrack_km))) 
+# converts the 140.5 into 140
+# # create chloropleth
+# clt_raw_chloro = tm_shape(chloropleth_dataset) +
+#   tm_polygons("CLT_km_integer", title = "Total length (km)") +
+#   tm_layout(title = "Cycle lanes and tracks",
+#             legend.title.size = 1,
+#             legend.text.size = 0.7,
+#             legend.position = c("left","bottom"),
+#             legend.bg.alpha = 1,
+#             inner.margins = c(0.1,0.1,0.1,0.42), # creates wide right margin for barchart
+#             frame = FALSE)
 
-# create chloropleth
+# create chloropleth (if just used length as opposed to integer)
 clt_raw_chloro = tm_shape(chloropleth_dataset) +
-  tm_polygons("CLT_km_integer", title = "Total length (km)") +
+  tm_polygons("CycleLaneTrack_km", title = "Total length (km)", 
+              legend.format = list(text.separator = "<")) +
   tm_layout(title = "Cycle lanes and tracks",
             legend.title.size = 1,
             legend.text.size = 0.7,
@@ -429,25 +442,28 @@ clt_raw_chloro = tm_shape(chloropleth_dataset) +
             legend.bg.alpha = 1,
             inner.margins = c(0.1,0.1,0.1,0.42), # creates wide right margin for barchart
             frame = FALSE)
-# 
+
 # # # convert chloro to grob
 clt_raw_chloro = tmap_grob(clt_raw_chloro) 
 
 # Generate barchart
-#Generate new column that divides CLT length into groups
+
+# create new column where units (km^2) are removed (need units to be removed to draw bar chart)
+chloropleth_dataset$clt_raw_numeric = round(units::drop_units(chloropleth_dataset$CycleLaneTrack_km), digits = 2)
+
 chloropleth_dataset <- chloropleth_dataset %>%
-  mutate(clt_group = cut(CycleLaneTrack_km,
-                         breaks = seq(21, 141, by = 20),
-                         labels = c("21 to 40", "41 to 60", "61 to 80", "81 to 100",
-                                    "101 to 120", "121 to 140"),
-                         right = FALSE)) # this means that 50 is included in 1 to 50
+  mutate(clt_raw_group = cut(clt_raw_numeric,
+                             breaks = seq(20, 160, by = 20),
+                             labels = c("20 < 40", "41 < 60", "60 < 80", "80 < 100",
+                                        "100 < 120", "120 < 140", "140 < 160"),
+                             right = FALSE)) # this means that 140.5 is included in 140 < 150
 
 # # Create vector of colours that match the chloropleth
-clt_raw_colours = c("#ffffd4","#fee391", "#fec44f", "#fe9929", "#d95f0e", "#993404")
+clt_raw_colours = c("#ffffd4","#fee391", "#fec44f", "#fe9929", "#ec7014", "#cc4c02", "#8c2d04")
 
 # create Bar chart
-clt_raw_bar = ggplot(chloropleth_dataset, aes(x = reorder(Borough_number, -CLT_km_integer), 
-                                  y = CLT_km_integer, fill = clt_group)) +
+clt_raw_bar = ggplot(chloropleth_dataset, aes(x = reorder(Borough_number, -clt_raw_numeric), 
+                                  y = clt_raw_numeric, fill = clt_raw_group)) +
   geom_bar(stat = "identity", color = "black", size = 0.1) +  # adds borders to bars
   coord_flip() +
   labs(y = "Length in km", x = NULL) +
@@ -745,15 +761,14 @@ tc_raw_chloro_bar = ggdraw() +
             width = 0.3, height = 0.6,
             x = 0.57, y = 0.19)
 
-# 
-# 
+ 
 # ###################################
 # # Cycle lanes and Tracks - LENGTH #
 # ###################################
-# 
-# # Convert clt length to integer (and rounded) so that intervals are plotted ok
-# chloropleth_dataset$CLT_km_integer = as.integer(round(units::drop_units(chloropleth_dataset$CycleLaneTrack_km)))
-# 
+
+ # Convert clt length to integer (and rounded) so that intervals are plotted ok
+chloropleth_dataset$CLT_by_area_numeric = as.integer(round(units::drop_units(chloropleth_dataset$CycleLanesAndTracks_by_area)))
+ 
 # # create chloropleth
 # clt_raw_chloro = tm_shape(chloropleth_dataset) +
 #   tm_polygons("CLT_km_integer", title = "Total length (km)") +
