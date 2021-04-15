@@ -14,6 +14,8 @@ library(cowplot)
 library(patchwork)
 library(sf)
 library(tmaptools) # for palette explorer 
+library(ggpubr) # for text grobs
+library(ggspatial) # get north arrow and bar
 
 ################################
 # Load and manipulate datasets #
@@ -164,7 +166,157 @@ city_chloropleth_dataset = chloropleth_dataset %>%
 #                             Orientation maps                                #
 ###############################################################################
 
-# Boroughs area and numbers
+# Create context for map
+
+# 1) Borough boundaries and labelling
+boroughs <- st_read("/home/bananafan/Documents/PhD/Paper1/map_data/London_Borough_Excluding_MHW.shp")
+borough_areas <- rmapshaper::ms_simplify(boroughs, keep=0.015) #Simplify boroughs
+borough_areas = rename(boroughs, BOROUGH = NAME)
+
+borough_areas$B_numbered = fct_recode(borough_areas$BOROUGH, 
+                                      "7" = "Kensington and Chelsea",
+                                      "32" = "Barking and Dagenham",
+                                      "8" = "Hammersmith and Fulham",
+                                      "25" = "Kingston upon Thames",
+                                      "24" = "Richmond upon Thames",
+                                      "1" = "City of London",
+                                      "15" = "Waltham Forest",
+                                      "28" = "Croydon",
+                                      "29" = "Bromley",
+                                      "23" = "Hounslow",
+                                      "20" = "Ealing",
+                                      "31" = "Havering",
+                                      "22" = "Hillingdon",
+                                      "21" = "Harrow",
+                                      "19" = "Brent",
+                                      "18" = "Barnet",
+                                      "10" = "Lambeth",
+                                      "11" = "Southwark", 
+                                      "12" = "Lewisham",
+                                      "13" = "Greenwich",
+                                      "30" = "Bexley",
+                                      "17" = "Enfield",
+                                      "33" = "Redbridge",
+                                      "27" = "Sutton",
+                                      "26" = "Merton",
+                                      "9" = "Wandsworth",
+                                      "6" = "Westminster",
+                                      "5" = "Camden",
+                                      "2" = "Tower Hamlets",
+                                      "4" = "Islington",
+                                      "3" = "Hackney",
+                                      "16" = "Haringey",
+                                      "14" = "Newham")
+
+
+
+# Create Inner London Borough list
+inn_lon_B_list = c("City of London", "Camden", "Greenwich", "Hackney", "Hammersmith & Fulham", 
+                   "Islington", "Kensington & Chelsea", "Lambeth", "Lewisham", "Southwark",  
+                   "Tower Hamlets", "Wandsworth", "Westminster") 
+
+# Create inner London spatial object for boundary
+inn_lon_union = borough_areas %>%
+  filter(BOROUGH %in% inn_lon_B_list) %>%
+  st_union()
+# Create Outer London Spatial object for boundary
+out_lon_union = borough_areas %>%
+  filter(!BOROUGH %in% inn_lon_B_list) %>%
+  st_union()
+
+
+### using short names in tmap
+# mapped_boroughs1 = tm_shape(mapping_boroughs) +
+#   tm_fill(col = "ivory2") +
+#   tm_borders() +
+#   tm_text("SHORT", size = 0.7) +
+#   tm_layout(bg.color = "lightblue")
+
+# 2) River thames
+riverthames = st_read("/home/bananafan/Documents/PhD/Paper1/map_data/riverthames.shp")
+riverthames_simplify = rmapshaper::ms_simplify(riverthames)
+
+# # 3) Motorways
+# motorways <- st_read("/home/bananafan/Documents/PhD/Paper1/map_data/motorways_outer.json") %>% 
+#   st_transform(crs=27700) 
+# box_new = c(xmin = 498745.5, ymin = 149044.6, xmax = 564000.0, ymax = 205391.0)
+# motorways = st_crop(motorways, box_new)
+# #box_orig = c(xmin = 498745.5, ymin = 149044.6, xmax = 569602.4, ymax = 205391.0)
+# 
+# # 4) Create map legend
+# # create legend text
+# legend_text =  data.frame(
+#   lineend = c("River", "Inner London", "Outer London", "Motorway"),
+#   linejoin = c("Thames", "Boundary", "Boundary", "Network"))
+# 
+# # create legend dataframe
+# df = data.frame(legend_text, y = 1:4)
+# 
+# # create ggplot for map legend
+# legend = ggplot(df, aes(x = 1, y = y, xend = 1.5, yend = y, label = paste(lineend, linejoin))) +
+#   geom_segment(size = 3, colour = c("#99CCEE", "#991100", "black", "#b77107")) +
+#   geom_text(hjust = 'outside', nudge_x = -0.25) +
+#   xlim(0.5, 1.5) +
+#   theme_void() +
+#   theme(plot.margin = unit(c(0.25, 0.25, 0.25, -7.5), "cm"))
+
+# 5) Create borough legend
+text1 = paste("1 City of London", "2 Tower Hamlets", "3 Hackney",
+              "4 Islington", "5 Camden", "6 Westminster",
+              "7 Kensington and Chelsea", "8 Hammersmith and Fulham",
+              "9 Wandsworth", "10 Lambeth", "11 Southwark", 
+              "12 Lewisham", "13 Greenwich", "14 Newham",
+              "15 Waltham Forest", "16 Haringey", sep = "\n")
+
+text2 = paste("17 Enfield", "18 Barnet", "19 Brent", "20 Ealing", "21 Harrow", 
+              "22 Hillingdon", "23 Hounslow", "24 Richmond upon Thames",
+              "25 Kingston upon Thames", "26 Merton", "27 Sutton", 
+              "28 Croydon", "29 Bromley", "30 Bexley", "31 Havering", 
+              "32 Barking and Dagenham", "33 Redbridge", sep = "\n")
+
+# Create text grobs
+B1_grob = ggpubr::text_grob(text1, just = "left")    
+B2_grob = ggpubr::text_grob(text2, just = "left")   
+
+# Convert text grobs to ggplot objects
+B1_ggplot = as_ggplot(B1_grob) + 
+  theme(plot.margin = unit(c(0.5, -1, -1, -12), "cm"))
+
+B2_ggplot = as_ggplot(B2_grob) +
+  theme(plot.margin = unit(c(0.5, -1, 1, -12), "cm"))
+
+
+# Create base maps
+# with and without scales and arrows
+basemap = ggplot()+
+  geom_sf(data = out_lon_union, fill="white", colour = "black") +
+  geom_sf(data = inn_lon_union, colour = "#991100") +
+  geom_sf(data=borough_areas, fill="#d4d4d4",  colour="black", alpha=0.3, size=0.15)+
+  geom_sf(data=riverthames_simplify, fill="#99CCEE",  colour="#99CCEE")+
+  geom_sf_label(data = borough_areas, aes(label = B_numbered)) +
+  theme_bw() +
+  coord_sf(crs=st_crs(riverthames_simplify), datum=NA) +
+  xlab(label = NULL) +
+  ylab(label = NULL) +
+  annotation_scale(location = "br", width_hint = 0.3, bar_cols = c("Gray83", "white"),
+                   text_cex = 0.5, line_width = 0.5, line_col = "#222222") +
+  annotation_north_arrow(location = "tr", which_north = "true", 
+                         height = unit(1.3, "cm"), width = unit(1.3, "cm"),
+                         style = north_arrow_fancy_orienteering(line_width = 0.5, 
+                                                                line_col = "#222222",
+                                                                fill = c("white", "Gray83"),
+                                                                text_size = 8))
+
+
+# borough orientation plot
+basemap + (B1_ggplot | B2_ggplot) # needs tidying more
+
+
+
+
+
+
+# 2) Boroughs area and numbers
 
 # Raw population
 population_chloro = tm_shape(chloropleth_dataset) +
@@ -183,9 +335,9 @@ population_chloro = tm_shape(chloropleth_dataset) +
 # ? will need to convert to grob ?
 #population_chloro = tmap_grob(population_chloro) 
 
-# PCT cycling chloropleth 
-tm_shape(chloropleth_dataset) +
-  tm_polygons("total_100000km_cycled_for_commuting_per_year_estimated", title = "100,000 km per year", 
+# 3) PCT cycling chloropleth 
+pct_chloro = tm_shape(chloropleth_dataset) +
+  tm_polygons("total_km_cycled_for_commuting_per_year_estimated", title = "Million km", 
               #breaks = c(0, 80000, 160000, 240000, 340000, 400000),
               #legend.format = list(text.separator = "<"),
               palette = "-cividis") + 
@@ -1280,8 +1432,179 @@ crossings_pct_chloro_bar = ggdraw() +
             x = 0.57, y = 0.19)
 
 
+########################
+# Signals - PCT - reds #
+########################
+
+# # create chloropleth - use SignalsNA as the polygon as this then colours the NAs grey (missing)
+signals_pct_chloro = tm_shape(chloropleth_dataset) +
+  tm_polygons("SignalsNA_per_100000km_cycled", palette = "Reds",
+              breaks = c(0, 0.25, 0.5, 0.75, 1, 1.25, 1.5),
+              legend.show = FALSE) + 
+  tm_layout(title = "Signals",
+            legend.title.size = 1,
+            legend.text.size = 0.7,
+            legend.position = c("left","bottom"),
+            legend.bg.alpha = 1,
+            inner.margins = c(0.1,0.1,0.1,0.42), # creates wide right margin for barchart
+            frame = FALSE) +
+  tm_add_legend(type = "fill", 
+                labels = c("0", "> 0 < 0.25", "0.25 < 0.50", "0.50 < 0.75", "0.75 < 1.00", 
+                           "1.00 < 1.25", "1.25 < 1.50"), # enables relabelling of 'Missing/NA' as 0
+                col = c("grey", "#fee5d9", "#fcbba1", "#fc9272", "#fb6a4a", "#de2d26", "#a50f15"),
+                border.lwd = 0.5,
+                title = "Count per 100,000 km cycle commute")
+
+# convert chloro to grob
+signals_pct_chloro = tmap_grob(signals_pct_chloro)
 
 
+# Generate barchart
+# Generate new column that divides signal count into groups
+chloropleth_dataset <- chloropleth_dataset %>%
+  mutate(signals_pct_group = cut(SignalsNA_per_100000km_cycled,
+                                 breaks = c(0, 0.25, 0.5, 0.75, 1, 1.25, 1.5),
+                                 labels = c("> 0 < 0.25", "0.25 < 0.50", "0.50 < 0.75", "0.75 < 1.00", 
+                                            "1.00 < 1.25", "1.25 < 1.50"),
+                                 right = FALSE))
+
+
+# Create vector of colours that match the chloropleth
+signals_pct_colours = c("#fee5d9", "#fcbba1", "#fc9272", "#fb6a4a", "#a50f15")
+
+# # # create Bar chart
+signals_pct_bar = ggplot(chloropleth_dataset, aes(x = reorder(Borough_number, -SignalsNA_per_100000km_cycled),
+                                                  y = SignalsNA_per_100000km_cycled, # this means those that are missing are shown with no bars
+                                                  fill = signals_pct_group)) +
+  geom_bar(stat = "identity", color = "black", size = 0.1) +
+  coord_flip() +
+  labs(y = "Count per 100,000 km cycle commute", x = NULL) +
+  theme_classic() +
+  scale_y_continuous(limits = c(0, 1.5), expand = c(0,0)) +  # ensures axis starts at 0 so no gap
+  scale_fill_manual(values = signals_pct_colours) +
+  theme(axis.ticks.y = element_blank(),
+        axis.line.y = element_blank(),
+        axis.line.x = element_blank(),
+        legend.position = "none")
+
+# # Create cowplot of both plots
+signals_pct_chloro_bar = ggdraw() +
+  draw_plot(signals_pct_chloro) +
+  draw_plot(signals_pct_bar,
+            width = 0.3, height = 0.6,
+            x = 0.57, y = 0.19)
+
+
+################################################
+# Cycle lanes and Tracks (length) - PCT - reds #
+################################################
+
+# create chloropleth
+clt_pct_chloro = tm_shape(chloropleth_dataset) +
+  tm_polygons("CycleLaneTrack_km_per_100000km_cycled", title = "Total length (km) per 100,000km cycle commute", 
+              breaks = c(0, 4, 8, 12, 16, 20, 24),
+              palette = "Reds") +
+  tm_layout(title = "Cycle lanes and tracks",
+            legend.title.size = 1,
+            legend.text.size = 0.7,
+            legend.position = c("left","bottom"),
+            legend.bg.alpha = 1,
+            inner.margins = c(0.1,0.1,0.1,0.42), # creates wide right margin for barchart
+            frame = FALSE)
+
+# # # convert chloro to grob
+clt_pct_chloro = tmap_grob(clt_pct_chloro) 
+
+# # Generate barchart
+# create new column where units (km^2) are removed (need units to be removed to draw bar chart)
+chloropleth_dataset$clt_pct_numeric = round(units::drop_units(chloropleth_dataset$CycleLaneTrack_km_per_100000km_cycled), digits = 2)
+
+chloropleth_dataset <- chloropleth_dataset %>%
+  mutate(clt_pct_group = cut(clt_pct_numeric,
+                             breaks = c(0, 4, 8, 12, 16, 20, 24),
+                             labels = c("> 0 < 4", "4 < 8", "8 < 12", "12 < 16", "16 < 20",
+                                        "20 < 24"),
+                             right = FALSE))
+
+# Create vector of colours that match the chloropleth
+clt_pct_colours = c("#fee5d9","#fcbba1", "#fc9272", "#fb6a4a",
+                      "#de2d26", "#a50f15")
+
+# create Bar chart
+clt_pct_bar = ggplot(chloropleth_dataset, aes(x = reorder(Borough_number, -clt_pct_numeric),
+                                              y = clt_pct_numeric, fill = clt_pct_group)) +
+  geom_bar(stat = "identity", color = "black", size = 0.1) +  # adds borders to bars
+  coord_flip() +
+  labs(y = "Total length (km) per 100,000km cycle commute", x = NULL) +
+  theme_classic() +
+  scale_y_continuous(limits = c(0, 24), expand = c(0,0)) +  # ensures axis starts at 0 so no gap
+  scale_fill_manual(values = clt_pct_colours) +
+  theme(axis.line.y = element_blank(),
+        axis.ticks.y = element_blank(),
+        axis.line.x = element_blank(),
+        legend.position = "none")
+
+# # Create cowplot of both plots
+clt_pct_chloro_bar = ggdraw() +
+  draw_plot(clt_pct_chloro) +
+  draw_plot(clt_pct_bar,
+            width = 0.3, height = 0.6,
+            x = 0.57, y = 0.19)
+
+
+# ################################
+# # Traffic calming - PCT (reds) # 
+# ################################
+
+# # create chloropleth
+tc_pct_chloro = tm_shape(chloropleth_dataset) +
+  tm_polygons("TrafficCalming_per_100000km_cycled", title = "Count per 100,000km cycle commute", palette = "Reds",
+              legend.format = list(text.separator = "<")) +
+  tm_layout(title = "Traffic calming",
+            legend.title.size = 1,
+            legend.text.size = 0.7,
+            legend.position = c("left","bottom"),
+            legend.bg.alpha = 1,
+            inner.margins = c(0.1,0.1,0.1,0.42), # creates wide right margin for barchart
+            frame = FALSE)
+
+# convert chloro to grob
+tc_pct_chloro = tmap_grob(tc_pct_chloro)
+
+# # Generate barchart
+# Generate new column that divides traffic calming count into groups
+chloropleth_dataset <- chloropleth_dataset %>%
+  mutate(tc_pct_group = cut(TrafficCalming_per_100000km_cycled,
+                            breaks = seq(0, 350, by = 50),
+                            labels = c("> 0 < 50", "50 < 100", "100 < 150", 
+                                       "150 < 200", "200 < 250", "250 < 300", "300 < 350"),
+                            right = FALSE))
+
+# # Create vector of colours that match the chloropleth
+tc_pct_colours = c("#fee5d9","#fcbba1", "#fc9272", "#fb6a4a",
+                   "#ef3b2c", "#99000d")
+#
+# # create Bar chart
+tc_pct_bar = ggplot(chloropleth_dataset, aes(x = reorder(Borough_number, -TrafficCalming_per_100000km_cycled),
+                                             y = TrafficCalming_per_100000km_cycled,
+                                             fill = tc_pct_group)) +
+  geom_bar(stat = "identity", color = "black", size = 0.1) + # adds borders to bars
+  coord_flip() +
+  labs(y = " Count per 100,000km cycle commute", x = NULL) +
+  theme_classic() +
+  scale_y_continuous(limits = c(0, 350), expand = c(0,0)) +
+  scale_fill_manual(values = tc_pct_colours) +
+  theme(axis.line.y = element_blank(),
+        axis.ticks.y = element_blank(),
+        axis.line.x = element_blank(),
+        legend.position = "none")
+#
+# # Create cowplot of both plots
+tc_pct_chloro_bar = ggdraw() +
+  draw_plot(tc_pct_chloro) +
+  draw_plot(tc_pct_bar,
+            width = 0.3, height = 0.6,
+            x = 0.57, y = 0.19)
 
 
 
