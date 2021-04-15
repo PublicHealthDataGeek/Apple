@@ -160,7 +160,42 @@ chloropleth_dataset <- chloropleth_dataset %>%
 city_chloropleth_dataset = chloropleth_dataset %>%
    filter(BOROUGH == "City of London")
 
+###############################################################################
+#                             Orientation maps                                #
+###############################################################################
 
+# Boroughs area and numbers
+
+# Raw population
+population_chloro = tm_shape(chloropleth_dataset) +
+  tm_polygons("Population", title = "Population", 
+              #breaks = c(0, 80000, 160000, 240000, 340000, 400000),
+              #legend.format = list(text.separator = "<"),
+              palette = "-cividis") + 
+  tm_layout(title = "Estimated population 2019 (ONS)",
+            legend.title.size = 1,
+            legend.text.size = 0.7,
+            legend.position = c("left","bottom"),
+            legend.bg.alpha = 1,
+            inner.margins = c(0.1,0.1,0.1,0.42), # creates wide right margin for barchart
+            frame = FALSE) 
+
+# ? will need to convert to grob ?
+#population_chloro = tmap_grob(population_chloro) 
+
+# PCT cycling chloropleth 
+tm_shape(chloropleth_dataset) +
+  tm_polygons("total_100000km_cycled_for_commuting_per_year_estimated", title = "100,000 km per year", 
+              #breaks = c(0, 80000, 160000, 240000, 340000, 400000),
+              #legend.format = list(text.separator = "<"),
+              palette = "-cividis") + 
+  tm_layout(title = "Estimated annual amount of commuter cycling through Borough (2011 Census) REf PCT",
+            legend.title.size = 1,
+            legend.text.size = 0.7,
+            legend.position = c("left","bottom"),
+            legend.bg.alpha = 1,
+            inner.margins = c(0.1,0.1,0.1,0.42), # creates wide right margin for barchart
+            frame = FALSE) 
 
 
 ###############################################################################
@@ -1192,18 +1227,14 @@ asl_pct_chloro_bar = ggdraw() +
             x = 0.57, y = 0.19)
 
 
-###################
-# Crossings - PCT #
-###################
+##########################
+# Crossings - PCT - reds #
+##########################
 
 # create chloropleth
 crossings_pct_chloro = tm_shape(chloropleth_dataset) +
   tm_polygons("Crossings_per_100000km_cycled", title = "Count per 100,000 km cycle commute", palette = "Reds", 
-              #breaks = c(0, 10, 20, 30, 40),
               legend.format = list(text.separator = "<")) +
-  # tm_shape(city_chloropleth_dataset) +
-  # tm_polygons("Crossings_per_100000pop", title = "", palette = "inferno", breaks = c(140, 150),
-  #             legend.format = list(text.separator = "<")) +
   tm_layout(title = "Crossings",
             legend.title.size = 1,
             legend.text.size = 0.7,
