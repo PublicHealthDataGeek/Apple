@@ -755,7 +755,7 @@ tc_area_bar = ggplot(chloropleth_dataset, aes(x = reorder(Borough_number, -Traff
         legend.position = "none")
  
 # Create cowplot of both plots
-tc_raw_chloro_bar = ggdraw() +
+tc_area_chloro_bar = ggdraw() +
   draw_plot(tc_area_chloro) +
   draw_plot(tc_area_bar,
             width = 0.3, height = 0.6,
@@ -912,9 +912,7 @@ crossings_pop_chloro = tm_shape(chloropleth_dataset) +
 crossings_pop_chloro = tmap_grob(crossings_pop_chloro) 
  
 # # Generate barchart
-# # Drop units and round so that intervals are plotted ok
-# chloropleth_dataset$crossings_by_area_numeric = round(units::drop_units(chloropleth_dataset$Crossings_by_area), digits = 2)
-# 
+
 # Generate new column that divides Crossing count into groups
 chloropleth_dataset <- chloropleth_dataset %>%
   mutate(crossings_pop_group = cut(Crossings_per_100000pop,
@@ -979,7 +977,6 @@ signals_pop_chloro = tmap_grob(signals_pop_chloro)
 
 # Generate barchart
 # Generate new column that divides signal count into groups
-
 chloropleth_dataset <- chloropleth_dataset %>%
   mutate(signals_pop_group = cut(SignalsNA_per_100000pop,
                                  breaks = c(0, 10, 20, 30, 40, 600),
@@ -1087,57 +1084,54 @@ clt_pop_chloro_bar = ggdraw() +
 # #########################################
 
 # # create chloropleth
-# tc_area_chloro = tm_shape(chloropleth_dataset) +
-#   tm_polygons("TrafficCalming_by_area", title = "Count by km^2", palette = "Greens",
-#               breaks = (c(0, 40, 80, 120, 160)),
-#               legend.format = list(text.separator = "<")) +
-#   tm_layout(title = "Traffic calming",
-#             legend.title.size = 1,
-#             legend.text.size = 0.7,
-#             legend.position = c("left","bottom"),
-#             legend.bg.alpha = 1,
-#             inner.margins = c(0.1,0.1,0.1,0.42), # creates wide right margin for barchart
-#             frame = FALSE)
-# 
-# # # convert chloro to grob
-# tc_area_chloro = tmap_grob(tc_area_chloro)
-# 
-# # # Generate barchart
-# # # Drop units and round so that intervals are plotted ok
-# chloropleth_dataset$TrafficCalming_by_area_numeric = round(units::drop_units(chloropleth_dataset$TrafficCalming_by_area), digits = 2)
-# 
-# # Generate new column that divides traffic calming count into groups
-# chloropleth_dataset <- chloropleth_dataset %>%
-#   mutate(tc_area_group = cut(TrafficCalming_by_area_numeric,
-#                              breaks = seq(0, 160, by = 40),
-#                              labels = c("> 0 < 40", "40 < 80", "80 < 120", "120 < 140"),
-#                              right = FALSE))
-# 
-# # # Create vector of colours that match the chloropleth
-# tc_area_colours = c("#eff3ff", "#bdd7e7", "#6baed6", "#2171b5")
-# # 
-# # # create Bar chart
-# tc_area_bar = ggplot(chloropleth_dataset, aes(x = reorder(Borough_number, -TrafficCalming_by_area_numeric), 
-#                                               y = TrafficCalming_by_area_numeric, 
-#                                               fill = tc_area_group)) +
-#   geom_bar(stat = "identity", color = "black", size = 0.1) + # adds borders to bars
-#   coord_flip() +
-#   labs(y = "Count per km^2", x = NULL) +
-#   theme_classic() +
-#   scale_y_continuous(limits = c(0, 160), expand = c(0,0),
-#                      breaks = c(0, 40, 80, 120, 160)) +  # ensures axis starts at 0 so no gap
-#   scale_fill_manual(values = tc_area_colours) +
-#   theme(axis.line.y = element_blank(),
-#         axis.ticks.y = element_blank(),
-#         axis.line.x = element_blank(),
-#         legend.position = "none")
+tc_pop_chloro = tm_shape(chloropleth_dataset) +
+  tm_polygons("TrafficCalming_per_100000pop", title = "Count per 100,000 population", palette = "Greens",
+              breaks = c(0, 400, 800, 1200, 1600, 2000),
+              legend.format = list(text.separator = "<")) +
+  tm_layout(title = "Traffic calming",
+            legend.title.size = 1,
+            legend.text.size = 0.7,
+            legend.position = c("left","bottom"),
+            legend.bg.alpha = 1,
+            inner.margins = c(0.1,0.1,0.1,0.42), # creates wide right margin for barchart
+            frame = FALSE)
+ 
+# convert chloro to grob
+tc_pop_chloro = tmap_grob(tc_pop_chloro)
+
+# # Generate barchart
+# Generate new column that divides traffic calming count into groups
+chloropleth_dataset <- chloropleth_dataset %>%
+  mutate(tc_pop_group = cut(TrafficCalming_per_100000pop,
+                             breaks = seq(0, 2000, by = 400),
+                             labels = c("> 0 < 400", "400 < 800", "800 < 1200", "1200 < 1600", "1600 < 2000"),
+                             right = FALSE))
+
+# # Create vector of colours that match the chloropleth
+tc_pop_colours = c("#edf8e9", "#bae4b3", "#74c476", "#006d2c") # only 4 colours as none in 1200<1600 group
+#
+# # create Bar chart
+tc_pop_bar = ggplot(chloropleth_dataset, aes(x = reorder(Borough_number, -TrafficCalming_per_100000pop),
+                                              y = TrafficCalming_per_100000pop,
+                                              fill = tc_pop_group)) +
+  geom_bar(stat = "identity", color = "black", size = 0.1) + # adds borders to bars
+  coord_flip() +
+  labs(y = "Count per 100,000 population", x = NULL) +
+  theme_classic() +
+  scale_y_continuous(limits = c(0, 1900), expand = c(0,0),
+                     breaks = c(0, 400, 800, 1200, 1600, 2000)) +  # ensures axis starts at 0 so no gap
+  scale_fill_manual(values = tc_pop_colours) +
+  theme(axis.line.y = element_blank(),
+        axis.ticks.y = element_blank(),
+        axis.line.x = element_blank(),
+        legend.position = "none")
 # 
 # # Create cowplot of both plots
-# tc_raw_chloro_bar = ggdraw() +
-#   draw_plot(tc_area_chloro) +
-#   draw_plot(tc_area_bar,
-#             width = 0.3, height = 0.6,
-#             x = 0.57, y = 0.19)
+tc_pop_chloro_bar = ggdraw() +
+  draw_plot(tc_pop_chloro) +
+  draw_plot(tc_pop_bar,
+            width = 0.3, height = 0.6,
+            x = 0.57, y = 0.19)
 
 
 
