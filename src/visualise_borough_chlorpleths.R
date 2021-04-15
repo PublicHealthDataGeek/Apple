@@ -156,8 +156,9 @@ chloropleth_dataset <- chloropleth_dataset %>%
                 .fns = ~.x/total_100000km_cycled_for_commuting_per_year_estimated,
                 .names = "{.col}_per_100000km_cycled"))
 
-
-
+# Create df of just City of London data as this is an outlier and often needs to be handled differently in the visualisations
+city_chloropleth_dataset = chloropleth_dataset %>%
+   filter(BOROUGH == "City of London")
 
 
 
@@ -495,10 +496,6 @@ clt_raw_chloro_bar = ggdraw() +
 # ASL #
 #######
 
-# Pull out City data as not comparable to other Boroughs (42 versus less than 14 for the rest)
-city_chloropleth_dataset = chloropleth_dataset %>%
-  filter(BOROUGH == "City of London")
-
 # # create chloropleth
 asl_area_chloro = tm_shape(chloropleth_dataset) +
   tm_polygons("ASL_by_area", title = "Count per km^2", palette = "Blues",
@@ -619,9 +616,6 @@ crossings_area_chloro_bar = ggdraw() +
 # # Signals #
 # ###########
 
-# Pull out City data as not comparable to other Boroughs (20 versus less than 5 for the rest)
-city_chloropleth_dataset = chloropleth_dataset %>%
-  filter(BOROUGH == "City of London")
 
 # # create chloropleth - 
 signals_area_chloro = tm_shape(chloropleth_dataset) +
@@ -1136,6 +1130,123 @@ tc_pop_chloro_bar = ggdraw() +
 
 
 
+###############################################################################
+#       Standardised to PCT data(km cycled trhough borough) - Reds            # 
+###############################################################################
+
+
+#############
+# ASL - PCT #
+#############
+
+# # create chloropleth
+asl_pct_chloro = tm_shape(chloropleth_dataset) +
+  tm_polygons("ASL_per_100000km_cycled", title = "Count per 100,000 km cycle commute", palette = "Reds",
+              breaks = c(0, 2, 4, 6, 8, 10, 12, 14),
+              legend.format = list(text.separator = "<")) +
+  tm_layout(title = "ASL",
+            legend.title.size = 1,
+            legend.text.size = 0.7,
+            legend.position = c("left","bottom"),
+            legend.bg.alpha = 1,
+            inner.margins = c(0.1,0.1,0.1,0.42), # creates wide right margin for barchart
+            frame = FALSE) 
+
+# convert chloro to grob
+asl_pct_chloro = tmap_grob(asl_pct_chloro) 
+
+# ##  Generate barchart
+
+# Generate new column that divides ASL count into groups
+chloropleth_dataset <- chloropleth_dataset %>%
+  mutate(asl_pct_group = cut(ASL_per_100000km_cycled,
+                              breaks = c(0, 2, 4, 6, 8, 10, 12, 14),
+                              labels = c("> 0 < 2", "2 < 4", "4 < 6", "6 < 8",
+                                         "8 < 10", "10 < 12", "12 < 14"),
+                              right = FALSE))
+
+# # Create vector of colours that match the chloropleth
+asl_pct_colours = c("#fee5d9","#fcbba1", "#fc9272", "#fb6a4a",
+                     "#ef3b2c", "#cb181d", "#99000d")
+
+asl_pct_bar = ggplot(chloropleth_dataset, 
+                      aes(x = reorder(Borough_number, -ASL_per_100000km_cycled), y = ASL_per_100000km_cycled, 
+                          fill = asl_pct_group)) +
+  geom_bar(stat = "identity", color = "black", size = 0.1) +  # adds borders to bars )
+  coord_flip() +
+  labs(y = "Count per 100,000km cycle commute", x = NULL) +
+  theme_classic() +
+  scale_y_continuous(expand = c(0,0)) +  # ensures axis starts at 0 so no gap
+  scale_fill_manual(values = asl_pct_colours) +
+  theme(axis.line.y = element_blank(),
+        axis.ticks.y = element_blank(),
+        axis.line.x = element_blank(),
+        legend.position = "none",
+        strip.text.x = element_blank())
+
+# # Create cowplot of both plots
+asl_pct_chloro_bar = ggdraw() +
+  draw_plot(asl_pct_chloro) +
+  draw_plot(asl_pct_bar,
+            width = 0.3, height = 0.6,
+            x = 0.57, y = 0.19)
+
+
+###################
+# Crossings - PCT #
+###################
+
+# create chloropleth
+crossings_pct_chloro = tm_shape(chloropleth_dataset) +
+  tm_polygons("Crossings_per_100000km_cycled", title = "Count per 100,000 km cycle commute", palette = "Reds", 
+              #breaks = c(0, 10, 20, 30, 40),
+              legend.format = list(text.separator = "<")) +
+  # tm_shape(city_chloropleth_dataset) +
+  # tm_polygons("Crossings_per_100000pop", title = "", palette = "inferno", breaks = c(140, 150),
+  #             legend.format = list(text.separator = "<")) +
+  tm_layout(title = "Crossings",
+            legend.title.size = 1,
+            legend.text.size = 0.7,
+            legend.position = c("left","bottom"),
+            legend.bg.alpha = 1,
+            inner.margins = c(0.1,0.1,0.1,0.42), # creates wide right margin for barchart
+            frame = FALSE)
+
+# # convert chloro to grob
+crossings_pct_chloro = tmap_grob(crossings_pct_chloro) 
+
+# # Generate barchart
+# Generate new column that divides Crossing count into groups
+chloropleth_dataset <- chloropleth_dataset %>%
+  mutate(crossings_pct_group = cut(Crossings_per_100000km_cycled,
+                                   breaks = c(0,2,4,6,8,10),
+                                   labels = c(">0 < 2", "2 < 4", "4 < 6", "6 < 8", "8 < 10"),
+                                   right = FALSE))
+
+# # # Create vector of colours that match the chloropleth
+crossings_pct_colours = c("#fee5d9","#fcae91", "#fb6a4a", "#de2d26", "#a50f15")
+
+# create Bar chart
+crossings_pct_bar = ggplot(chloropleth_dataset, aes(x = reorder(Borough_number, -Crossings_per_100000km_cycled),
+                                                    y = Crossings_per_100000km_cycled,
+                                                    fill = crossings_pct_group)) +
+  geom_bar(stat = "identity", color = "black", size = 0.1) +  # adds borders to bars
+  coord_flip() +
+  labs(y = "Count per 100,000 km cycle commute", x = NULL) +
+  theme_classic() +
+  scale_y_continuous(limits = c(0, 10), expand = c(0,0)) +
+  scale_fill_manual(values = crossings_pct_colours) +
+  theme(axis.line.y = element_blank(),
+        axis.ticks.y = element_blank(),
+        axis.line.x = element_blank(),
+        legend.position = "none")
+
+# # # Create cowplot of both plots
+crossings_pct_chloro_bar = ggdraw() +
+  draw_plot(crossings_pct_chloro) +
+  draw_plot(crossings_pct_bar,
+            width = 0.3, height = 0.6,
+            x = 0.57, y = 0.19)
 
 
 
