@@ -224,67 +224,65 @@ out_lon_union = borough_areas %>%
   filter(!BOROUGH %in% inn_lon_B_list) %>%
   st_union()
 
-
-### using short names in tmap
-# mapped_boroughs1 = tm_shape(mapping_boroughs) +
-#   tm_fill(col = "ivory2") +
-#   tm_borders() +
-#   tm_text("SHORT", size = 0.7) +
-#   tm_layout(bg.color = "lightblue")
-
 # 2) River thames
 riverthames = st_read("/home/bananafan/Documents/PhD/Paper1/map_data/riverthames.shp")
 riverthames_simplify = rmapshaper::ms_simplify(riverthames)
 
-# # 3) Motorways
-# motorways <- st_read("/home/bananafan/Documents/PhD/Paper1/map_data/motorways_outer.json") %>% 
-#   st_transform(crs=27700) 
-# box_new = c(xmin = 498745.5, ymin = 149044.6, xmax = 564000.0, ymax = 205391.0)
-# motorways = st_crop(motorways, box_new)
-# #box_orig = c(xmin = 498745.5, ymin = 149044.6, xmax = 569602.4, ymax = 205391.0)
 # 
-# # 4) Create map legend
-# # create legend text
-# legend_text =  data.frame(
-#   lineend = c("River", "Inner London", "Outer London", "Motorway"),
-#   linejoin = c("Thames", "Boundary", "Boundary", "Network"))
+# # 5) Create borough legend
+# text1 = paste("1 City of London", "2 Tower Hamlets", "3 Hackney",
+#               "4 Islington", "5 Camden", "6 Westminster",
+#               "7 Kensington and Chelsea", "8 Hammersmith and Fulham",
+#               "9 Wandsworth", "10 Lambeth", "11 Southwark", 
+#               "12 Lewisham", "13 Greenwich", "14 Newham",
+#               "15 Waltham Forest", "16 Haringey", sep = "\n")
 # 
-# # create legend dataframe
-# df = data.frame(legend_text, y = 1:4)
+# text2 = paste("17 Enfield", "18 Barnet", "19 Brent", "20 Ealing", "21 Harrow", 
+#               "22 Hillingdon", "23 Hounslow", "24 Richmond upon Thames",
+#               "25 Kingston upon Thames", "26 Merton", "27 Sutton", 
+#               "28 Croydon", "29 Bromley", "30 Bexley", "31 Havering", 
+#               "32 Barking and Dagenham", "33 Redbridge", sep = "\n")
 # 
-# # create ggplot for map legend
-# legend = ggplot(df, aes(x = 1, y = y, xend = 1.5, yend = y, label = paste(lineend, linejoin))) +
-#   geom_segment(size = 3, colour = c("#99CCEE", "#991100", "black", "#b77107")) +
-#   geom_text(hjust = 'outside', nudge_x = -0.25) +
-#   xlim(0.5, 1.5) +
-#   theme_void() +
-#   theme(plot.margin = unit(c(0.25, 0.25, 0.25, -7.5), "cm"))
+# 
+# text4 = paste("1 City of London, 2 Tower Hamlets, 3 Hackney, 4 Islington, 5 Camden, 6 Westminster, 
+#               7 Kensington and Chelsea, 8 Hammersmith and Fulham, 9 Wandsworth, 
+#               10 Lambeth, 11 Southwark, 12 Lewisham, 13 Greenwich, 14 Newham, 15 Waltham Forest",
+#               "16 Haringey, 17 Enfield, 18 Barnet, 19 Brent, 20 Ealing, 21 Harrow, 22 Hillingdon", 
+#              "23 Hounslow, 24 Richmond upon Thames, 25 Kingston upon Thames, 26 Merton, 27 Sutton, 
+#              28 Croydon, 29 Bromley, 30 Bexley, 31 Havering, 32 Barking and Dagenham, 33 Redbridge",
+#              sep = "\n")
 
-# 5) Create borough legend
-text1 = paste("1 City of London", "2 Tower Hamlets", "3 Hackney",
-              "4 Islington", "5 Camden", "6 Westminster",
-              "7 Kensington and Chelsea", "8 Hammersmith and Fulham",
-              "9 Wandsworth", "10 Lambeth", "11 Southwark", 
-              "12 Lewisham", "13 Greenwich", "14 Newham",
-              "15 Waltham Forest", "16 Haringey", sep = "\n")
-
-text2 = paste("17 Enfield", "18 Barnet", "19 Brent", "20 Ealing", "21 Harrow", 
-              "22 Hillingdon", "23 Hounslow", "24 Richmond upon Thames",
-              "25 Kingston upon Thames", "26 Merton", "27 Sutton", 
-              "28 Croydon", "29 Bromley", "30 Bexley", "31 Havering", 
-              "32 Barking and Dagenham", "33 Redbridge", sep = "\n")
+text5 = paste("1 City of London, 2 Tower Hamlets, 3 Hackney, 4 Islington, 5 Camden, 6 Westminster, 
+              7 Kensington and Chelsea, 8 Hammersmith and Fulham, 9 Wandsworth, 
+              10 Lambeth, 11 Southwark, 12 Lewisham, 13 Greenwich, 14 Newham, 15 Waltham Forest,
+              16 Haringey, 17 Enfield, 18 Barnet, 19 Brent, 20 Ealing, 21 Harrow, 22 Hillingdon, 
+              23 Hounslow, 24 Richmond upon Thames, 25 Kingston upon Thames, 26 Merton, 27 Sutton, 
+             28 Croydon, 29 Bromley, 30 Bexley, 31 Havering, 32 Barking and Dagenham, 33 Redbridge",
+              sep = "\n")
 
 # Create text grobs
-B1_grob = ggpubr::text_grob(text1, just = "left")    
-B2_grob = ggpubr::text_grob(text2, just = "left")   
+# B1_grob = ggpubr::text_grob(text1, just = "left", size = 10)    
+# B2_grob = ggpubr::text_grob(text2, just = "left", size = 10)   
+# 
+# labels_grob = ggpubr::text_grob(text, just = "left", size = 10) 
+# labels_grob2 = ggpubr::text_grob(text4, just = "centre", size = 10) 
+labels_grob3 = ggpubr::text_grob(text5, just = "centre", size = 10) 
 
 # Convert text grobs to ggplot objects
-B1_ggplot = as_ggplot(B1_grob) + 
-  theme(plot.margin = unit(c(0.5, -1, -1, -12), "cm"))
+# B1_ggplot = as_ggplot(B1_grob) + 
+#   theme(plot.margin = unit(c(0.5, -1, -1, -15), "cm"))
+# 
+# B2_ggplot = as_ggplot(B2_grob) +
+#   theme(plot.margin = unit(c(0.5, -1, 1, -15), "cm"))
+# 
+# labels_ggplot = as_ggplot(labels_grob) +
+#   theme(plot.margin = unit(c(0.5, 0, 1, -15), "cm"))
+# 
+# labels_ggplot2 = as_ggplot(labels_grob2) +
+#   theme(plot.margin = unit(c(0.5, 0, 1, -15), "cm"))
 
-B2_ggplot = as_ggplot(B2_grob) +
-  theme(plot.margin = unit(c(0.5, -1, 1, -12), "cm"))
-
+labels_ggplot3 = as_ggplot(labels_grob3) +
+  theme(plot.margin = unit(c(-0, 0, 0, -1), "cm"))
 
 # Create base maps
 # with and without scales and arrows
@@ -309,16 +307,29 @@ basemap = ggplot()+
 
 
 # borough orientation plot
-basemap + (B1_ggplot | B2_ggplot) # needs tidying more
+# basemap + labels_ggplot # needs tidying more
+# basemap /(B1_ggplot + B2_ggplot)
+# 
+# basemap + (B1_ggplot + B2_ggplot)
+
+boroughs_labelled_map = basemap / labels_ggplot3
+
+# 2) Boroughs area
+area_chloro = tm_shape(chloropleth_dataset) +
+  tm_polygons("Borough_Area_km2", title = "Area (km^2)", 
+              breaks = c(0, 30, 60, 90, 120, 150, 180),
+              #legend.format = list(text.separator = "<"),
+              palette = "-cividis") + 
+  tm_layout(title = "Borough area in km^2 (ONS)",
+            legend.title.size = 1,
+            legend.text.size = 0.7,
+            legend.position = c("left","bottom"),
+            legend.bg.alpha = 1,
+            inner.margins = c(0.1,0.1,0.1,0.42), # creates wide right margin for barchart
+            frame = FALSE) 
 
 
-
-
-
-
-# 2) Boroughs area and numbers
-
-# Raw population
+# 3) Raw population
 population_chloro = tm_shape(chloropleth_dataset) +
   tm_polygons("Population", title = "Population", 
               #breaks = c(0, 80000, 160000, 240000, 340000, 400000),
@@ -335,7 +346,7 @@ population_chloro = tm_shape(chloropleth_dataset) +
 # ? will need to convert to grob ?
 #population_chloro = tmap_grob(population_chloro) 
 
-# 3) PCT cycling chloropleth 
+# 4) PCT cycling chloropleth 
 pct_chloro = tm_shape(chloropleth_dataset) +
   tm_polygons("total_km_cycled_for_commuting_per_year_estimated", title = "Million km", 
               #breaks = c(0, 80000, 160000, 240000, 340000, 400000),
@@ -348,6 +359,19 @@ pct_chloro = tm_shape(chloropleth_dataset) +
             legend.bg.alpha = 1,
             inner.margins = c(0.1,0.1,0.1,0.42), # creates wide right margin for barchart
             frame = FALSE) 
+
+
+# # convert chloro to grob
+boroughs_labelled_map = tmap_grob(boroughs_labelled_map) 
+area_chloro = tmap_grob(area_chloro)
+population_chloro = tmap_grob(population_chloro)
+pct_chloro = tmap_grob(pct_chloro)
+
+boroughs_labelled_map_ggplot = as_ggplot(boroughs_labelled_map) +
+  theme(plot.margin = unit(c(-0, 0, 0, -1), "cm"))
+x = ggdraw() +
+  draw_plot(boroughs_labelled_map) +
+  draw_plot(area_chloro)
 
 
 ###############################################################################
@@ -675,7 +699,7 @@ clt_raw_chloro_bar = ggdraw() +
 
 
 ###############################################################################
-#                         Standardised to Borough Area                        # 
+#                         Standardised to Borough Area -Blues                 # 
 ###############################################################################
 
 
@@ -1607,16 +1631,43 @@ tc_pct_chloro_bar = ggdraw() +
             x = 0.57, y = 0.19)
 
 
+###############################################################################
+#                                List of charts                               #
+###############################################################################
 
-
-
-
-
-
-
-
-
-
+# # Orientation
+# boroughs_labelled_map
+# area_chloro
+# population_chloro
+# pct_chloro
+# 
+# # Raw
+# asl_raw_chloro_bar
+# crossings_raw_chloro_bar
+# signals_raw_chloro_bar
+# tc_raw_chloro_bar
+# clt_raw_chloro_bar
+# 
+# # Area
+# asl_area_chloro_bar
+# crossings_area_chloro_bar
+# signals_area_chloro_bar
+# tc_area_chloro_bar
+# clt_area_chloro_bar
+# 
+# #Population
+# asl_pop_chloro_bar
+# crossings_pop_chloro_bar
+# signals_pop_chloro_bar
+# tc_pop_chloro_bar
+# clt_pop_chloro_bar
+# 
+# # PCT
+# asl_pct_chloro_bar
+# crossings_pct_chloro_bar
+# signals_pct_chloro_bar
+# tc_pct_chloro_bar
+# clt_pct_chloro_bar
 
 
 ####################################################
@@ -1628,7 +1679,25 @@ raw_chloro_bar_plots = (asl_raw_chloro_bar | crossings_raw_chloro_bar) /
   (signals_raw_chloro_bar | tc_raw_chloro_bar) /  
   clt_raw_chloro_bar
 
+# aso
+# asl_raw_chloro_bar/crossings_raw_chloro_bar/signals_raw_chloro_bar/tc_raw_chloro_bar/clt_raw_chloro_bar
+# 
+# #Cowplot of both plots
+# all_orientation_maps = ggdraw() +
+#   #draw_plot(boroughs_labelled_map) +
+#   draw_plot(area_chloro) + 
+#   draw_plot(population_chloro) +
+#   draw_plot(pct_chloro)
 
+
+# all_orientation = boroughs_labelled_map | area_chloro | population_chloro | pct_chloro
+
+# Use patchwork to create asset maps
+all_asl_chloro_bar = asl_raw_chloro_bar | asl_area_chloro_bar | asl_pop_chloro_bar | asl_pct_chloro_bar
+all_crossings_chloro_bar = crossings_raw_chloro_bar | crossings_area_chloro_bar | crossings_pop_chloro_bar | crossings_pct_chloro_bar
+all_signals_chloro_bar = signals_raw_chloro_bar | signals_area_chloro_bar | signals_pop_chloro_bar | signals_pct_chloro_bar
+all_tc_chloro_bar = tc_raw_chloro_bar | tc_area_chloro_bar | tc_pop_chloro_bar | tc_pct_chloro_bar
+all_clt_chloro_bar = clt_raw_chloro_bar | clt_area_chloro_bar | clt_pop_chloro_bar | clt_pct_chloro_bar
 
 ##################
 # SAVE ALL PLOTS #
