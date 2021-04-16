@@ -319,8 +319,8 @@ area_chloro = tm_shape(chloropleth_dataset) +
   tm_polygons("Borough_Area_km2", title = "Area (km^2)", 
               breaks = c(0, 30, 60, 90, 120, 150, 180),
               #legend.format = list(text.separator = "<"),
-              palette = "-cividis") + 
-  tm_layout(title = "Borough area in km^2 (ONS)",
+              palette = "Blues") + 
+  tm_layout(title = "Borough area in km^2 (ONS)  COLOUR WRONG IN BAR CHART!",
             legend.title.size = 1,
             legend.text.size = 0.7,
             legend.position = c("left","bottom"),
@@ -328,13 +328,53 @@ area_chloro = tm_shape(chloropleth_dataset) +
             inner.margins = c(0.1,0.1,0.1,0.42), # creates wide right margin for barchart
             frame = FALSE) 
 
+# # convert chloro to grob
+area_chloro = tmap_grob(area_chloro) 
+
+# Generate barchart
+# Drop units and round so that intervals are plotted ok
+chloropleth_dataset$Borough_Area_km2_no_units = round(units::drop_units(chloropleth_dataset$Borough_Area_km2), digits = 2)
+
+# Generate new column that divides ASL count into groups
+chloropleth_dataset <- chloropleth_dataset %>%
+  mutate(area_group = cut(Borough_Area_km2,
+                         breaks = seq(0, 180, by = 30),
+                         labels = c(">0 < 30", "30 < 60", "60 < 90", "90 < 120", "120 < 150", "150 < 180"),
+                         right = FALSE)) 
+
+# Create vector of colours that match the chloropleth
+area_colours = c("#eff3ff", "#c6dbef", "#9ecae1", "#6baed6", "#08519c")  # 5 colours as no assests in group 120<150 but doesnt colour right
+
+# create Bar chart
+area_bar = ggplot(chloropleth_dataset, aes(x = reorder(Borough_number, -Borough_Area_km2_no_units), 
+                                              y = Borough_Area_km2_no_units, fill = area_group)) +
+  geom_bar(stat = "identity", color = "black", size = 0.1) +  # adds borders to bars
+  coord_flip() +
+  labs(y = "Area (km^2)", x = NULL) +
+  theme_classic() + 
+  scale_y_continuous(limits = c(0, 160), expand = c(0,0)) +  # ensures axis starts at 0 so no gap
+  scale_fill_manual(values = asl_area_colours) +
+  theme(axis.line.y = element_blank(), 
+        axis.ticks.y = element_blank(),
+        axis.line.x = element_blank(),
+        legend.position = "none")
+
+# Create cowplot of both plots
+area_chloro_bar = ggdraw() +
+  draw_plot(area_chloro) +
+  draw_plot(area_bar,
+            width = 0.3, height = 0.6,
+            x = 0.57, y = 0.19) 
+
+
+
 
 # 3) Raw population
 population_chloro = tm_shape(chloropleth_dataset) +
   tm_polygons("Population", title = "Population", 
               #breaks = c(0, 80000, 160000, 240000, 340000, 400000),
               #legend.format = list(text.separator = "<"),
-              palette = "-cividis") + 
+              palette = "Greens") + 
   tm_layout(title = "Estimated population 2019 (ONS)",
             legend.title.size = 1,
             legend.text.size = 0.7,
@@ -343,15 +383,47 @@ population_chloro = tm_shape(chloropleth_dataset) +
             inner.margins = c(0.1,0.1,0.1,0.42), # creates wide right margin for barchart
             frame = FALSE) 
 
-# ? will need to convert to grob ?
-#population_chloro = tmap_grob(population_chloro) 
+# convert to grob ?
+population_chloro = tmap_grob(population_chloro) 
+
+# Generate new column that divides ASL count into groups
+chloropleth_dataset <- chloropleth_dataset %>%
+  mutate(pop_group = cut(Population,
+                          breaks = seq(0, 400000, by = 100000),
+                          labels = c(">0 < 100000", "100000 < 200000", "200000 < 300000", "300000 < 400000"),
+                          right = FALSE)) 
+
+# # Create vector of colours that match the chloropleth
+pop_colours = c("#edf8e9", "#bae4b3", "#74c476", "#238b45")
+
+# create Bar chart
+pop_bar = ggplot(chloropleth_dataset, aes(x = reorder(Borough_number, -Population_100000),
+                                           y = Population_100000, fill = pop_group)) +
+  geom_bar(stat = "identity", color = "black", size = 0.1) +  # adds borders to bars
+  coord_flip() +
+  labs(y = "Population of 100,000 people ", x = NULL) +
+  theme_classic() +
+  scale_y_continuous(expand = c(0,0)) +  # ensures axis starts at 0 so no gap
+  scale_fill_manual(values = pop_colours) +
+  theme(axis.line.y = element_blank(),
+        axis.ticks.y = element_blank(),
+        axis.line.x = element_blank(),
+        legend.position = "none")
+
+# Create cowplot of both plots
+pop_chloro_bar = ggdraw() +
+  draw_plot(population_chloro) +
+  draw_plot(pop_bar,
+            width = 0.3, height = 0.6,
+            x = 0.57, y = 0.19)
+
 
 # 4) PCT cycling chloropleth 
 pct_chloro = tm_shape(chloropleth_dataset) +
   tm_polygons("total_km_cycled_for_commuting_per_year_estimated", title = "Million km", 
               #breaks = c(0, 80000, 160000, 240000, 340000, 400000),
               #legend.format = list(text.separator = "<"),
-              palette = "-cividis") + 
+              palette = "Reds") + 
   tm_layout(title = "Estimated annual amount of commuter cycling through Borough (2011 Census) REf PCT",
             legend.title.size = 1,
             legend.text.size = 0.7,
@@ -360,18 +432,47 @@ pct_chloro = tm_shape(chloropleth_dataset) +
             inner.margins = c(0.1,0.1,0.1,0.42), # creates wide right margin for barchart
             frame = FALSE) 
 
-
-# # convert chloro to grob
-boroughs_labelled_map = tmap_grob(boroughs_labelled_map) 
-area_chloro = tmap_grob(area_chloro)
-population_chloro = tmap_grob(population_chloro)
+# convert chloro to grob
 pct_chloro = tmap_grob(pct_chloro)
 
-boroughs_labelled_map_ggplot = as_ggplot(boroughs_labelled_map) +
-  theme(plot.margin = unit(c(-0, 0, 0, -1), "cm"))
-x = ggdraw() +
-  draw_plot(boroughs_labelled_map) +
-  draw_plot(area_chloro)
+# # Generate barchart
+# Generate new column that divides traffic calming count into groups
+chloropleth_dataset <- chloropleth_dataset %>%
+  mutate(pct_group = cut(total_km_cycled_for_commuting_per_year_estimated,
+                            breaks = seq(0, 25000000, by = 5000000),
+                            labels = c("> 0 < 5 million", "5 < 10 million", "10 < 15 million", 
+                                       "15 < 20 million", "20 < 25 million"),
+                            right = FALSE))
+
+# # Create vector of colours that match the chloropleth
+pct_colours = c("#fee5d9","#fcae91", "#fb6a4a", "#de2d26", "#a50f15")
+
+ # create Bar chart
+pct_bar = ggplot(chloropleth_dataset, aes(x = reorder(Borough_number, -total_km_cycled_for_commuting_per_year_estimated),
+                                             y = total_km_cycled_for_commuting_per_year_estimated,
+                                             fill = pct_group)) +
+  geom_bar(stat = "identity", color = "black", size = 0.1) + # adds borders to bars
+  coord_flip() +
+  labs(y = " km cycle commute", x = NULL) +
+  theme_classic() +
+  scale_y_continuous(limits = c(0, 25000000), expand = c(0,0)) +
+  scale_fill_manual(values = pct_colours) +
+  theme(axis.line.y = element_blank(),
+        axis.ticks.y = element_blank(),
+        axis.line.x = element_blank(),
+        legend.position = "none")
+
+# # Create cowplot of both plots
+pct_chloro_bar = ggdraw() +
+  draw_plot(pct_chloro) +
+  draw_plot(pct_bar,
+            width = 0.3, height = 0.6,
+            x = 0.57, y = 0.19)
+
+
+
+
+
 
 
 ###############################################################################
@@ -1636,48 +1737,57 @@ tc_pct_chloro_bar = ggdraw() +
 ###############################################################################
 
 # # Orientation
-# boroughs_labelled_map
-# area_chloro
-# population_chloro
-# pct_chloro
-# 
-# # Raw
-# asl_raw_chloro_bar
-# crossings_raw_chloro_bar
-# signals_raw_chloro_bar
-# tc_raw_chloro_bar
-# clt_raw_chloro_bar
-# 
-# # Area
-# asl_area_chloro_bar
-# crossings_area_chloro_bar
-# signals_area_chloro_bar
-# tc_area_chloro_bar
-# clt_area_chloro_bar
-# 
-# #Population
-# asl_pop_chloro_bar
-# crossings_pop_chloro_bar
-# signals_pop_chloro_bar
-# tc_pop_chloro_bar
-# clt_pop_chloro_bar
-# 
-# # PCT
-# asl_pct_chloro_bar
-# crossings_pct_chloro_bar
-# signals_pct_chloro_bar
-# tc_pct_chloro_bar
-# clt_pct_chloro_bar
+boroughs_labelled_map
+area_chloro_bar
+pop_chloro_bar
+pct_chloro_bar
+
+# Raw
+asl_raw_chloro_bar
+crossings_raw_chloro_bar
+signals_raw_chloro_bar
+tc_raw_chloro_bar
+clt_raw_chloro_bar
+
+# Area
+asl_area_chloro_bar
+crossings_area_chloro_bar
+signals_area_chloro_bar
+tc_area_chloro_bar
+clt_area_chloro_bar
+
+#Population
+asl_pop_chloro_bar
+crossings_pop_chloro_bar
+signals_pop_chloro_bar
+tc_pop_chloro_bar
+clt_pop_chloro_bar
+
+# PCT
+asl_pct_chloro_bar
+crossings_pct_chloro_bar
+signals_pct_chloro_bar
+tc_pct_chloro_bar
+clt_pct_chloro_bar
 
 
 ####################################################
 # Use patchwork to create arrangement of all plots #
 ####################################################
 
-# Use patchwork to create plot of all raw plots
-raw_chloro_bar_plots = (asl_raw_chloro_bar | crossings_raw_chloro_bar) / 
-  (signals_raw_chloro_bar | tc_raw_chloro_bar) /  
-  clt_raw_chloro_bar
+# Use patchwork to create all plots
+all_orientation = plot_spacer() | area_chloro_bar | pop_chloro_bar | pct_chloro_bar
+all_asl_chloro_bar = asl_raw_chloro_bar | asl_area_chloro_bar | asl_pop_chloro_bar | asl_pct_chloro_bar
+all_crossings_chloro_bar = crossings_raw_chloro_bar | crossings_area_chloro_bar | crossings_pop_chloro_bar | crossings_pct_chloro_bar
+all_signals_chloro_bar = signals_raw_chloro_bar | signals_area_chloro_bar | signals_pop_chloro_bar | signals_pct_chloro_bar
+all_tc_chloro_bar = tc_raw_chloro_bar | tc_area_chloro_bar | tc_pop_chloro_bar | tc_pct_chloro_bar
+all_clt_chloro_bar = clt_raw_chloro_bar | clt_area_chloro_bar | clt_pop_chloro_bar | clt_pct_chloro_bar
+
+
+# # Use patchwork to create plot of all raw plots
+# raw_chloro_bar_plots = (asl_raw_chloro_bar | crossings_raw_chloro_bar) / 
+#   (signals_raw_chloro_bar | tc_raw_chloro_bar) /  
+#   clt_raw_chloro_bar
 
 # aso
 # asl_raw_chloro_bar/crossings_raw_chloro_bar/signals_raw_chloro_bar/tc_raw_chloro_bar/clt_raw_chloro_bar
@@ -1690,21 +1800,29 @@ raw_chloro_bar_plots = (asl_raw_chloro_bar | crossings_raw_chloro_bar) /
 #   draw_plot(pct_chloro)
 
 
-# all_orientation = boroughs_labelled_map | area_chloro | population_chloro | pct_chloro
-
-# Use patchwork to create asset maps
-all_asl_chloro_bar = asl_raw_chloro_bar | asl_area_chloro_bar | asl_pop_chloro_bar | asl_pct_chloro_bar
-all_crossings_chloro_bar = crossings_raw_chloro_bar | crossings_area_chloro_bar | crossings_pop_chloro_bar | crossings_pct_chloro_bar
-all_signals_chloro_bar = signals_raw_chloro_bar | signals_area_chloro_bar | signals_pop_chloro_bar | signals_pct_chloro_bar
-all_tc_chloro_bar = tc_raw_chloro_bar | tc_area_chloro_bar | tc_pop_chloro_bar | tc_pct_chloro_bar
-all_clt_chloro_bar = clt_raw_chloro_bar | clt_area_chloro_bar | clt_pop_chloro_bar | clt_pct_chloro_bar
 
 ##################
 # SAVE ALL PLOTS #
 ##################
 
-ggsave("/home/bananafan/Documents/PhD/Paper1/output/all_chloro_bar_plots.pdf", plot = all_chloro_bar_plots, 
-       dpi = 1000, width = 210 * (14/5), height = 190 * (14/5), units = "mm")
+ggsave("/home/bananafan/Documents/PhD/Paper1/output/maps/all_orientation_chlorobar.pdf", plot = all_orientation, 
+       dpi = 1000, width = 120 * (14/5), height = 60 * (14/5), units = "mm")
+ggsave("/home/bananafan/Documents/PhD/Paper1/output/maps/all_asl_chlorobar.pdf", plot = all_asl_chloro_bar, 
+       dpi = 1000, width = 120 * (14/5), height = 60 * (14/5), units = "mm")
+ggsave("/home/bananafan/Documents/PhD/Paper1/output/maps/all_crossings_chlorobar.pdf", plot = all_crossings_chloro_bar, 
+       dpi = 1000, width = 120 * (14/5), height = 60 * (14/5), units = "mm")
+ggsave("/home/bananafan/Documents/PhD/Paper1/output/maps/all_signals_chlorobar.pdf", plot = all_signals_chloro_bar, 
+       dpi = 1000, width = 120 * (14/5), height = 60 * (14/5), units = "mm")
+ggsave("/home/bananafan/Documents/PhD/Paper1/output/maps/all_trafficcalming_chlorobar.pdf", plot = all_tc_chloro_bar, 
+       dpi = 1000, width = 120 * (14/5), height = 60 * (14/5), units = "mm")
+ggsave("/home/bananafan/Documents/PhD/Paper1/output/maps/all_clt_chlorobar.pdf", plot = all_clt_chloro_bar, 
+       dpi = 1000, width = 120 * (14/5), height = 60 * (14/5), units = "mm")
+
+# ggsave("/home/bananafan/Documents/PhD/Paper1/output/maps/all_orientation.pdf", plot = all_orientation, 
+#        dpi = 1000, width = 120* (14/5), height = 85 * (14/5), units = "mm")
+# 
+# ggsave("/home/bananafan/Documents/PhD/Paper1/output/all_chloro_bar_plots.pdf", plot = all_chloro_bar_plots, 
+#        dpi = 1000, width = 300 * (14/5), height = 1210 * (14/5), units = "mm")
 
 # # try cowplot to save
 # cowplot = plot_grid(asl_chloro_bar, crossings_chloro_bar, signals_chloro_bar, traffic_calming_chloro_bar, clt_chloro_bar)
