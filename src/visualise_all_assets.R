@@ -104,9 +104,9 @@ borough_areas$B_numbered = fct_recode(borough_areas$BOROUGH,
 
 
 # Create Inner London Borough list
-inn_lon_B_list = c("City of London", "Camden", "Greenwich", "Hackney", "Hammersmith & Fulham", 
-                   "Islington", "Kensington & Chelsea", "Lambeth", "Lewisham", "Southwark",  
-                   "Tower Hamlets", "Wandsworth", "Westminster") 
+inn_lon_B_list = c("City of London", "Camden", "Greenwich", "Hackney", "Hammersmith and Fulham", 
+                   "Islington", "Kensington and Chelsea", "Lambeth", "Lewisham", "Southwark",  
+                   "Tower Hamlets", "Wandsworth", "Westminster")
 # Create inner London spatial object for boundary
 inn_lon_union = borough_areas %>%
   filter(BOROUGH %in% inn_lon_B_list) %>%
@@ -180,7 +180,8 @@ B2_ggplot = as_ggplot(B2_grob) +
 # 6) Create overall legend
 final_legend = legend / (B1_ggplot | B2_ggplot)  ##### NEEDS TIDYING
 
-
+# create map with legend
+(basemap/legend) | (B1_ggplot | B2_ggplot)
 
 
 # Create base maps
@@ -212,6 +213,7 @@ basemap_noArrow = ggplot()+
   theme_bw() +
   coord_sf(crs=st_crs(riverthames_simplify), datum=NA)
 
+basemap + final_legend
 
 
 
