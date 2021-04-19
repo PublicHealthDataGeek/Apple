@@ -211,8 +211,8 @@ borough_areas$B_numbered = fct_recode(borough_areas$BOROUGH,
 
 
 # Create Inner London Borough list
-inn_lon_B_list = c("City of London", "Camden", "Greenwich", "Hackney", "Hammersmith & Fulham", 
-                   "Islington", "Kensington & Chelsea", "Lambeth", "Lewisham", "Southwark",  
+inn_lon_B_list = c("City of London", "Camden", "Greenwich", "Hackney", "Hammersmith and Fulham", 
+                   "Islington", "Kensington and Chelsea", "Lambeth", "Lewisham", "Southwark",  
                    "Tower Hamlets", "Wandsworth", "Westminster") 
 
 # Create inner London spatial object for boundary
@@ -320,7 +320,7 @@ area_chloro = tm_shape(chloropleth_dataset) +
               breaks = c(0, 30, 60, 90, 120, 150, 180),
               #legend.format = list(text.separator = "<"),
               palette = "Blues") + 
-  tm_layout(title = "Borough area in km^2 (ONS)  COLOUR WRONG IN BAR CHART!",
+  tm_layout(title = "Borough area in km^2 (ONS)",
             legend.title.size = 1,
             legend.text.size = 0.7,
             legend.position = c("left","bottom"),
@@ -335,7 +335,7 @@ area_chloro = tmap_grob(area_chloro)
 # Drop units and round so that intervals are plotted ok
 chloropleth_dataset$Borough_Area_km2_no_units = round(units::drop_units(chloropleth_dataset$Borough_Area_km2), digits = 2)
 
-# Generate new column that divides ASL count into groups
+# Generate new column that divides area into groups
 chloropleth_dataset <- chloropleth_dataset %>%
   mutate(area_group = cut(Borough_Area_km2,
                          breaks = seq(0, 180, by = 30),
@@ -352,8 +352,9 @@ area_bar = ggplot(chloropleth_dataset, aes(x = reorder(Borough_number, -Borough_
   coord_flip() +
   labs(y = "Area (km^2)", x = NULL) +
   theme_classic() + 
-  scale_y_continuous(limits = c(0, 160), expand = c(0,0)) +  # ensures axis starts at 0 so no gap
-  scale_fill_manual(values = asl_area_colours) +
+  scale_y_continuous(limits = c(0, 160), expand = c(0,0),
+                     breaks = c(0, 100)) +  
+  scale_fill_manual(values = area_colours) +
   theme(axis.line.y = element_blank(), 
         axis.ticks.y = element_blank(),
         axis.line.x = element_blank(),
