@@ -1,0 +1,187 @@
+# Load packages
+library(tidyverse)
+library(mapview)
+library(tmap)
+#library(cowplot)
+#library(patchwork)
+library(sf)
+library(tmaptools) # for palette explorer 
+#library(ggpubr) # for text grobs
+#library(ggspatial) # get north arrow and bar
+
+################################
+# Load and manipulate datasets #
+################################
+
+
+# 1) CID data
+
+# Import Cycle Lanes and Tracks dataset (created from TFL datasets downloaded 25/2/21)
+c_cyclelanetrack = readRDS(file = "/home/bananafan/Documents/PhD/Paper1/data/cleansed_cycle_lane_track")
+# n = 25315
+
+# names(c_cyclelanetrack)
+# [1] "FEATURE_ID" "SVDATE"     "CLT_CARR"   "CLT_SEGREG" "CLT_STEPP" 
+# [6] "CLT_PARSEG" "CLT_SHARED" "CLT_MANDAT" "CLT_ADVIS"  "CLT_PRIORI"
+# [11] "CLT_CONTRA" "CLT_BIDIRE" "CLT_CBYPAS" "CLT_BBYPAS" "CLT_PARKR" 
+# [16] "CLT_WATERR" "CLT_PTIME"  "CLT_ACCESS" "CLT_COLOUR" "BOROUGH"   
+# [21] "PHOTO1_URL" "PHOTO2_URL" "geometry"   "length_m"   "length_km" 
+
+# Details of variables
+# CLT_CARR   on/off
+# CLT_SEGREG lanes or tracks - TRUE = physical separation of cyclist from other users using continuous/near continuous kerb, upstand or planted verge.
+# CLT_STEPP - onroad only, cycle lane/track (?) is at a level between the carriageway and footway 
+# CLT_PARSEG - on and off, on - involves objects eg wants, off is a visual feature eg white lineTRUE = additional forms of delineation NB as often used by Mand/Adv cycle lanes can have this set to TRUE and mand/advi set to TRUE
+# CLT_SHARED - on and off, on - TRUE = shared with bus lane, off - TRUE = shared with other users eg pedestrians
+# CLT_MANDAT - onroad only, TRUE = mandatory cycle lane
+# CLT_ADVIS - onroad only, TRUE = advisory cycle lane
+# NB onroad can only have MAND TRUE, ADVIS TRUE or both FALSE
+# CLT_PRIORI
+# "CLT_PTIME" - is the on/off cycle lane track part time or not?  
+# [11] "CLT_CONTRA" "CLT_BIDIRE" "CLT_CBYPAS" "CLT_BBYPAS" "CLT_PARKR" 
+# [16] "CLT_WATERR"   "CLT_ACCESS" "CLT_COLOUR" 
+
+# Order of Protection from motor traffic on highways (DFT guidance pg 33)
+# Fully kerbed > stepped > light segregation > Mandatory/Advisory 
+# FK/S/LS suitable for most people at 20/30 mph only FK suitable for 40mph+
+# M/A only suitable for most poepl on 20mph roads with motor vehicle flow of <5000
+
+# Correspnd in CID to:
+# CLT_SEGREG > CLT_STEPP > CLT_PARSEG > CLT_MANDAT > CLT_ADVIS
+
+
+on_road = c_cyclelanetrack %>%
+  filter(CLT_CARR == TRUE) # n = 13965
+
+on_road_drop = on_road %>%
+  st_drop_geometry() %>%
+  select(-c("length_m", "length_km"))
+view(dfSummary(on_road_drop))
+
+
+
+
+# Examining the dataset as think that some assets will be coded with more than one level of segregation
+test_code_seg = on_road_drop %>%
+  select(c("FEATURE_ID", "CLT_SEGREG", "CLT_STEPP", "CLT_PARSEG", "CLT_MANDAT", "CLT_ADVIS"))
+
+# Findings:
+# 1) CLT_SEGREG
+view(ctable(x = test_code_seg$CLT_SEGREG, y = test_code_seg$CLT_STEPP))
+# Of the 1371 on road segregated cycle lanes 1282 are not stepped but 89 are also coded as stepped
+view(ctable(x = test_code_seg$CLT_SEGREG, y = test_code_seg$CLT_PARSEG))
+# none are part segregated
+view(ctable(x = test_code_seg$CLT_SEGREG, y = test_code_seg$CLT_MANDAT))
+# 6 are mandatory cycle lanes
+view(ctable(x = test_code_seg$CLT_SEGREG, y = test_code_seg$CLT_ADVIS))
+# 2 are advisory cycle lanes
+
+# Therefore want to label the 1371 as Segregated, 89 as stepped not segregated
+# want to check up on those coded as mandat and advisory where seg and mand or seg and adv = TRUE
+
+# 2) CLT_STEPP
+view(ctable(x = test_code_seg$CLT_STEPP, y = test_code_seg$CLT_SEGREG))
+# of the 94 that are stepped 89 are also coded as segregated
+view(ctable(x = test_code_seg$CLT_STEPP, y = test_code_seg$CLT_PARSEG))
+# none are coded as part segregated
+view(ctable(x = test_code_seg$CLT_STEPP, y = test_code_seg$CLT_MANDAT))
+# none are coded as mandatory
+view(ctable(x = test_code_seg$CLT_STEPP, y = test_code_seg$CLT_ADVIS))
+# 2 are coded as advisory
+
+# Want to code all 94 as stepped once check up on those coded as advisory ie stepp and advis = TRUE
+
+
+
+# 4) PCT data
+# The code for obtaining this data is in: get_pct_km_cycled.R file
+pct_borough_commuting = readRDS(file = "/home/bananafan/Documents/PhD/Paper1/data/Borough_commuting.rds") %>%
+  mutate(total_100000km_cycled_for_commuting_per_year_estimated = total_km_cycled_for_commuting_per_year_estimated / 100000) 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# 1) Local Authority spatial data  - which dataset do I wnat this or BRE?
+# # import May 2020 ONS LA boundary data clipped to coastline (used so that River Thames appears)
+# lon_lad_2020_c2c = readRDS(file = "./map_data/lon_LAD_boundaries_May_2020_BFC.Rds")
+# 
+# # simply borough shapes
+# lon_lad_2020_c2c <- rmapshaper::ms_simplify(lon_lad_2020_c2c, keep=0.015) #Simplify boroughs
+# # lon_lad_2020_c2c$BOROUGH_short = fct_recode(lon_lad_2020_c2c$BOROUGH, 
+# #                                       "Kens & Chel" = "Kensington & Chelsea",
+# #                                       "Bark & Dage" = "Barking & Dagenham",
+# #                                       "Hamm & Fulh" = "Hammersmith & Fulham",
+# #                                       "Kingston" = "Kingston upon Thames",
+# #                                       "Richmond" = "Richmond upon Thames",
+# #                                       "City" = "City of London",
+# #                                       "T Hamlets" = "Tower Hamlets",
+# #                                       "W Forest" = "Waltham Forest") # rename Boroughs to reduce text length
+# 
+# # Create new variable that labels the Boroughs by number (matches the overall map)
+# lon_lad_2020_c2c$Borough_number = fct_recode(lon_lad_2020_c2c$BOROUGH, 
+#                                              "7" = "Kensington & Chelsea",
+#                                              "32" = "Barking & Dagenham",
+#                                              "8" = "Hammersmith & Fulham",
+#                                              "25" = "Kingston upon Thames",
+#                                              "24" = "Richmond upon Thames",
+#                                              "1" = "City of London",
+#                                              "15" = "Waltham Forest",
+#                                              "28" = "Croydon",
+#                                              "29" = "Bromley",
+#                                              "23" = "Hounslow",
+#                                              "20" = "Ealing",
+#                                              "31" = "Havering",
+#                                              "22" = "Hillingdon",
+#                                              "21" = "Harrow",
+#                                              "19" = "Brent",
+#                                              "18" = "Barnet",
+#                                              "10" = "Lambeth",
+#                                              "11" = "Southwark", 
+#                                              "12" = "Lewisham",
+#                                              "13" = "Greenwich",
+#                                              "30" = "Bexley",
+#                                              "17" = "Enfield",
+#                                              "33" = "Redbridge",
+#                                              "27" = "Sutton",
+#                                              "26" = "Merton",
+#                                              "9" = "Wandsworth",
+#                                              "6" = "Westminster",
+#                                              "5" = "Camden",
+#                                              "2" = "Tower Hamlets",
+#                                              "4" = "Islington",
+#                                              "3" = "Hackney",
+#                                              "16" = "Haringey",
+#                                              "14" = "Newham")
+# 
+# # Convert borough area into km^2 from m^2 
+# lon_lad_2020_c2c$Shape__Are = units::set_units(lon_lad_2020_c2c$Shape__Are, m^2)
+# lon_lad_2020_c2c = lon_lad_2020_c2c %>%
+#   mutate(Borough_Area_km2 = (units::set_units(lon_lad_2020_c2c$Shape__Are, km^2)))# change area units to km^2 from m^2
+# 
+# 
+# # Select variables of interest
+# lon_lad_2020_c2c_reduced = lon_lad_2020_c2c %>%
+#   select(c("BOROUGH", "Borough_number", "Borough_Area_km2", "geometry"))
+
+
+
