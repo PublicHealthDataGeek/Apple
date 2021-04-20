@@ -329,7 +329,7 @@ area_chloro = tm_shape(chloropleth_dataset) +
             frame = FALSE) 
 
 # # convert chloro to grob
-area_chloro = tmap_grob(area_chloro) 
+area_chloro_grob = tmap_grob(area_chloro) 
 
 # Generate barchart
 # Drop units and round so that intervals are plotted ok
@@ -362,7 +362,7 @@ area_bar = ggplot(chloropleth_dataset, aes(x = reorder(Borough_number, -Borough_
 
 # Create cowplot of both plots
 area_chloro_bar = ggdraw() +
-  draw_plot(area_chloro) +
+  draw_plot(area_chloro_grob) +
   draw_plot(area_bar,
             width = 0.3, height = 0.6,
             x = 0.57, y = 0.19) 
@@ -371,7 +371,7 @@ area_chloro_bar = ggdraw() +
 
 
 # 3) Raw population
-population_chloro = tm_shape(chloropleth_dataset) +
+pop_chloro = tm_shape(chloropleth_dataset) +
   tm_polygons("Population", title = "Population", 
               #breaks = c(0, 80000, 160000, 240000, 340000, 400000),
               #legend.format = list(text.separator = "<"),
@@ -385,7 +385,7 @@ population_chloro = tm_shape(chloropleth_dataset) +
             frame = FALSE) 
 
 # convert to grob ?
-population_chloro = tmap_grob(population_chloro) 
+pop_chloro_grob = tmap_grob(pop_chloro) 
 
 # Generate new column that divides ASL count into groups
 chloropleth_dataset <- chloropleth_dataset %>%
@@ -413,7 +413,7 @@ pop_bar = ggplot(chloropleth_dataset, aes(x = reorder(Borough_number, -Populatio
 
 # Create cowplot of both plots
 pop_chloro_bar = ggdraw() +
-  draw_plot(population_chloro) +
+  draw_plot(pop_chloro_grob) +
   draw_plot(pop_bar,
             width = 0.3, height = 0.6,
             x = 0.57, y = 0.19)
@@ -434,7 +434,7 @@ pct_chloro = tm_shape(chloropleth_dataset) +
             frame = FALSE) 
 
 # convert chloro to grob
-pct_chloro = tmap_grob(pct_chloro)
+pct_chloro_grob = tmap_grob(pct_chloro)
 
 # # Generate barchart
 # Generate new column that divides traffic calming count into groups
@@ -465,7 +465,7 @@ pct_bar = ggplot(chloropleth_dataset, aes(x = reorder(Borough_number, -total_km_
 
 # # Create cowplot of both plots
 pct_chloro_bar = ggdraw() +
-  draw_plot(pct_chloro) +
+  draw_plot(pct_chloro_grob) +
   draw_plot(pct_bar,
             width = 0.3, height = 0.6,
             x = 0.57, y = 0.19)
@@ -498,7 +498,7 @@ asl_raw_chloro = tm_shape(chloropleth_dataset) +
             frame = FALSE) 
 
 # # convert chloro to grob
-asl_raw_chloro = tmap_grob(asl_raw_chloro) 
+asl_raw_chloro_grob = tmap_grob(asl_raw_chloro) 
 
 # Generate barchart
 # Generate new column that divides ASL count into groups
@@ -528,7 +528,7 @@ asl_raw_bar = ggplot(chloropleth_dataset, aes(x = reorder(Borough_number, -ASL),
 
 # Create cowplot of both plots
 asl_raw_chloro_bar = ggdraw() +
-  draw_plot(asl_raw_chloro) +
+  draw_plot(asl_raw_chloro_grob) +
   draw_plot(asl_raw_bar,
             width = 0.3, height = 0.6,
             x = 0.57, y = 0.19) 
@@ -550,7 +550,7 @@ crossings_raw_chloro = tm_shape(chloropleth_dataset) +
             frame = FALSE) 
 
 # # # convert chloro to grob
-crossings_raw_chloro = tmap_grob(crossings_raw_chloro) 
+crossings_raw_chloro_grob = tmap_grob(crossings_raw_chloro) 
  
 # Generate barchart
 # Generate new column that divides Crossing count into groups
@@ -581,7 +581,7 @@ crossings_raw_bar = ggplot(chloropleth_dataset, aes(x = reorder(Borough_number, 
 
 # # Create cowplot of both plots
 crossings_raw_chloro_bar = ggdraw() +
-   draw_plot(crossings_raw_chloro) +
+   draw_plot(crossings_raw_chloro_grob) +
    draw_plot(crossings_raw_bar,
              width = 0.3, height = 0.6,
              x = 0.57, y = 0.19) 
@@ -609,7 +609,7 @@ signals_raw_chloro = tm_shape(chloropleth_dataset) +
     title = "Count")
 
 # convert chloro to grob
-signals_raw_chloro = tmap_grob(signals_raw_chloro)
+signals_raw_chloro_grob = tmap_grob(signals_raw_chloro)
 
 
 # Generate barchart
@@ -645,7 +645,7 @@ signals_raw_bar = ggplot(chloropleth_dataset, aes(x = reorder(Borough_number, -S
 
 # # Create cowplot of both plots
 signals_raw_chloro_bar = ggdraw() +
-  draw_plot(signals_raw_chloro) +
+  draw_plot(signals_raw_chloro_grob) +
   draw_plot(signals_raw_bar,
             width = 0.3, height = 0.6,
             x = 0.57, y = 0.19)
@@ -688,7 +688,7 @@ tc_raw_chloro = tm_shape(chloropleth_dataset) +
             frame = FALSE)
  
 # # convert chloro to grob
-tc_raw_chloro = tmap_grob(tc_raw_chloro) 
+tc_raw_chloro_grob = tmap_grob(tc_raw_chloro) 
 
 # Generate barchart
 # Generate new column that divides traffic calming count into groups
@@ -719,7 +719,7 @@ tc_raw_bar = ggplot(chloropleth_dataset, aes(x = reorder(Borough_number, -Traffi
 
 # Create cowplot of both plots
 tc_raw_chloro_bar = ggdraw() +
-  draw_plot(tc_raw_chloro) +
+  draw_plot(tc_raw_chloro_grob) +
   draw_plot(tc_raw_bar,
             width = 0.3, height = 0.6,
             x = 0.57, y = 0.19)
@@ -758,7 +758,7 @@ clt_raw_chloro = tm_shape(chloropleth_dataset) +
             frame = FALSE)
 
 # # # convert chloro to grob
-clt_raw_chloro = tmap_grob(clt_raw_chloro) 
+clt_raw_chloro_grob = tmap_grob(clt_raw_chloro) 
 
 # Generate barchart
 
@@ -791,7 +791,7 @@ clt_raw_bar = ggplot(chloropleth_dataset, aes(x = reorder(Borough_number, -clt_r
 
 # Create cowplot of both plots
 clt_raw_chloro_bar = ggdraw() +
-  draw_plot(clt_raw_chloro) +
+  draw_plot(clt_raw_chloro_grob) +
   draw_plot(clt_raw_bar,
             width = 0.3, height = 0.6,
             x = 0.57, y = 0.19)
@@ -826,7 +826,7 @@ asl_area_chloro = tm_shape(chloropleth_dataset) +
             frame = FALSE) 
 
 # convert chloro to grob
-asl_area_chloro = tmap_grob(asl_area_chloro) 
+asl_area_chloro_grob = tmap_grob(asl_area_chloro) 
  
 ##  Generate barchart
 # create new column where units (km^2) are removed (need units to be removed to draw bar chart)
@@ -864,7 +864,7 @@ asl_area_bar = ggplot(chloropleth_dataset, aes(x = reorder(Borough_number, -ASL_
 
 # # Create cowplot of both plots
 asl_area_chloro_bar = ggdraw() +
-   draw_plot(asl_area_chloro) +
+   draw_plot(asl_area_chloro_grob) +
    draw_plot(asl_area_bar,
              width = 0.3, height = 0.6,
              x = 0.57, y = 0.19) 
@@ -887,7 +887,7 @@ crossings_area_chloro = tm_shape(chloropleth_dataset) +
             frame = FALSE)
 
 # convert chloro to grob
-crossings_area_chloro = tmap_grob(crossings_area_chloro) 
+crossings_area_chloro_grob = tmap_grob(crossings_area_chloro) 
 
 # Generate barchart
 # Drop units and round so that intervals are plotted ok
@@ -919,7 +919,7 @@ crossings_area_bar = ggplot(chloropleth_dataset, aes(x = reorder(Borough_number,
 
 # # # Create cowplot of both plots
 crossings_area_chloro_bar = ggdraw() +
-   draw_plot(crossings_area_chloro) +
+   draw_plot(crossings_area_chloro_grob) +
    draw_plot(crossings_area_bar,
              width = 0.3, height = 0.6,
              x = 0.57, y = 0.19) 
@@ -952,7 +952,7 @@ signals_area_chloro = tm_shape(chloropleth_dataset) +
                 title = "Count per km^2")
 
 # # convert chloro to grob
-signals_area_chloro = tmap_grob(signals_area_chloro)
+signals_area_chloro_grob = tmap_grob(signals_area_chloro)
  
 
 # # Generate barchart
@@ -987,7 +987,7 @@ signals_area_bar = ggplot(chloropleth_dataset,
 
 # # Create cowplot of both plots
 signals_area_chloro_bar = ggdraw() +
-  draw_plot(signals_area_chloro) +
+  draw_plot(signals_area_chloro_grob) +
   draw_plot(signals_area_bar,
             width = 0.3, height = 0.6,
             x = 0.57, y = 0.19)
@@ -1029,7 +1029,7 @@ tc_area_chloro = tm_shape(chloropleth_dataset) +
             frame = FALSE)
 
 # # convert chloro to grob
-tc_area_chloro = tmap_grob(tc_area_chloro)
+tc_area_chloro_grob = tmap_grob(tc_area_chloro)
 
 # # Generate barchart
 # # Drop units and round so that intervals are plotted ok
@@ -1063,7 +1063,7 @@ tc_area_bar = ggplot(chloropleth_dataset, aes(x = reorder(Borough_number, -Traff
  
 # Create cowplot of both plots
 tc_area_chloro_bar = ggdraw() +
-  draw_plot(tc_area_chloro) +
+  draw_plot(tc_area_chloro_grob) +
   draw_plot(tc_area_bar,
             width = 0.3, height = 0.6,
             x = 0.57, y = 0.19)
@@ -1090,7 +1090,7 @@ clt_area_chloro = tm_shape(chloropleth_dataset) +
             frame = FALSE)
 
 # # # convert chloro to grob
-clt_area_chloro = tmap_grob(clt_area_chloro) 
+clt_area_chloro_grob = tmap_grob(clt_area_chloro) 
 
 # Generate barchart
 
@@ -1123,7 +1123,7 @@ clt_area_bar = ggplot(chloropleth_dataset, aes(x = reorder(Borough_number, -clt_
 
 # Create cowplot of both plots
 clt_area_chloro_bar = ggdraw() +
-  draw_plot(clt_area_chloro) +
+  draw_plot(clt_area_chloro_grob) +
   draw_plot(clt_area_bar,
             width = 0.3, height = 0.6,
             x = 0.57, y = 0.19)
@@ -1158,7 +1158,7 @@ asl_pop_chloro = tm_shape(chloropleth_dataset) +
             frame = FALSE) 
 
 # # convert chloro to grob
-asl_pop_chloro = tmap_grob(asl_pop_chloro) 
+asl_pop_chloro_grob = tmap_grob(asl_pop_chloro) 
  
 ##  Generate barchart
 #Generate new column that divides ASL count into groups
@@ -1189,7 +1189,7 @@ asl_pop_bar = ggplot(chloropleth_dataset,
 # 
 # # # Create cowplot of both plots
 asl_pop_chloro_bar = ggdraw() +
-  draw_plot(asl_pop_chloro) +
+  draw_plot(asl_pop_chloro_grob) +
   draw_plot(asl_pop_bar,
             width = 0.3, height = 0.6,
             x = 0.57, y = 0.19)
@@ -1216,7 +1216,7 @@ crossings_pop_chloro = tm_shape(chloropleth_dataset) +
             frame = FALSE)
 
 # # convert chloro to grob
-crossings_pop_chloro = tmap_grob(crossings_pop_chloro) 
+crossings_pop_chloro_grob = tmap_grob(crossings_pop_chloro) 
  
 # # Generate barchart
 
@@ -1247,7 +1247,7 @@ crossings_pop_bar = ggplot(chloropleth_dataset, aes(x = reorder(Borough_number, 
 
 # # # Create cowplot of both plots
 crossings_pop_chloro_bar = ggdraw() +
-  draw_plot(crossings_pop_chloro) +
+  draw_plot(crossings_pop_chloro_grob) +
   draw_plot(crossings_pop_bar,
             width = 0.3, height = 0.6,
             x = 0.57, y = 0.19)
@@ -1279,7 +1279,7 @@ signals_pop_chloro = tm_shape(chloropleth_dataset) +
                 title = "Signals per 100,000 population")
 
 # convert chloro to grob
-signals_pop_chloro = tmap_grob(signals_pop_chloro)
+signals_pop_chloro_grob = tmap_grob(signals_pop_chloro)
 
 
 # Generate barchart
@@ -1312,7 +1312,7 @@ signals_pop_bar = ggplot(chloropleth_dataset, aes(x = reorder(Borough_number, -S
 
 # # Create cowplot of both plots
 signals_pop_chloro_bar = ggdraw() +
-  draw_plot(signals_pop_chloro) +
+  draw_plot(signals_pop_chloro_grob) +
   draw_plot(signals_pop_bar,
             width = 0.3, height = 0.6,
             x = 0.57, y = 0.19)
@@ -1346,7 +1346,7 @@ clt_pop_chloro = tm_shape(chloropleth_dataset) +
             frame = FALSE)
 
 # # # convert chloro to grob
-clt_pop_chloro = tmap_grob(clt_pop_chloro) 
+clt_pop_chloro_grob = tmap_grob(clt_pop_chloro) 
 
 # # Generate barchart
 
@@ -1379,7 +1379,7 @@ clt_pop_bar = ggplot(chloropleth_dataset, aes(x = reorder(Borough_number, -clt_p
 
 # Create cowplot of both plots
 clt_pop_chloro_bar = ggdraw() +
-  draw_plot(clt_pop_chloro) +
+  draw_plot(clt_pop_chloro_grob) +
   draw_plot(clt_pop_bar,
             width = 0.3, height = 0.6,
             x = 0.57, y = 0.19)
@@ -1404,7 +1404,7 @@ tc_pop_chloro = tm_shape(chloropleth_dataset) +
             frame = FALSE)
  
 # convert chloro to grob
-tc_pop_chloro = tmap_grob(tc_pop_chloro)
+tc_pop_chloro_grob = tmap_grob(tc_pop_chloro)
 
 # # Generate barchart
 # Generate new column that divides traffic calming count into groups
@@ -1435,7 +1435,7 @@ tc_pop_bar = ggplot(chloropleth_dataset, aes(x = reorder(Borough_number, -Traffi
 # 
 # # Create cowplot of both plots
 tc_pop_chloro_bar = ggdraw() +
-  draw_plot(tc_pop_chloro) +
+  draw_plot(tc_pop_chloro_grob) +
   draw_plot(tc_pop_bar,
             width = 0.3, height = 0.6,
             x = 0.57, y = 0.19)
@@ -1466,7 +1466,7 @@ asl_pct_chloro = tm_shape(chloropleth_dataset) +
             frame = FALSE) 
 
 # convert chloro to grob
-asl_pct_chloro = tmap_grob(asl_pct_chloro) 
+asl_pct_chloro_grob = tmap_grob(asl_pct_chloro) 
 
 # ##  Generate barchart
 
@@ -1499,7 +1499,7 @@ asl_pct_bar = ggplot(chloropleth_dataset,
 
 # # Create cowplot of both plots
 asl_pct_chloro_bar = ggdraw() +
-  draw_plot(asl_pct_chloro) +
+  draw_plot(asl_pct_chloro_grob) +
   draw_plot(asl_pct_bar,
             width = 0.3, height = 0.6,
             x = 0.57, y = 0.19)
@@ -1522,7 +1522,7 @@ crossings_pct_chloro = tm_shape(chloropleth_dataset) +
             frame = FALSE)
 
 # # convert chloro to grob
-crossings_pct_chloro = tmap_grob(crossings_pct_chloro) 
+crossings_pct_chloro_grob = tmap_grob(crossings_pct_chloro) 
 
 # # Generate barchart
 # Generate new column that divides Crossing count into groups
@@ -1552,7 +1552,7 @@ crossings_pct_bar = ggplot(chloropleth_dataset, aes(x = reorder(Borough_number, 
 
 # # # Create cowplot of both plots
 crossings_pct_chloro_bar = ggdraw() +
-  draw_plot(crossings_pct_chloro) +
+  draw_plot(crossings_pct_chloro_grob) +
   draw_plot(crossings_pct_bar,
             width = 0.3, height = 0.6,
             x = 0.57, y = 0.19)
@@ -1582,7 +1582,7 @@ signals_pct_chloro = tm_shape(chloropleth_dataset) +
                 title = "Count per 100,000 km cycle commute")
 
 # convert chloro to grob
-signals_pct_chloro = tmap_grob(signals_pct_chloro)
+signals_pct_chloro_grob = tmap_grob(signals_pct_chloro)
 
 
 # Generate barchart
@@ -1615,7 +1615,7 @@ signals_pct_bar = ggplot(chloropleth_dataset, aes(x = reorder(Borough_number, -S
 
 # # Create cowplot of both plots
 signals_pct_chloro_bar = ggdraw() +
-  draw_plot(signals_pct_chloro) +
+  draw_plot(signals_pct_chloro_grob) +
   draw_plot(signals_pct_bar,
             width = 0.3, height = 0.6,
             x = 0.57, y = 0.19)
@@ -1639,7 +1639,7 @@ clt_pct_chloro = tm_shape(chloropleth_dataset) +
             frame = FALSE)
 
 # # # convert chloro to grob
-clt_pct_chloro = tmap_grob(clt_pct_chloro) 
+clt_pct_chloro_grob = tmap_grob(clt_pct_chloro) 
 
 # # Generate barchart
 # create new column where units (km^2) are removed (need units to be removed to draw bar chart)
@@ -1672,7 +1672,7 @@ clt_pct_bar = ggplot(chloropleth_dataset, aes(x = reorder(Borough_number, -clt_p
 
 # # Create cowplot of both plots
 clt_pct_chloro_bar = ggdraw() +
-  draw_plot(clt_pct_chloro) +
+  draw_plot(clt_pct_chloro_grob) +
   draw_plot(clt_pct_bar,
             width = 0.3, height = 0.6,
             x = 0.57, y = 0.19)
@@ -1695,7 +1695,7 @@ tc_pct_chloro = tm_shape(chloropleth_dataset) +
             frame = FALSE)
 
 # convert chloro to grob
-tc_pct_chloro = tmap_grob(tc_pct_chloro)
+tc_pct_chloro_grob = tmap_grob(tc_pct_chloro)
 
 # # Generate barchart
 # Generate new column that divides traffic calming count into groups
@@ -1727,7 +1727,7 @@ tc_pct_bar = ggplot(chloropleth_dataset, aes(x = reorder(Borough_number, -Traffi
 #
 # # Create cowplot of both plots
 tc_pct_chloro_bar = ggdraw() +
-  draw_plot(tc_pct_chloro) +
+  draw_plot(tc_pct_chloro_grob) +
   draw_plot(tc_pct_bar,
             width = 0.3, height = 0.6,
             x = 0.57, y = 0.19)
@@ -1806,6 +1806,46 @@ all_clt_chloro_bar = clt_raw_chloro_bar | clt_area_chloro_bar | clt_pop_chloro_b
 # SAVE ALL PLOTS #
 ##################
 
+# Code for saving all bar and chloropleths separately
+mypath = "/home/bananafan/Documents/PhD/Paper1/output/maps/"
+barchart_names = c("area_bar", "pop_bar", "pct_bar", 
+                   "asl_raw_bar", "asl_area_bar", "asl_pop_bar", "asl_pct_bar",
+                   "crossings_raw_bar", "crossings_area_bar", "crossings_pop_bar", "crossings_pct_bar",
+                   "clt_raw_bar", "clt_area_bar", "clt_pop_bar", "clt_pct_bar",
+                   "signals_raw_bar", "signals_area_bar", "signals_pop_bar", "signals_pct_bar",
+                   "tc_raw_bar", "tc_area_bar", "tc_pop_bar", "tc_pct_bar")
+
+for(i in 1:length(barchart_names)) {
+  ggsave(get(barchart_names[i]),
+         file = paste0(mypath, barchart_names[i], ".png"), dpi = 500, width = 25* (14/5), height = 50 * (14/5), units = "mm"
+  )
+}
+
+chloro_names = c("area_chloro", "pop_chloro", "pct_chloro", 
+                 "asl_raw_chloro", "asl_area_chloro", "asl_pop_chloro", "asl_pct_chloro",
+                 "crossings_raw_chloro", "crossings_area_chloro", "crossings_pop_chloro", "crossings_pct_chloro",
+                 "clt_raw_chloro", "clt_area_chloro", "clt_pop_chloro", "clt_pct_chloro",
+                 "signals_raw_chloro", "signals_area_chloro", "signals_pop_chloro", "signals_pct_chloro",
+                 "tc_raw_chloro", "tc_area_chloro", "tc_pop_chloro", "tc_pct_chloro")
+
+for(i in 1:length(chloro_names)) {
+  tmap_save(get(chloro_names[i]),
+            file = paste0(mypath, chloro_names[i], ".png"), dpi = 500, width = 120* (14/5), height = 85 * (14/5), units = "mm"
+  )
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
 ggsave("/home/bananafan/Documents/PhD/Paper1/output/maps/all_orientation_chlorobar.pdf", plot = all_orientation, 
        dpi = 1000, width = 120 * (14/5), height = 60 * (14/5), units = "mm")
 ggsave("/home/bananafan/Documents/PhD/Paper1/output/maps/all_asl_chlorobar.pdf", plot = all_asl_chloro_bar, 
@@ -1824,6 +1864,127 @@ ggsave("/home/bananafan/Documents/PhD/Paper1/output/maps/all_clt_chlorobar.pdf",
 # 
 # ggsave("/home/bananafan/Documents/PhD/Paper1/output/all_chloro_bar_plots.pdf", plot = all_chloro_bar_plots, 
 #        dpi = 1000, width = 300 * (14/5), height = 1210 * (14/5), units = "mm")
+
+
+
+
+
+# ggsave("/home/bananafan/Documents/PhD/Paper1/output/maps/area_bar.png", plot = area_bar,
+#        dpi = 500, width = 25* (14/5), height = 50 * (14/5), units = "mm")
+# tmap_save(tm = area_chloro, "/home/bananafan/Documents/PhD/Paper1/output/maps/area_chloro2.png", 
+#        dpi = 500, width = 120* (14/5), height = 85 * (14/5), units = "mm")
+# 
+# ggsave("/home/bananafan/Documents/PhD/Paper1/output/maps/pop_bar.png", plot = pop_bar,
+#        dpi = 500, width = 25* (14/5), height = 50 * (14/5), units = "mm")
+# tmap_save(tm = pop_chloro, "/home/bananafan/Documents/PhD/Paper1/output/maps/pop_chloro.png", 
+#           dpi = 500, width = 120* (14/5), height = 85 * (14/5), units = "mm")
+# 
+# ggsave("/home/bananafan/Documents/PhD/Paper1/output/maps/pct_bar.png", plot = pct_bar,
+#        dpi = 500, width = 25* (14/5), height = 50 * (14/5), units = "mm")
+# tmap_save(tm = pct_chloro, "/home/bananafan/Documents/PhD/Paper1/output/maps/pct_chloro.png", 
+#           dpi = 500, width = 120* (14/5), height = 85 * (14/5), units = "mm")
+# 
+# ggsave("/home/bananafan/Documents/PhD/Paper1/output/maps/asl_raw_bar.png", plot = asl_raw_bar,
+#        dpi = 500, width = 25* (14/5), height = 50 * (14/5), units = "mm")
+# tmap_save(tm = asl_raw_chloro, "/home/bananafan/Documents/PhD/Paper1/output/maps/asl_raw_chloro.png", 
+#           dpi = 500, width = 120* (14/5), height = 85 * (14/5), units = "mm")
+# 
+# ggsave("/home/bananafan/Documents/PhD/Paper1/output/maps/asl_area_bar.png", plot = asl_area_bar,
+#        dpi = 500, width = 25* (14/5), height = 50 * (14/5), units = "mm")
+# tmap_save(tm = asl_area_chloro, "/home/bananafan/Documents/PhD/Paper1/output/maps/asl_area_chloro.png", 
+#           dpi = 500, width = 120* (14/5), height = 85 * (14/5), units = "mm")
+# 
+# ggsave("/home/bananafan/Documents/PhD/Paper1/output/maps/asl_pop_bar.png", plot = asl_pop_bar,
+#        dpi = 500, width = 25* (14/5), height = 50 * (14/5), units = "mm")
+# tmap_save(tm = asl_pop_chloro, "/home/bananafan/Documents/PhD/Paper1/output/maps/asl_pop_chloro.png", 
+#           dpi = 500, width = 120* (14/5), height = 85 * (14/5), units = "mm")
+# 
+# ggsave("/home/bananafan/Documents/PhD/Paper1/output/maps/asl_pct_bar.png", plot = asl_pct_bar,
+#        dpi = 500, width = 25* (14/5), height = 50 * (14/5), units = "mm")
+# tmap_save(tm = asl_pct_chloro, "/home/bananafan/Documents/PhD/Paper1/output/maps/asl_pct_chloro.png", 
+#           dpi = 500, width = 120* (14/5), height = 85 * (14/5), units = "mm")
+# 
+# ggsave("/home/bananafan/Documents/PhD/Paper1/output/maps/crossings_raw_bar.png", plot = crossings_raw_bar,
+#        dpi = 500, width = 25* (14/5), height = 50 * (14/5), units = "mm")
+# tmap_save(tm = crossings_raw_chloro, "/home/bananafan/Documents/PhD/Paper1/output/maps/crossings_raw_chloro.png", 
+#           dpi = 500, width = 120* (14/5), height = 85 * (14/5), units = "mm")
+# 
+# ggsave("/home/bananafan/Documents/PhD/Paper1/output/maps/crossings_area_bar.png", plot = crossings_area_bar,
+#        dpi = 500, width = 25* (14/5), height = 50 * (14/5), units = "mm")
+# tmap_save(tm = crossings_area_chloro, "/home/bananafan/Documents/PhD/Paper1/output/maps/crossings_area_chloro.png", 
+#           dpi = 500, width = 120* (14/5), height = 85 * (14/5), units = "mm")
+# 
+# ggsave("/home/bananafan/Documents/PhD/Paper1/output/maps/crossings_pop_bar.png", plot = crossings_pop_bar,
+#        dpi = 500, width = 25* (14/5), height = 50 * (14/5), units = "mm")
+# tmap_save(tm = crossings_pop_chloro, "/home/bananafan/Documents/PhD/Paper1/output/maps/crossings_pop_chloro.png", 
+#           dpi = 500, width = 120* (14/5), height = 85 * (14/5), units = "mm")
+# 
+# ggsave("/home/bananafan/Documents/PhD/Paper1/output/maps/crossings_pct_bar.png", plot = crossings_pct_bar,
+#        dpi = 500, width = 25* (14/5), height = 50 * (14/5), units = "mm")
+# tmap_save(tm = crossings_pct_chloro, "/home/bananafan/Documents/PhD/Paper1/output/maps/crossings_pct_chloro.png", 
+#           dpi = 500, width = 120* (14/5), height = 85 * (14/5), units = "mm")
+# 
+# ggsave("/home/bananafan/Documents/PhD/Paper1/output/maps/clt_raw_bar.png", plot = clt_raw_bar,
+#        dpi = 500, width = 25* (14/5), height = 50 * (14/5), units = "mm")
+# tmap_save(tm = clt_raw_chloro, "/home/bananafan/Documents/PhD/Paper1/output/maps/clt_raw_chloro.png", 
+#           dpi = 500, width = 120* (14/5), height = 85 * (14/5), units = "mm")
+# 
+# ggsave("/home/bananafan/Documents/PhD/Paper1/output/maps/clt_area_bar.png", plot = clt_area_bar,
+#        dpi = 500, width = 25* (14/5), height = 50 * (14/5), units = "mm")
+# tmap_save(tm = clt_area_chloro, "/home/bananafan/Documents/PhD/Paper1/output/maps/clt_area_chloro.png", 
+#           dpi = 500, width = 120* (14/5), height = 85 * (14/5), units = "mm")
+# 
+# ggsave("/home/bananafan/Documents/PhD/Paper1/output/maps/clt_pop_bar.png", plot = clt_pop_bar,
+#        dpi = 500, width = 25* (14/5), height = 50 * (14/5), units = "mm")
+# tmap_save(tm = clt_pop_chloro, "/home/bananafan/Documents/PhD/Paper1/output/maps/clt_pop_chloro.png", 
+#           dpi = 500, width = 120* (14/5), height = 85 * (14/5), units = "mm")
+# 
+# ggsave("/home/bananafan/Documents/PhD/Paper1/output/maps/clt_pct_bar.png", plot = clt_pct_bar,
+#        dpi = 500, width = 25* (14/5), height = 50 * (14/5), units = "mm")
+# tmap_save(tm = clt_pct_chloro, "/home/bananafan/Documents/PhD/Paper1/output/maps/clt_pct_chloro.png", 
+#           dpi = 500, width = 120* (14/5), height = 85 * (14/5), units = "mm")
+# 
+# ggsave("/home/bananafan/Documents/PhD/Paper1/output/maps/signals_raw_bar.png", plot = signals_raw_bar,
+#        dpi = 500, width = 25* (14/5), height = 50 * (14/5), units = "mm")
+# tmap_save(tm = signals_raw_chloro, "/home/bananafan/Documents/PhD/Paper1/output/maps/signals_raw_chloro.png", 
+#           dpi = 500, width = 120* (14/5), height = 85 * (14/5), units = "mm")
+# 
+# ggsave("/home/bananafan/Documents/PhD/Paper1/output/maps/signals_area_bar.png", plot = signals_area_bar,
+#        dpi = 500, width = 25* (14/5), height = 50 * (14/5), units = "mm")
+# tmap_save(tm = signals_area_chloro, "/home/bananafan/Documents/PhD/Paper1/output/maps/signals_area_chloro.png", 
+#           dpi = 500, width = 120* (14/5), height = 85 * (14/5), units = "mm")
+# 
+# ggsave("/home/bananafan/Documents/PhD/Paper1/output/maps/signals_pop_bar.png", plot = signals_pop_bar,
+#        dpi = 500, width = 25* (14/5), height = 50 * (14/5), units = "mm")
+# tmap_save(tm = signals_pop_chloro, "/home/bananafan/Documents/PhD/Paper1/output/maps/signals_pop_chloro.png", 
+#           dpi = 500, width = 120* (14/5), height = 85 * (14/5), units = "mm")
+# 
+# ggsave("/home/bananafan/Documents/PhD/Paper1/output/maps/signals_pct_bar.png", plot = signals_pct_bar,
+#        dpi = 500, width = 25* (14/5), height = 50 * (14/5), units = "mm")
+# tmap_save(tm = signals_pct_chloro, "/home/bananafan/Documents/PhD/Paper1/output/maps/signals_pct_chloro.png", 
+#           dpi = 500, width = 120* (14/5), height = 85 * (14/5), units = "mm")
+# 
+# ggsave("/home/bananafan/Documents/PhD/Paper1/output/maps/tc_raw_bar.png", plot = tc_raw_bar,
+#        dpi = 500, width = 25* (14/5), height = 50 * (14/5), units = "mm")
+# tmap_save(tm = tc_raw_chloro, "/home/bananafan/Documents/PhD/Paper1/output/maps/tc_raw_chloro.png", 
+#           dpi = 500, width = 120* (14/5), height = 85 * (14/5), units = "mm")
+# 
+# ggsave("/home/bananafan/Documents/PhD/Paper1/output/maps/tc_area_bar.png", plot = tc_area_bar,
+#        dpi = 500, width = 25* (14/5), height = 50 * (14/5), units = "mm")
+# tmap_save(tm = tc_area_chloro, "/home/bananafan/Documents/PhD/Paper1/output/maps/tc_area_chloro.png", 
+#           dpi = 500, width = 120* (14/5), height = 85 * (14/5), units = "mm")
+# 
+# ggsave("/home/bananafan/Documents/PhD/Paper1/output/maps/tc_pop_bar.png", plot = tc_pop_bar,
+#        dpi = 500, width = 25* (14/5), height = 50 * (14/5), units = "mm")
+# tmap_save(tm = tc_pop_chloro, "/home/bananafan/Documents/PhD/Paper1/output/maps/tc_pop_chloro.png", 
+#           dpi = 500, width = 120* (14/5), height = 85 * (14/5), units = "mm")
+# 
+# ggsave("/home/bananafan/Documents/PhD/Paper1/output/maps/tc_pct_bar.png", plot = tc_pct_bar,
+#        dpi = 500, width = 25* (14/5), height = 50 * (14/5), units = "mm")
+# tmap_save(tm = tc_pct_chloro, "/home/bananafan/Documents/PhD/Paper1/output/maps/tc_pct_chloro.png", 
+#           dpi = 500, width = 120* (14/5), height = 85 * (14/5), units = "mm")
+
+
 
 # # try cowplot to save
 # cowplot = plot_grid(asl_chloro_bar, crossings_chloro_bar, signals_chloro_bar, traffic_calming_chloro_bar, clt_chloro_bar)
