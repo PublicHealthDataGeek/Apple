@@ -171,32 +171,57 @@ https://www.marsja.se/r-add-column-to-dataframe-based-on-other-columns-condition
 # Create new variable that indicates degree of separation from traffic 
 # seg_levels = c("Segregated", "Stepped", "Partially segregated", "Mandatory cycle lane", "Advisory cycle lane")
 
-# COnvert factor variables into numeric  
-cols = c("CLT_SEGREG", "CLT_STEPP", "CLT_PARSEG", "CLT_MANDAT", "CLT_ADVIS") 
-on_road_test = on_road %>% as.integer(as.character("CLT_SEGREG"))
+# # COnvert factor variables into numeric  
+# cols = c("CLT_SEGREG", "CLT_STEPP", "CLT_PARSEG", "CLT_MANDAT", "CLT_ADVIS") 
+# on_road_test = on_road %>% as.integer(as.character("CLT_SEGREG"))
 
-on_road$CLT_SEG_NUMBER = as.numeric(as.character(on_road$CLT_SEGREG))
-x = c(TRUE, FALSE, TRUE, FALSE)
-str(x)
-x = as.numeric(x)
-str(x)
-x = c(TRUE, FALSE, TRUE, FALSE)
-x = factor(x)
-str(x)
-str(on_road$CLT_SEGREG)
-x = as.numeric(x)
-x
-on_road_test = on_road
-on_road_test$CLT_SEG_NUMBER <- on_road_test$CLT_SEGREG
+# try smaller dataset of on_road
+
+test_df = on_road %>%
+  st_drop_geometry() %>%
+  select(c("FEATURE_ID", "CLT_SEGREG"))
+# set.seed(321)
+# test_df = sample_n(test_df, 50) # 5 TRUE
+# str(test_df)
+# tibble[,2] [50 × 2] (S3: tbl_df/tbl/data.frame)
+# $ FEATURE_ID: chr [1:50] "RWG236927" "RWG279152" "RWG207149" "RWG042572" ...
+# $ CLT_SEGREG: Factor w/ 2 levels "FALSE","TRUE": 1 1 1 1 1 1 1 1 1 1 ...
+test_df$CLT_SEGREG = as.numeric(test_df$CLT_SEGREG) # false -> 1, true -> 2
+test_df$CLT_SEGREG[test_df$CLT_SEGREG == 1] <- 0
+test_df$CLT_SEGREG[test_df$CLT_SEGREG == 2] <- 1
+sum(test_df$CLT_SEGREG)
+# This now works
+
+test_df = on_road %>%
+  st_drop_geometry() %>%
+  select(c("FEATURE_ID", "CLT_SEGREG", "CLT_STEPP"))
+set.seed(321)
+test_df = sample_n(test_df, 50) # 5 TRUE
+str(test_df)
+# tibble[,2] [50 × 2] (S3: tbl_df/tbl/data.frame)
+# $ FEATURE_ID: chr [1:50] "RWG236927" "RWG279152" "RWG207149" "RWG042572" ...
+# $ CLT_SEGREG: Factor w/ 2 levels "FALSE","TRUE": 1 1 1 1 1 1 1 1 1 1 ...
+test_df = test_df %>%
+  mutate(CLT_SEGREG_NUMERIC = as.numeric(test_df$CLT_SEGREG)) %>%
+  mutate(CLT_STEPP_NUMERIC = as.numeric(test_df$CLT_STEPP)) 
+  # false -> 1, true -> 2
+test_df$CLT_SEGREG_NUMERIC[test_df$CLT_SEGREG_NUMERIC == 1] <- 0
+test_df$CLT_SEGREG_NUMERIC[test_df$CLT_SEGREG_NUMERIC == 2] <- 1
+test_df$CLT_STEPP_NUMERIC[test_df$CLT_STEPP_NUMERIC == 1] <- 0
+test_df$CLT_STEPP_NUMERIC[test_df$CLT_STEPP_NUMERIC == 2] <- 1
+sum(test_df$CLT_SEGREG_NUMERIC) # n = 1371
+sum(test_df$CLT_STEPP_NUMERIC) # n = 94
+
+test_df$CLT_SEGREG_NUMERIC[test_df$CLT_SEGREG_NUMERIC == 1] <- 5
+test_df$CLT_STEPP_NUMERIC[test_df$CLT_STEPP_NUMERIC == 1] <- 4
+test_df$row_sum = rowSums(test_df[, c(4, 5)])
+# This now works
+
+# if do on_road then get unique values in row)sm of 0, 5, 9, 4 
+# will need to figure out if this works when add in other columns
 
 
-on_road_test$CLT_SEG_NUMBER = as.numeric(on_road$CLT_SEG_NUMBER)
-sum(on_road_test$CLT_SEG_NUMBER)
-str(on_road_teets)
 
-on_road_test$CLT_SEGREG = as.numeric(as.character(on_road$CLT_SEGREG))
-View(on_road_test)
-sum(on_road_test$CLT_SEGREG)
 
 # 4) PCT data
 # The code for obtaining this data is in: get_pct_km_cycled.R file
