@@ -1,9 +1,13 @@
-# Load packages
+#!diagnostics suppress = CLT_MANDAT2, CLT_ADVIS2, CLT_SEGREG2
+
+
+#Load packages
 library(tidyverse)
-library(mapview)
+#library(mapview)
 library(tmap)
 #library(cowplot)
 #library(patchwork)
+library(summarytools) # dont run if want to use mapview as it stops it working
 library(sf)
 library(tmaptools) # for palette explorer 
 #library(ggpubr) # for text grobs
@@ -78,6 +82,41 @@ view(ctable(x = test_code_seg$CLT_SEGREG, y = test_code_seg$CLT_ADVIS))
 
 # Therefore want to label the 1371 as Segregated, 89 as stepped not segregated
 # want to check up on those coded as mandat and advisory where seg and mand or seg and adv = TRUE
+
+seg_mand = on_road %>%
+  filter(CLT_SEGREG == TRUE & CLT_MANDAT == TRUE)
+seg_advis = on_road %>%
+  filter(CLT_SEGREG == TRUE & CLT_ADVIS == TRUE)
+seg_step = on_road %>%
+  filter(CLT_SEGREG == TRUE & CLT_STEPP == TRUE)
+# examined both datast - recode both of these as CLT_ADVIS/MANDAT as false
+
+# Correct these
+# a) CLT_MAND
+on_road = on_road %>%
+  mutate(CLT_MANDAT2 = case_when(CLT_SEGREG == TRUE & CLT_MANDAT == TRUE ~ "FALSE")) 
+on_road$CLT_MANDAT2[is.na(on_road$MANDAT2)] = "FALSE"
+seg_mand2 = on_road %>%
+  filter(CLT_SEGREG == TRUE & CLT_MANDAT2 == TRUE) # 0 observations
+# b) CLT_MAND
+on_road = on_road %>%
+  mutate(CLT_ADVIS2 = case_when(CLT_SEGREG == TRUE & CLT_ADVIS == TRUE ~ "FALSE")) 
+on_road$CLT_ADVIS2[is.na(on_road$CLT_ADVIS2)] = "FALSE"
+seg_advis2 = on_road %>%
+  filter(CLT_SEGREG == TRUE & CLT_ADVIS2 == TRUE) # 0 observations
+
+# c) CLT_STEPP
+# want to recode CLT_SEGREG as false where CLT_SEGREG == TRUE & CLT_STEPP == TRUE
+on_road = on_road %>%
+  mutate(CLT_SEGREG2 = case_when(CLT_SEGREG == TRUE & CLT_STEPP == TRUE ~ "FALSE")) 
+on_road$CLT_SEGREG2[is.na(on_road$CLT_SEGREG2)] = "FALSE"
+seg_step2 = on_road %>%
+  filter(CLT_SEGREG == TRUE & CLT_SEGREG2 == TRUE) # 0 observations
+view(ctable(x = on_road$CLT_SEGREG2, y = on_road$CLT_STEPP))
+
+
+
+
 
 # 2) CLT_STEPP
 view(ctable(x = test_code_seg$CLT_STEPP, y = test_code_seg$CLT_SEGREG))

@@ -368,7 +368,83 @@ area_chloro_bar = ggdraw() +
             x = 0.57, y = 0.19) 
 
 
+###############################################################################
+#  TESTING IMPROVEMENTS SUGGESTED BY ROGER on the borough dataset
 
+# using continuous color scale for both chloropleth and bar chart - ? can get tmpa and ggplot to match colours
+# dropping numbers in bar chart and make really small
+# try tmpa histogram again
+
+# a1 = tm_shape(chloropleth_dataset) +
+#   tm_polygons("Borough_Area_km2", title = "Area (km^2)", 
+#               style = "order",  # style order = maps the order of values of col to a smooth gradient,
+#               breaks = c(0, 30, 60, 90, 120, 150, 180),
+#               palette = "Blues") + 
+#   tm_layout(title = "style order - apparantly better for skewed dist",
+#             legend.title.size = 1,
+#             legend.text.size = 0.7,
+#             legend.position = c("left","bottom"),
+#             legend.bg.alpha = 1,
+#             inner.margins = c(0.1,0.1,0.1,0.42), # creates wide right margin for barchart
+#             frame = FALSE) 
+# 
+# a2 = tm_shape(chloropleth_dataset) +
+#   tm_polygons("Borough_Area_km2", title = "Area (km^2)", 
+#               style = "cont", #maps the values of col to a smooth gradient, 
+#               breaks = c(0, 30, 60, 90, 120, 150, 180),
+#               palette = "Blues") + 
+#   tm_layout(title = "style cont with breaks defined",
+#             legend.title.size = 1,
+#             legend.text.size = 0.7,
+#             legend.position = c("left","bottom"),
+#             legend.bg.alpha = 1,
+#             inner.margins = c(0.1,0.1,0.1,0.42), # creates wide right margin for barchart
+#             frame = FALSE) 
+# 
+# a3 = tm_shape(chloropleth_dataset) +
+#   tm_polygons("Borough_Area_km2", title = "Area (km^2)", 
+#               style = "cont",
+#               palette = "Blues") + 
+#   tm_layout(title = "style cont with no breaks defined",
+#             legend.title.size = 1,
+#             legend.text.size = 0.7,
+#             legend.position = c("left","bottom"),
+#             legend.bg.alpha = 1,
+#             inner.margins = c(0.1,0.1,0.1,0.42), # creates wide right margin for barchart
+#             frame = FALSE) 
+# 
+# tm_shape(chloropleth_dataset) +
+#   tm_polygons("Borough_Area_km2", title = "Area (km^2)",
+#               legend.hist = TRUE,  # includes histogram
+#               palette = "Blues") +
+#   tm_layout(title = "histogram",
+#             legend.title.size = 1,
+#             legend.text.size = 0.7,
+#             legend.position = c("left","bottom"),
+#             legend.bg.alpha = 1,
+#             inner.margins = c(0.1,0.1,0.1,0.42), # creates wide right margin for barchart
+#             frame = FALSE)
+# 
+# 
+# 
+# 
+# # create Bar chart
+# bar = ggplot(chloropleth_dataset, aes(x = reorder(Borough_number, -Borough_Area_km2_no_units),
+#                                            y = Borough_Area_km2_no_units, fill = Borough_Area_km2_no_units)) +
+#   geom_bar(stat = "identity", color = "black", size = 0.1) +  # adds borders to bars
+#   coord_flip() +
+#   labs(y = "Area (km^2)", x = NULL) +
+#   theme_classic() +
+#   scale_y_continuous(limits = c(0, 160), expand = c(0,0),
+#                      breaks = c(0, 100)) +
+#   scale_fill_distiller(palette = "Blues", direction = + 1) +  # this should do the same palette colours and direction needs to be reversed
+#   theme(axis.line.y = element_blank(),
+#         axis.ticks.y = element_blank(),
+#         axis.text.y = element_blank(),
+#         axis.line.x = element_blank())
+######################
+#  BACK TO MAIN CODE #
+######################
 
 # 3) Raw population
 pop_chloro = tm_shape(chloropleth_dataset) +
