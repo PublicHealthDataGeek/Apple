@@ -1,3 +1,17 @@
+#################################################
+# Visualise cycle lanes 
+# 
+# This code aims to visualise on road cycle lanes by the degree of separation
+# from other road users.  The visualisation also aims to take into account speed
+# limit (as that determines degree of recommended separation by the DfT) and 
+# cycling usage from the Propensity to Cycle Tool.
+#
+# Initial code sorts out the assets that have more than one label for separation
+# e.g. jointly labelled as being segregated and stepped.  
+
+
+
+
 #!diagnostics suppress = CLT_MANDAT2, CLT_ADVIS2, CLT_SEGREG2
 
 
@@ -35,7 +49,8 @@ c_cyclelanetrack = readRDS(file = "/home/bananafan/Documents/PhD/Paper1/data/cle
 # CLT_CARR   on/off
 # CLT_SEGREG lanes or tracks - TRUE = physical separation of cyclist from other users using continuous/near continuous kerb, upstand or planted verge.
 # CLT_STEPP - onroad only, cycle lane/track (?) is at a level between the carriageway and footway 
-# CLT_PARSEG - on and off, on - involves objects eg wants, off is a visual feature eg white lineTRUE = additional forms of delineation NB as often used by Mand/Adv cycle lanes can have this set to TRUE and mand/advi set to TRUE
+# CLT_PARSEG - on and off, on - involves objects eg wants, off is a visual feature eg white line
+# TRUE = additional forms of delineation NB as often used by Mand/Adv cycle lanes can have this set to TRUE and mand/advi set to TRUE
 # CLT_SHARED - on and off, on - TRUE = shared with bus lane, off - TRUE = shared with other users eg pedestrians
 # CLT_MANDAT - onroad only, TRUE = mandatory cycle lane
 # CLT_ADVIS - onroad only, TRUE = advisory cycle lane
@@ -52,7 +67,9 @@ c_cyclelanetrack = readRDS(file = "/home/bananafan/Documents/PhD/Paper1/data/cle
 
 # Correspnd in CID to:
 # CLT_SEGREG > CLT_STEPP > CLT_PARSEG > CLT_MANDAT > CLT_ADVIS
-
+#  NB seems to be little difference in CID between SEGREG and STEPP - majority of 
+# stepped are also labelled as segreg and only 5 are labelled as just stepped and they
+# look very similar to those that are segreg in the photos
 
 on_road = c_cyclelanetrack %>%
   filter(CLT_CARR == TRUE) # n = 13965
@@ -62,6 +79,13 @@ on_road_drop = on_road %>%
   select(-c("length_m", "length_km"))
 view(dfSummary(on_road_drop))
 
+# seg = 1371
+# stepped = 94
+# part seg = 349
+# manda = 1854
+# advi = 7273
+# shared = 2845
+# NB total is 13965 - what are the rest of the on road cycle lanes????
 
 
 
@@ -80,39 +104,46 @@ view(ctable(x = test_code_seg$CLT_SEGREG, y = test_code_seg$CLT_MANDAT))
 view(ctable(x = test_code_seg$CLT_SEGREG, y = test_code_seg$CLT_ADVIS))
 # 2 are advisory cycle lanes
 
-# Therefore want to label the 1371 as Segregated, 89 as stepped not segregated
-# want to check up on those coded as mandat and advisory where seg and mand or seg and adv = TRUE
+# # Therefore want to label the 1282 as Segregated, 89 as stepped not segregated but instead stepped
+# # want to check up on those coded as mandat and advisory where seg and mand or seg and adv = TRUE
+# seg_step = on_road %>%
+#   filter(CLT_SEGREG == TRUE & CLT_STEPP == TRUE) 
+# x = on_road %>%
+#   filter(CLT_SEGREG == FALSE & CLT_STEPP == TRUE)
+# 
+# seg_mand = on_road %>%
+#   filter(CLT_SEGREG == TRUE & CLT_MANDAT == TRUE)
+# seg_advis = on_road %>%
+#   filter(CLT_SEGREG == TRUE & CLT_ADVIS == TRUE)
+# seg_step = on_road %>%
+#   filter(CLT_SEGREG == TRUE & CLT_STEPP == TRUE)
+# # examined both datast - recode both of these as CLT_ADVIS/MANDAT as false
+# 
+# # Correct these - this code is not working correctly.  ? related to https://github.com/rstudio/rstudio/issues/7372 affecting case_When?  
+# # a) CLT_MAND
+# # on_road = on_road %>%
+# #   mutate(CLT_MANDAT2 = case_when(CLT_SEGREG == TRUE & CLT_MANDAT == TRUE ~ "FALSE")) 
+# # on_road$CLT_MANDAT2[is.na(on_road$MANDAT2)] = "FALSE"
+# # seg_mand2 = on_road %>%
+# #   filter(CLT_SEGREG == TRUE & CLT_MANDAT2 == TRUE) # 0 observations
+# # # b) CLT_ADVIS
+# # on_road = on_road %>%
+# #   mutate(CLT_ADVIS2 = case_when(CLT_SEGREG == TRUE & CLT_ADVIS == TRUE ~ "FALSE")) 
+# # on_road$CLT_ADVIS2[is.na(on_road$CLT_ADVIS2)] = "FALSE"
+# # seg_advis2 = on_road %>%
+# #   filter(CLT_SEGREG == TRUE & CLT_ADVIS2 == TRUE) # 0 observations
+# # 
+# # # c) CLT_STEPP  ### DO I WANT TO DO THAT - ARE THEY ACTUALLY SEGREGATED AND STEPPED IN WHICH CASE KEEP SEGREGATED....
+# # # want to recode CLT_SEGREG as false where CLT_SEGREG == TRUE & CLT_STEPP == TRUE
+# on_road = on_road %>%
+#   mutate(CLT_SEGREG2 = case_when(CLT_SEGREG == TRUE & CLT_STEPP == TRUE ~ "FALSE",
+#                                  CLT_SEGREG == TRUE & CLT_STEPP == FALSE ~ "TRUE"))
+# on_road$CLT_SEGREG2[is.na(on_road$CLT_SEGREG2)] = "FALSE"
+# seg_step2 = on_road %>%
+#  filter(CLT_SEGREG2 == TRUE & CLT_STEPP== TRUE) # 0 observations
+# view(ctable(x = on_road$CLT_SEGREG2, y = on_road$CLT_STEPP)) # now have 1282 true segregated (false stepped) and 94 false seg but true stepped
+# 
 
-seg_mand = on_road %>%
-  filter(CLT_SEGREG == TRUE & CLT_MANDAT == TRUE)
-seg_advis = on_road %>%
-  filter(CLT_SEGREG == TRUE & CLT_ADVIS == TRUE)
-seg_step = on_road %>%
-  filter(CLT_SEGREG == TRUE & CLT_STEPP == TRUE)
-# examined both datast - recode both of these as CLT_ADVIS/MANDAT as false
-
-# Correct these
-# a) CLT_MAND
-on_road = on_road %>%
-  mutate(CLT_MANDAT2 = case_when(CLT_SEGREG == TRUE & CLT_MANDAT == TRUE ~ "FALSE")) 
-on_road$CLT_MANDAT2[is.na(on_road$MANDAT2)] = "FALSE"
-seg_mand2 = on_road %>%
-  filter(CLT_SEGREG == TRUE & CLT_MANDAT2 == TRUE) # 0 observations
-# b) CLT_MAND
-on_road = on_road %>%
-  mutate(CLT_ADVIS2 = case_when(CLT_SEGREG == TRUE & CLT_ADVIS == TRUE ~ "FALSE")) 
-on_road$CLT_ADVIS2[is.na(on_road$CLT_ADVIS2)] = "FALSE"
-seg_advis2 = on_road %>%
-  filter(CLT_SEGREG == TRUE & CLT_ADVIS2 == TRUE) # 0 observations
-
-# c) CLT_STEPP
-# want to recode CLT_SEGREG as false where CLT_SEGREG == TRUE & CLT_STEPP == TRUE
-on_road = on_road %>%
-  mutate(CLT_SEGREG2 = case_when(CLT_SEGREG == TRUE & CLT_STEPP == TRUE ~ "FALSE")) 
-on_road$CLT_SEGREG2[is.na(on_road$CLT_SEGREG2)] = "FALSE"
-seg_step2 = on_road %>%
-  filter(CLT_SEGREG == TRUE & CLT_SEGREG2 == TRUE) # 0 observations
-view(ctable(x = on_road$CLT_SEGREG2, y = on_road$CLT_STEPP))
 
 
 
@@ -121,6 +152,9 @@ view(ctable(x = on_road$CLT_SEGREG2, y = on_road$CLT_STEPP))
 # 2) CLT_STEPP
 view(ctable(x = test_code_seg$CLT_STEPP, y = test_code_seg$CLT_SEGREG))
 # of the 94 that are stepped 89 are also coded as segregated
+# now check on the updated on_road dataset following the new column of SEGREG2 - 
+#view(ctable(x = on_road$CLT_STEPP, y = on_road$CLT_SEGREG2)) # all 94 stepped are not miscoded as segregated 
+
 view(ctable(x = test_code_seg$CLT_STEPP, y = test_code_seg$CLT_PARSEG))
 # none are coded as part segregated
 view(ctable(x = test_code_seg$CLT_STEPP, y = test_code_seg$CLT_MANDAT))
@@ -130,7 +164,39 @@ view(ctable(x = test_code_seg$CLT_STEPP, y = test_code_seg$CLT_ADVIS))
 
 # Want to code all 94 as stepped once check up on those coded as advisory ie stepp and advis = TRUE
 
+seg_levels = c("Segregated", "Stepped", "Partially segregated", "Mandatory cycle lane", "Advisory cycle lane")
 
+https://www.marsja.se/r-add-column-to-dataframe-based-on-other-columns-conditions-dplyr/
+
+# Create new variable that indicates degree of separation from traffic 
+# seg_levels = c("Segregated", "Stepped", "Partially segregated", "Mandatory cycle lane", "Advisory cycle lane")
+
+# COnvert factor variables into numeric  
+cols = c("CLT_SEGREG", "CLT_STEPP", "CLT_PARSEG", "CLT_MANDAT", "CLT_ADVIS") 
+on_road_test = on_road %>% as.integer(as.character("CLT_SEGREG"))
+
+on_road$CLT_SEG_NUMBER = as.numeric(as.character(on_road$CLT_SEGREG))
+x = c(TRUE, FALSE, TRUE, FALSE)
+str(x)
+x = as.numeric(x)
+str(x)
+x = c(TRUE, FALSE, TRUE, FALSE)
+x = factor(x)
+str(x)
+str(on_road$CLT_SEGREG)
+x = as.numeric(x)
+x
+on_road_test = on_road
+on_road_test$CLT_SEG_NUMBER <- on_road_test$CLT_SEGREG
+
+
+on_road_test$CLT_SEG_NUMBER = as.numeric(on_road$CLT_SEG_NUMBER)
+sum(on_road_test$CLT_SEG_NUMBER)
+str(on_road_teets)
+
+on_road_test$CLT_SEGREG = as.numeric(as.character(on_road$CLT_SEGREG))
+View(on_road_test)
+sum(on_road_test$CLT_SEGREG)
 
 # 4) PCT data
 # The code for obtaining this data is in: get_pct_km_cycled.R file
