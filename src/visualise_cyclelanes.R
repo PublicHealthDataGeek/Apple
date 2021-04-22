@@ -220,6 +220,62 @@ test_df$row_sum = rowSums(test_df[, c(4, 5)])
 # if do on_road then get unique values in row)sm of 0, 5, 9, 4 
 # will need to figure out if this works when add in other columns
 
+# $ CLT_SEGREG: Factor w/ 2 levels "FALSE","TRUE": 1 1 1 1 1 1 1 1 1 1 ...
+on_road_numeric = on_road %>%
+  mutate(CLT_SEGREG_NUMERIC = as.numeric(on_road$CLT_SEGREG)) %>%
+  mutate(CLT_STEPP_NUMERIC = as.numeric(on_road$CLT_STEPP))  %>%
+  mutate(CLT_PARSEG_NUMERIC = as.numeric(on_road$CLT_PARSEG))  %>%
+  mutate(CLT_MANDAT_NUMERIC = as.numeric(on_road$CLT_MANDAT))  %>%
+  mutate(CLT_ADVIS_NUMERIC = as.numeric(on_road$CLT_ADVIS)) # converts all False to 1 and True to 2
+
+# Convert 1(false) to 0 and 2(true) to 1
+on_road_numeric$CLT_SEGREG_NUMERIC = ifelse(on_road_numeric$CLT_SEGREG_NUMERIC == 1, 0, 1)
+on_road_numeric$CLT_STEPP_NUMERIC = ifelse(on_road_numeric$CLT_STEPP_NUMERIC == 1, 0, 1)
+on_road_numeric$CLT_PARSEG_NUMERIC = ifelse(on_road_numeric$CLT_PARSEG_NUMERIC == 1, 0, 1)
+on_road_numeric$CLT_MANDAT_NUMERIC = ifelse(on_road_numeric$CLT_MANDAT_NUMERIC == 1, 0, 1)
+on_road_numeric$CLT_ADVIS_NUMERIC = ifelse(on_road_numeric$CLT_ADVIS_NUMERIC == 1, 0, 1)
+
+# Check now gives the count that I expect
+sum(on_road_numeric$CLT_SEGREG_NUMERIC) # n = 1371
+sum(on_road_numeric$CLT_STEPP_NUMERIC) # n = 94
+sum(on_road_numeric$CLT_PARSEG_NUMERIC) # n = 349
+sum(on_road_numeric$CLT_MANDAT_NUMERIC) # n = 1854
+sum(on_road_numeric$CLT_ADVIS_NUMERIC) # n = 7273
+
+# Recode to give weighted value
+on_road_numeric$CLT_SEGREG_weight = ifelse(on_road_numeric$CLT_SEGREG_NUMERIC == 1, 10000, 0)
+on_road_numeric$CLT_STEPP_weight = ifelse(on_road_numeric$CLT_STEPP_NUMERIC == 1, 1000, 0)
+on_road_numeric$CLT_PARSEG_weight = ifelse(on_road_numeric$CLT_PARSEG_NUMERIC == 1, 100, 0)
+on_road_numeric$CLT_MANDAT_weight = ifelse(on_road_numeric$CLT_MANDAT_NUMERIC == 1, 10, 0)
+on_road_numeric$CLT_ADVIS_weight = ifelse(on_road_numeric$CLT_ADVIS_NUMERIC == 1, 1, 0)
+
+# Create new column with sum of weights
+on_road_numeric = on_road_numeric %>%
+  rowwise() %>%
+  mutate(total_weight = sum(c_across(CLT_SEGREG_weight:CLT_ADVIS_weight)))
+# unique(on_road_numeric$total_weight)
+# 1    10   100 10000   110     0   101 11000  1001 10010  1000 10001
+
+weight_count = on_road_numeric %>%
+  st_drop_geometry() %>%
+  group_by(total_weight) %>%
+  summarise(count = n())
+sum(weight_count$count) # = 13965 ie this totals the total number of on_road obs
+
+#   total_weight count
+#           <dbl> <int>
+# 1            0  3372  # none of the 5 categories
+# 2            1  7196  advisory cycle lane only
+# 3           10  1672  mand cycle lane only
+# 4          100   100  part segregated only
+# 5          101    73  part seg + advisory
+# 6          110   176  part seg + mand
+# 7         1000     3  stepped only
+# 8         1001     2  stepped + advisory 
+# 9        10000  1274  segregated only
+# 10       10001     2  segregated + advisory
+# 11       10010     6  segregated + mandatory
+# 12       11000    89  segregated + stepped
 
 
 
