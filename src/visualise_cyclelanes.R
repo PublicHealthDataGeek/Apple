@@ -186,47 +186,70 @@ test_df = on_road %>%
 # tibble[,2] [50 × 2] (S3: tbl_df/tbl/data.frame)
 # $ FEATURE_ID: chr [1:50] "RWG236927" "RWG279152" "RWG207149" "RWG042572" ...
 # $ CLT_SEGREG: Factor w/ 2 levels "FALSE","TRUE": 1 1 1 1 1 1 1 1 1 1 ...
-test_df$CLT_SEGREG = as.numeric(test_df$CLT_SEGREG) # false -> 1, true -> 2
-test_df$CLT_SEGREG[test_df$CLT_SEGREG == 1] <- 0
-test_df$CLT_SEGREG[test_df$CLT_SEGREG == 2] <- 1
-sum(test_df$CLT_SEGREG)
-# This now works
+# test_df$CLT_SEGREG = as.numeric(test_df$CLT_SEGREG) # false -> 1, true -> 2
+# test_df$CLT_SEGREG[test_df$CLT_SEGREG == 1] <- 0
+# test_df$CLT_SEGREG[test_df$CLT_SEGREG == 2] <- 1
+# sum(test_df$CLT_SEGREG)
+# # This now works
+# 
+# test_df = on_road %>%
+#   st_drop_geometry() %>%
+#   select(c("FEATURE_ID", "CLT_SEGREG", "CLT_STEPP"))
+# set.seed(321)
+# test_df = sample_n(test_df, 50) # 5 TRUE
+# str(test_df)
+# # tibble[,2] [50 × 2] (S3: tbl_df/tbl/data.frame)
+# # $ FEATURE_ID: chr [1:50] "RWG236927" "RWG279152" "RWG207149" "RWG042572" ...
+# # $ CLT_SEGREG: Factor w/ 2 levels "FALSE","TRUE": 1 1 1 1 1 1 1 1 1 1 ...
+# test_df = test_df %>%
+#   mutate(CLT_SEGREG_NUMERIC = as.numeric(test_df$CLT_SEGREG)) %>%
+#   mutate(CLT_STEPP_NUMERIC = as.numeric(test_df$CLT_STEPP)) 
+#   # false -> 1, true -> 2
+# test_df$CLT_SEGREG_NUMERIC[test_df$CLT_SEGREG_NUMERIC == 1] <- 0
+# test_df$CLT_SEGREG_NUMERIC[test_df$CLT_SEGREG_NUMERIC == 2] <- 1
+# test_df$CLT_STEPP_NUMERIC[test_df$CLT_STEPP_NUMERIC == 1] <- 0
+# test_df$CLT_STEPP_NUMERIC[test_df$CLT_STEPP_NUMERIC == 2] <- 1
+# sum(test_df$CLT_SEGREG_NUMERIC) # n = 1371
+# sum(test_df$CLT_STEPP_NUMERIC) # n = 94
+# 
+# test_df$CLT_SEGREG_NUMERIC[test_df$CLT_SEGREG_NUMERIC == 1] <- 5
+# test_df$CLT_STEPP_NUMERIC[test_df$CLT_STEPP_NUMERIC == 1] <- 4
+# test_df$row_sum = rowSums(test_df[, c(4, 5)])
+# # This now works
+# 
+# # if do on_road then get unique values in row)sm of 0, 5, 9, 4 
+# # will need to figure out if this works when add in other columns
 
-test_df = on_road %>%
+# Create new variable that divides observations into shared, contraflow and rest 
+on_road = on_road %>%
+  mutate(type = case_when(CLT_SHARED == TRUE ~ "Shared",
+                          CLT_CONTRA == TRUE ~ "Contraflow",
+                          TRUE ~ "Rest"))
+on_road %>%
   st_drop_geometry() %>%
-  select(c("FEATURE_ID", "CLT_SEGREG", "CLT_STEPP"))
-set.seed(321)
-test_df = sample_n(test_df, 50) # 5 TRUE
-str(test_df)
-# tibble[,2] [50 × 2] (S3: tbl_df/tbl/data.frame)
-# $ FEATURE_ID: chr [1:50] "RWG236927" "RWG279152" "RWG207149" "RWG042572" ...
-# $ CLT_SEGREG: Factor w/ 2 levels "FALSE","TRUE": 1 1 1 1 1 1 1 1 1 1 ...
-test_df = test_df %>%
-  mutate(CLT_SEGREG_NUMERIC = as.numeric(test_df$CLT_SEGREG)) %>%
-  mutate(CLT_STEPP_NUMERIC = as.numeric(test_df$CLT_STEPP)) 
-  # false -> 1, true -> 2
-test_df$CLT_SEGREG_NUMERIC[test_df$CLT_SEGREG_NUMERIC == 1] <- 0
-test_df$CLT_SEGREG_NUMERIC[test_df$CLT_SEGREG_NUMERIC == 2] <- 1
-test_df$CLT_STEPP_NUMERIC[test_df$CLT_STEPP_NUMERIC == 1] <- 0
-test_df$CLT_STEPP_NUMERIC[test_df$CLT_STEPP_NUMERIC == 2] <- 1
-sum(test_df$CLT_SEGREG_NUMERIC) # n = 1371
-sum(test_df$CLT_STEPP_NUMERIC) # n = 94
+  group_by(type) %>%
+  summarise(count = n())
+#   type       count
+#   <chr>      <int>
+# 1 Contraflow  1435
+# 2 Rest        9685
+# 3 Shared      2845
+1435+9685+2845 
+# = 13965 
 
-test_df$CLT_SEGREG_NUMERIC[test_df$CLT_SEGREG_NUMERIC == 1] <- 5
-test_df$CLT_STEPP_NUMERIC[test_df$CLT_STEPP_NUMERIC == 1] <- 4
-test_df$row_sum = rowSums(test_df[, c(4, 5)])
-# This now works
 
-# if do on_road then get unique values in row)sm of 0, 5, 9, 4 
-# will need to figure out if this works when add in other columns
-
+# Convert Factors to numeric
 # $ CLT_SEGREG: Factor w/ 2 levels "FALSE","TRUE": 1 1 1 1 1 1 1 1 1 1 ...
 on_road_numeric = on_road %>%
   mutate(CLT_SEGREG_NUMERIC = as.numeric(on_road$CLT_SEGREG)) %>%
   mutate(CLT_STEPP_NUMERIC = as.numeric(on_road$CLT_STEPP))  %>%
   mutate(CLT_PARSEG_NUMERIC = as.numeric(on_road$CLT_PARSEG))  %>%
   mutate(CLT_MANDAT_NUMERIC = as.numeric(on_road$CLT_MANDAT))  %>%
-  mutate(CLT_ADVIS_NUMERIC = as.numeric(on_road$CLT_ADVIS)) # converts all False to 1 and True to 2
+  mutate(CLT_ADVIS_NUMERIC = as.numeric(on_road$CLT_ADVIS)) %>%
+  mutate(CLT_SHARED_NUMERIC = as.numeric(on_road$CLT_SHARED)) %>%
+  mutate(CLT_CONTRA_NUMERIC = as.numeric(on_road$CLT_CONTRA)) %>%
+  mutate(CLT_PARKR_NUMERIC = as.numeric(on_road$CLT_PARKR))
+  # converts all False to 1 and True to 2
 
 # Convert 1(false) to 0 and 2(true) to 1
 on_road_numeric$CLT_SEGREG_NUMERIC = ifelse(on_road_numeric$CLT_SEGREG_NUMERIC == 1, 0, 1)
@@ -234,6 +257,9 @@ on_road_numeric$CLT_STEPP_NUMERIC = ifelse(on_road_numeric$CLT_STEPP_NUMERIC == 
 on_road_numeric$CLT_PARSEG_NUMERIC = ifelse(on_road_numeric$CLT_PARSEG_NUMERIC == 1, 0, 1)
 on_road_numeric$CLT_MANDAT_NUMERIC = ifelse(on_road_numeric$CLT_MANDAT_NUMERIC == 1, 0, 1)
 on_road_numeric$CLT_ADVIS_NUMERIC = ifelse(on_road_numeric$CLT_ADVIS_NUMERIC == 1, 0, 1)
+on_road_numeric$CLT_SHARED_NUMERIC = ifelse(on_road_numeric$CLT_SHARED_NUMERIC == 1, 0, 1)
+on_road_numeric$CLT_CONTRA_NUMERIC = ifelse(on_road_numeric$CLT_CONTRA_NUMERIC == 1, 0, 1)
+on_road_numeric$CLT_PARKR_NUMERIC = ifelse(on_road_numeric$CLT_PARKR_NUMERIC == 1, 0, 1)
 
 # Check now gives the count that I expect
 sum(on_road_numeric$CLT_SEGREG_NUMERIC) # n = 1371
@@ -241,6 +267,9 @@ sum(on_road_numeric$CLT_STEPP_NUMERIC) # n = 94
 sum(on_road_numeric$CLT_PARSEG_NUMERIC) # n = 349
 sum(on_road_numeric$CLT_MANDAT_NUMERIC) # n = 1854
 sum(on_road_numeric$CLT_ADVIS_NUMERIC) # n = 7273
+sum(on_road_numeric$CLT_SHARED_NUMERIC) # n = 2845
+sum(on_road_numeric$CLT_CONTRA_NUMERIC) # n = 1463
+sum(on_road_numeric$CLT_PARKR_NUMERIC) # n = 108
 
 # Recode to give weighted value
 on_road_numeric$CLT_SEGREG_weight = ifelse(on_road_numeric$CLT_SEGREG_NUMERIC == 1, 10000, 0)
@@ -249,22 +278,20 @@ on_road_numeric$CLT_PARSEG_weight = ifelse(on_road_numeric$CLT_PARSEG_NUMERIC ==
 on_road_numeric$CLT_MANDAT_weight = ifelse(on_road_numeric$CLT_MANDAT_NUMERIC == 1, 10, 0)
 on_road_numeric$CLT_ADVIS_weight = ifelse(on_road_numeric$CLT_ADVIS_NUMERIC == 1, 1, 0)
 
-# Create new column with sum of weights
+# Create new column with weights for the 5 classes of separation
 on_road_numeric = on_road_numeric %>%
   rowwise() %>%
-  mutate(total_weight = sum(c_across(CLT_SEGREG_weight:CLT_ADVIS_weight)))
-# unique(on_road_numeric$total_weight)
+  mutate(weight_5 = sum(c_across(CLT_SEGREG_weight:CLT_ADVIS_weight)))
+unique(on_road_numeric$weight_5)
 # 1    10   100 10000   110     0   101 11000  1001 10010  1000 10001
-
-weight_count = on_road_numeric %>%
+on_road_numeric %>%
   st_drop_geometry() %>%
-  group_by(total_weight) %>%
+  group_by(weight_5) %>%
   summarise(count = n())
-sum(weight_count$count) # = 13965 ie this totals the total number of on_road obs
 
-#   total_weight count
+#       weight_5 count
 #           <dbl> <int>
-# 1            0  3372  # none of the 5 categories
+# 1            0  3372  # none of the 5 categories - might be shared or contraf
 # 2            1  7196  advisory cycle lane only
 # 3           10  1672  mand cycle lane only
 # 4          100   100  part segregated only
@@ -276,6 +303,175 @@ sum(weight_count$count) # = 13965 ie this totals the total number of on_road obs
 # 10       10001     2  segregated + advisory
 # 11       10010     6  segregated + mandatory
 # 12       11000    89  segregated + stepped
+
+
+##  Create factored column where labelled by the 'highest' degree of separation
+# factor numeric
+on_road_factor = on_road_numeric %>%
+  mutate(Highest_separation = factor(weight_5))
+
+# convert factored numbers to relevent labels
+on_road_factor = on_road_factor %>%
+  mutate(Highest_separation = fct_collapse(Highest_separation, 
+           "Segregated" = c("10000","10001","10010", "11000"),
+           "Stepped" = c("1000", "1001"),
+           "Part-segregated" = c("100", "101", "110"),
+           "Mandatory cycle lane" = c("10"),
+           "Advisory cycle lane" = c("1"),
+           "No separation" = c("0")))
+
+# relevel order of factors in the degree of separation
+on_road_factor = on_road_factor %>%
+  mutate(Highest_separation = fct_relevel(Highest_separation, 
+                                           c("Segregated", "Stepped", "Part-segregated",
+                                             "Mandatory cycle lane", "Advisory cycle lane",
+                                             "No separation")))
+# # Check to see works ok
+# on_road_factor %>%
+#   st_drop_geometry() %>%
+#   group_by(Highest_separation) %>%
+#   summarise(count = n())
+# 
+# #   Highest_separation     count
+# #   <fct>                  <int>
+# # 1 Segregated              1371
+# # 2 Stepped                    5
+# # 3 Part-segregated          349
+# # 4 Mandatory cycle lane    1672
+# # 5 Advisory cycle lane     7196
+# # 6 No level of separation  3372                            
+                                    
+
+# create datasets by type
+contra = on_road_factor %>%
+  filter(type == "Contraflow") # n = 1435
+
+
+# create shared dataset
+shared = on_road_factor %>%
+  filter(type == "Shared") # n = 2845
+
+
+
+# create rest dataset
+rest = on_road_factor %>%
+  filter(type == "Rest") # n= 9685
+
+
+
+# create df of degrees of separation by type
+rest_sep = rest %>%
+  st_drop_geometry() %>%
+  group_by(Highest_separation) %>%
+  summarise(rest_count = n())
+contra_sep = contra %>%
+  st_drop_geometry() %>%
+  group_by(Highest_separation) %>%
+  summarise(contra_count = n())
+shared_sep = shared %>%
+  st_drop_geometry() %>%
+  group_by(Highest_separation) %>%
+  summarise(shared_count = n())
+summary_high_sep = left_join(rest_sep, contra_sep) %>%
+  left_join(shared_sep)
+summary_high_sep[is.na(summary_high_sep)] <- 0
+# Highest_separation   rest_count contra_count shared_count
+# <fct>                     <int>        <int>        <int>
+# 1 Segregated                  976          393            2
+# 2 Stepped                       5            0            0
+# 3 Part-segregated             273           72            4
+# 4 Mandatory cycle lane       1501          165            6
+# 5 Advisory cycle lane        6877          283           36
+# 6 No separation                53          522         2797
+
+
+
+
+contra_weight_5_count = contra %>%
+  st_drop_geometry() %>%
+  group_by(weight_5) %>%
+  summarise(count = n())
+sum(weight_5_count$count) # = 13965 ie this totals the total number of on_road obs
+
+
+
+on_road_numeric = on_road_numeric %>%
+  rowwise() %>%
+  mutate(weight_3 = sum(c_across(CLT_SHARED_weight:CLT_PARKR_weight)))
+
+unique(on_road_numeric$weight_3)
+#  0  20 200 220   2 202  22
+
+weight_3_count = on_road_numeric %>%
+  st_drop_geometry() %>%
+  group_by(weight_3) %>%
+  summarise(count = n())
+sum(weight_3_count$count)  # n = 13965
+
+# weight_3 count
+# <dbl> <int>
+# 1        0  9594 Not park, contra or shared
+# 2        2    91 Park
+# 3       20  1429 Contra
+# 4       22     6 Contra + Park
+# 5      200  2806 Shared
+# 6      202    11 Shared + Park
+# 7      220    28 Shared + Contra
+
+
+
+# total_weight count
+# <dbl> <int>
+#  1            0    48  none of the categories
+#  2            1  6838 advisory cycle lane only
+#  3            2     5  Park 
+#  4            3    39  Park + advisory
+#  5           10  1488  mand cycle lane only
+#  6           12    13  mand & park
+#  7           20   521  contra
+#  8           21   282  contra + advisory
+#  9           22     1  contra + park
+# 10           23     1  contra + park + advisory
+# 11           30   163  contra + mand
+# 12           32     2  contra + park + mand
+# 13          100    60 part segregated only
+# 14          101    58 part seg + advisory
+# 15          102     2 part seg + park
+# 16          103     2 part seg + park + advisory
+# 17          110   150 part seg + mand
+# 18          112     1 part seg + park + mand 
+# 19          120    34 part seg + contra
+# 20          121    13 part seg + contra + advisory
+# 21          130    25 part seg + contra + mand
+# 22          200  2758 shared
+# 23          201    36 shared + advisory
+# 24          202    11 shared + park
+# 25          210     6 shared + mandatory
+# 26          220    28 shared + contra
+# 27          300     4 shared + partseg
+# 28         1000     3 stepped only
+# 29         1001     2 stepped + advisory 
+# 30        10000   861 segregated only
+# 31        10001     2 segregated + advisory
+# 32        10002    26 segregated + park
+# 33        10010     5 segregated + mandatory
+# 34        10020   384 segregated + contra
+# 35        10022     2 segregated + contra + park
+# 36        10200     1 segregated + shared
+# 37        10210     1 segregated + shared + mandat
+# 38        11000    79 segregated + stepped
+# 39        11002     3 segregated + stepped + park
+# 40        11020     7 segregated + stepped + contra
+
+
+
+
+
+
+
+
+
+
 
 
 
