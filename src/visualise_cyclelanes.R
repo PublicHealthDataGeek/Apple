@@ -12,31 +12,85 @@
 
 
 
-#!diagnostics suppress = CLT_MANDAT2, CLT_ADVIS2, CLT_SEGREG2
-
-
 #Load packages
 library(tidyverse)
-#library(mapview)
+library(mapview)
+
 library(tmap)
 #library(cowplot)
 #library(patchwork)
-library(summarytools) # dont run if want to use mapview as it stops it working
+#library(summarytools) # dont run if want to use mapview as it stops it working
 library(sf)
 library(tmaptools) # for palette explorer 
 #library(ggpubr) # for text grobs
 #library(ggspatial) # get north arrow and bar
 
+# Package options
+mapviewOptions(native.crs = TRUE)
+tmap_design_mode(design.mode = FALSE)
+
+
 ################################
 # Load and manipulate datasets #
 ################################
 
+# 1) Local Authority spatial data
+
+# import May 2020 ONS LA boundary data clipped to coastline (used so that River Thames appears)
+lon_lad_2020_c2c = readRDS(file = "./map_data/lon_LAD_boundaries_May_2020_BFC.Rds")
+
+# simply borough shapes
+lon_lad_2020_c2c <- rmapshaper::ms_simplify(lon_lad_2020_c2c, keep=0.015) #Simplify boroughs
+
+# Create new variable that labels the Boroughs by number (matches the overall map)
+lon_lad_2020_c2c$Borough_number = fct_recode(lon_lad_2020_c2c$BOROUGH, 
+                                             "7" = "Kensington & Chelsea",
+                                             "32" = "Barking & Dagenham",
+                                             "8" = "Hammersmith & Fulham",
+                                             "25" = "Kingston upon Thames",
+                                             "24" = "Richmond upon Thames",
+                                             "1" = "City of London",
+                                             "15" = "Waltham Forest",
+                                             "28" = "Croydon",
+                                             "29" = "Bromley",
+                                             "23" = "Hounslow",
+                                             "20" = "Ealing",
+                                             "31" = "Havering",
+                                             "22" = "Hillingdon",
+                                             "21" = "Harrow",
+                                             "19" = "Brent",
+                                             "18" = "Barnet",
+                                             "10" = "Lambeth",
+                                             "11" = "Southwark", 
+                                             "12" = "Lewisham",
+                                             "13" = "Greenwich",
+                                             "30" = "Bexley",
+                                             "17" = "Enfield",
+                                             "33" = "Redbridge",
+                                             "27" = "Sutton",
+                                             "26" = "Merton",
+                                             "9" = "Wandsworth",
+                                             "6" = "Westminster",
+                                             "5" = "Camden",
+                                             "2" = "Tower Hamlets",
+                                             "4" = "Islington",
+                                             "3" = "Hackney",
+                                             "16" = "Haringey",
+                                             "14" = "Newham")
+
+# Select variables of interest
+lon_lad_2020_c2c_reduced = lon_lad_2020_c2c %>%
+  select(c("BOROUGH", "Borough_number", "geometry"))
 
 # 1) CID data
 
 # Import Cycle Lanes and Tracks dataset (created from TFL datasets downloaded 25/2/21)
 c_cyclelanetrack = readRDS(file = "/home/bananafan/Documents/PhD/Paper1/data/cleansed_cycle_lane_track")
 # n = 25315
+
+# Join to borough geometry  ?do I want to do that???
+# geom_cyclelanetrack = left_join(lon_lad_2020_c2c_reduced, c_cyclelanetrack) 
+
 
 # names(c_cyclelanetrack)
 # [1] "FEATURE_ID" "SVDATE"     "CLT_CARR"   "CLT_SEGREG" "CLT_STEPP" 
@@ -61,7 +115,7 @@ c_cyclelanetrack = readRDS(file = "/home/bananafan/Documents/PhD/Paper1/data/cle
 # [16] "CLT_WATERR"   "CLT_ACCESS" "CLT_COLOUR" 
 
 # Order of Protection from motor traffic on highways (DFT guidance pg 33)
-# Fully kerbed > stepped > light segregation > Mandatory/Advisory 
+# Fully kerbed > stepped > light segregation > Mandatory/Advisory
 # FK/S/LS suitable for most people at 20/30 mph only FK suitable for 40mph+
 # M/A only suitable for most poepl on 20mph roads with motor vehicle flow of <5000
 
@@ -71,9 +125,11 @@ c_cyclelanetrack = readRDS(file = "/home/bananafan/Documents/PhD/Paper1/data/cle
 # stepped are also labelled as segreg and only 5 are labelled as just stepped and they
 # look very similar to those that are segreg in the photos
 
+# Limit CID to on road infrastructure only 
 on_road = c_cyclelanetrack %>%
   filter(CLT_CARR == TRUE) # n = 13965
 
+# Create dataframe so can obtain a df summary
 on_road_drop = on_road %>%
   st_drop_geometry() %>%
   select(-c("length_m", "length_km"))
@@ -89,20 +145,251 @@ view(dfSummary(on_road_drop))
 
 
 
-# Examining the dataset as think that some assets will be coded with more than one level of segregation
+# Examine the dataset as think that some assets are coded with more than one level of segregation
 test_code_seg = on_road_drop %>%
   select(c("FEATURE_ID", "CLT_SEGREG", "CLT_STEPP", "CLT_PARSEG", "CLT_MANDAT", "CLT_ADVIS"))
 
-# Findings:
-# 1) CLT_SEGREG
+# Findings when looking at CLT_SEGREG
 view(ctable(x = test_code_seg$CLT_SEGREG, y = test_code_seg$CLT_STEPP))
-# Of the 1371 on road segregated cycle lanes 1282 are not stepped but 89 are also coded as stepped
+# Of the 1371 on road segregated cycle lanes 89 are also coded as stepped
 view(ctable(x = test_code_seg$CLT_SEGREG, y = test_code_seg$CLT_PARSEG))
 # none are part segregated
 view(ctable(x = test_code_seg$CLT_SEGREG, y = test_code_seg$CLT_MANDAT))
-# 6 are mandatory cycle lanes
+# 6 are also coded as mandatory cycle lanes
 view(ctable(x = test_code_seg$CLT_SEGREG, y = test_code_seg$CLT_ADVIS))
-# 2 are advisory cycle lanes
+# 2 are also coded as advisory cycle lanes
+
+#################################################################
+# CID dataset manipulation to enable analysis and visualisation #
+#################################################################
+
+# Create new variable that divides observations into shared, contraflow and rest 
+on_road = on_road %>%
+  mutate(type = case_when(CLT_SHARED == TRUE ~ "Shared",
+                          CLT_CONTRA == TRUE ~ "Contraflow",
+                          TRUE ~ "Rest"))
+on_road$type = factor(on_road$type, levels = c("Rest", "Shared", "Contraflow"))
+
+on_road %>%
+  st_drop_geometry() %>%
+  group_by(type) %>%
+  summarise(count = n())
+#   type       count
+#   <chr>      <int>
+# 1 Contraflow  1435
+# 2 Rest        9685
+# 3 Shared      2845
+1435+9685+2845 
+# = 13965 
+
+
+# Convert Factors to numeric
+# $ CLT_SEGREG: Factor w/ 2 levels "FALSE","TRUE": 1 1 1 1 1 1 1 1 1 1 ...
+on_road_numeric = on_road %>%
+  mutate(CLT_SEGREG_NUMERIC = as.numeric(on_road$CLT_SEGREG)) %>%
+  mutate(CLT_STEPP_NUMERIC = as.numeric(on_road$CLT_STEPP))  %>%
+  mutate(CLT_PARSEG_NUMERIC = as.numeric(on_road$CLT_PARSEG))  %>%
+  mutate(CLT_MANDAT_NUMERIC = as.numeric(on_road$CLT_MANDAT))  %>%
+  mutate(CLT_ADVIS_NUMERIC = as.numeric(on_road$CLT_ADVIS)) %>%
+  mutate(CLT_SHARED_NUMERIC = as.numeric(on_road$CLT_SHARED)) %>%
+  mutate(CLT_CONTRA_NUMERIC = as.numeric(on_road$CLT_CONTRA)) %>%
+  mutate(CLT_PARKR_NUMERIC = as.numeric(on_road$CLT_PARKR))
+  # converts all False to 1 and True to 2
+
+# Convert 1(false) to 0 and 2(true) to 1
+on_road_numeric$CLT_SEGREG_NUMERIC = ifelse(on_road_numeric$CLT_SEGREG_NUMERIC == 1, 0, 1)
+on_road_numeric$CLT_STEPP_NUMERIC = ifelse(on_road_numeric$CLT_STEPP_NUMERIC == 1, 0, 1)
+on_road_numeric$CLT_PARSEG_NUMERIC = ifelse(on_road_numeric$CLT_PARSEG_NUMERIC == 1, 0, 1)
+on_road_numeric$CLT_MANDAT_NUMERIC = ifelse(on_road_numeric$CLT_MANDAT_NUMERIC == 1, 0, 1)
+on_road_numeric$CLT_ADVIS_NUMERIC = ifelse(on_road_numeric$CLT_ADVIS_NUMERIC == 1, 0, 1)
+# on_road_numeric$CLT_SHARED_NUMERIC = ifelse(on_road_numeric$CLT_SHARED_NUMERIC == 1, 0, 1)
+# on_road_numeric$CLT_CONTRA_NUMERIC = ifelse(on_road_numeric$CLT_CONTRA_NUMERIC == 1, 0, 1)
+# on_road_numeric$CLT_PARKR_NUMERIC = ifelse(on_road_numeric$CLT_PARKR_NUMERIC == 1, 0, 1)
+
+# Check now gives the count that I expect
+sum(on_road_numeric$CLT_SEGREG_NUMERIC) # n = 1371
+sum(on_road_numeric$CLT_STEPP_NUMERIC) # n = 94
+sum(on_road_numeric$CLT_PARSEG_NUMERIC) # n = 349
+sum(on_road_numeric$CLT_MANDAT_NUMERIC) # n = 1854
+sum(on_road_numeric$CLT_ADVIS_NUMERIC) # n = 7273
+# sum(on_road_numeric$CLT_SHARED_NUMERIC) # n = 2845
+# sum(on_road_numeric$CLT_CONTRA_NUMERIC) # n = 1463
+# sum(on_road_numeric$CLT_PARKR_NUMERIC) # n = 108
+
+# Recode to give weighted value with segregated weighted highest and advisory cycle lane weighted lowest
+on_road_numeric$CLT_SEGREG_weight = ifelse(on_road_numeric$CLT_SEGREG_NUMERIC == 1, 10000, 0)
+on_road_numeric$CLT_STEPP_weight = ifelse(on_road_numeric$CLT_STEPP_NUMERIC == 1, 1000, 0)
+on_road_numeric$CLT_PARSEG_weight = ifelse(on_road_numeric$CLT_PARSEG_NUMERIC == 1, 100, 0)
+on_road_numeric$CLT_MANDAT_weight = ifelse(on_road_numeric$CLT_MANDAT_NUMERIC == 1, 10, 0)
+on_road_numeric$CLT_ADVIS_weight = ifelse(on_road_numeric$CLT_ADVIS_NUMERIC == 1, 1, 0)
+
+# Create new column with the sum of the weights for the 5 classes of separation
+on_road_numeric = on_road_numeric %>%
+  rowwise() %>%
+  mutate(weight_5 = sum(c_across(CLT_SEGREG_weight:CLT_ADVIS_weight)))
+unique(on_road_numeric$weight_5)
+# 1    10   100 10000   110     0   101 11000  1001 10010  1000 10001
+on_road_numeric %>%
+  st_drop_geometry() %>%
+  group_by(weight_5) %>%
+  summarise(count = n())
+
+#       weight_5 count
+#           <dbl> <int>
+# 1            0  3372  # none of the 5 categories - might be shared or contraf
+# 2            1  7196  advisory cycle lane only
+# 3           10  1672  mand cycle lane only
+# 4          100   100  part segregated only
+# 5          101    73  part seg + advisory
+# 6          110   176  part seg + mand
+# 7         1000     3  stepped only
+# 8         1001     2  stepped + advisory 
+# 9        10000  1274  segregated only
+# 10       10001     2  segregated + advisory
+# 11       10010     6  segregated + mandatory
+# 12       11000    89  segregated + stepped
+
+
+##  Create factored column where labelled by the 'highest' degree of separation
+# factor numeric
+on_road_factor = on_road_numeric %>%
+  mutate(Highest_separation = factor(weight_5))
+
+# convert factored numbers to relevent labels
+on_road_factor = on_road_factor %>%
+  mutate(Highest_separation = fct_collapse(Highest_separation, 
+           "Segregated" = c("10000","10001","10010", "11000"),
+           "Stepped" = c("1000", "1001"),
+           "Part-segregated" = c("100", "101", "110"),
+           "Mandatory cycle lane" = c("10"),
+           "Advisory cycle lane" = c("1"),
+           "No separation" = c("0")))
+
+# Relevel order of factors in the degree of separation
+on_road_factor = on_road_factor %>%
+  mutate(Highest_separation = fct_relevel(Highest_separation, 
+                                           c("Segregated", "Stepped", "Part-segregated",
+                                             "Mandatory cycle lane", "Advisory cycle lane",
+                                             "No separation")))
+# # Check to see works ok
+# on_road_factor %>%
+#   st_drop_geometry() %>%
+#   group_by(Highest_separation) %>%
+#   summarise(count = n())
+# 
+# #   Highest_separation     count
+# #   <fct>                  <int>
+# # 1 Segregated              1371
+# # 2 Stepped                    5
+# # 3 Part-segregated          349
+# # 4 Mandatory cycle lane    1672
+# # 5 Advisory cycle lane     7196
+# # 6 No level of separation  3372                            
+                                    
+
+# create datasets by type
+contra = on_road_factor %>%
+  filter(type == "Contraflow") # n = 1435
+shared = on_road_factor %>%
+  filter(type == "Shared") # n = 2845
+rest = on_road_factor %>%
+  filter(type == "Rest") # n= 9685
+
+
+
+# create df of degrees of separation by type
+rest_sep = rest %>%
+  st_drop_geometry() %>%
+  group_by(Highest_separation) %>%
+  summarise(rest_count = n())
+contra_sep = contra %>%
+  st_drop_geometry() %>%
+  group_by(Highest_separation) %>%
+  summarise(contra_count = n())
+shared_sep = shared %>%
+  st_drop_geometry() %>%
+  group_by(Highest_separation) %>%
+  summarise(shared_count = n())
+summary_high_sep = left_join(rest_sep, contra_sep) %>%
+  left_join(shared_sep)
+summary_high_sep[is.na(summary_high_sep)] <- 0
+# Highest_separation   rest_count contra_count shared_count
+# <fct>                     <int>        <int>        <int>
+# 1 Segregated                  976          393            2
+# 2 Stepped                       5            0            0
+# 3 Part-segregated             273           72            4
+# 4 Mandatory cycle lane       1501          165            6
+# 5 Advisory cycle lane        6877          283           36
+# 6 No separation                53          522         2797
+
+##################################################
+# Create visualisations of degrees of separation #
+##################################################
+
+separation_map = tm_shape(lon_lad_2020_c2c) +
+  tm_polygons(col = "gray98", border.col = "gray70") +
+  tm_shape(on_road_factor) +
+  tm_lines("Highest_separation",
+           palette = "viridis",
+           lwd = 2.5, 
+           alpha = 0.75, 
+           title.col = "Degree of separation") +
+  tm_layout(title = "On road cycle lane separation from other road users", 
+            frame = FALSE)
+
+separation_map_type = tm_shape(lon_lad_2020_c2c) +
+  tm_polygons(col = "gray98", border.col = "gray70") +
+  tm_shape(on_road_factor) +
+  tm_lines("Highest_separation",
+           palette = "viridis",
+           lwd = 2.5, 
+           alpha = 0.75) + 
+  tm_facets(by = "type",
+        free.coords = FALSE, 
+        ncol = 1) +
+  tm_layout(legend.position = c("left", "top"))
+
+# Other colour options
+# purp_green_sep = tm_shape(lon_lad_2020_c2c) +
+#   tm_polygons(col = "white") +
+#   tm_shape(on_road_factor) +
+#   tm_lines("Highest_separation",
+#            palette = "PiYG",
+#            lwd = 2)  
+# 
+# magma_sep = tm_shape(lon_lad_2020_c2c) +
+#   tm_polygons(col = "white") +
+#   tm_shape(on_road_factor) +
+#   tm_lines("Highest_separation",
+#            palette = "magma",
+#            lwd = 2)  
+
+
+#########################################
+#  Next steps:
+
+# lengths - by borough summed by type
+# ? any focus on seg/step/partseg
+
+# ? heatmap of x axis speed, y axis borough, colour = proportion infrastructure that is segreg etc?
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 # # Therefore want to label the 1282 as Segregated, 89 as stepped not segregated but instead stepped
 # # want to check up on those coded as mandat and advisory where seg and mand or seg and adv = TRUE
@@ -148,38 +435,24 @@ view(ctable(x = test_code_seg$CLT_SEGREG, y = test_code_seg$CLT_ADVIS))
 
 
 
-
-# 2) CLT_STEPP
-view(ctable(x = test_code_seg$CLT_STEPP, y = test_code_seg$CLT_SEGREG))
-# of the 94 that are stepped 89 are also coded as segregated
-# now check on the updated on_road dataset following the new column of SEGREG2 - 
-#view(ctable(x = on_road$CLT_STEPP, y = on_road$CLT_SEGREG2)) # all 94 stepped are not miscoded as segregated 
-
-view(ctable(x = test_code_seg$CLT_STEPP, y = test_code_seg$CLT_PARSEG))
-# none are coded as part segregated
-view(ctable(x = test_code_seg$CLT_STEPP, y = test_code_seg$CLT_MANDAT))
-# none are coded as mandatory
-view(ctable(x = test_code_seg$CLT_STEPP, y = test_code_seg$CLT_ADVIS))
-# 2 are coded as advisory
-
 # Want to code all 94 as stepped once check up on those coded as advisory ie stepp and advis = TRUE
 
 seg_levels = c("Segregated", "Stepped", "Partially segregated", "Mandatory cycle lane", "Advisory cycle lane")
 
 https://www.marsja.se/r-add-column-to-dataframe-based-on-other-columns-conditions-dplyr/
-
-# Create new variable that indicates degree of separation from traffic 
-# seg_levels = c("Segregated", "Stepped", "Partially segregated", "Mandatory cycle lane", "Advisory cycle lane")
-
-# # COnvert factor variables into numeric  
-# cols = c("CLT_SEGREG", "CLT_STEPP", "CLT_PARSEG", "CLT_MANDAT", "CLT_ADVIS") 
-# on_road_test = on_road %>% as.integer(as.character("CLT_SEGREG"))
-
-# try smaller dataset of on_road
-
-test_df = on_road %>%
-  st_drop_geometry() %>%
-  select(c("FEATURE_ID", "CLT_SEGREG"))
+  
+  # Create new variable that indicates degree of separation from traffic 
+  # seg_levels = c("Segregated", "Stepped", "Partially segregated", "Mandatory cycle lane", "Advisory cycle lane")
+  
+  # # COnvert factor variables into numeric  
+  # cols = c("CLT_SEGREG", "CLT_STEPP", "CLT_PARSEG", "CLT_MANDAT", "CLT_ADVIS") 
+  # on_road_test = on_road %>% as.integer(as.character("CLT_SEGREG"))
+  
+  # try smaller dataset of on_road
+  
+  # test_df = on_road %>%
+#   st_drop_geometry() %>%
+#   select(c("FEATURE_ID", "CLT_SEGREG"))
 # set.seed(321)
 # test_df = sample_n(test_df, 50) # 5 TRUE
 # str(test_df)
@@ -220,193 +493,28 @@ test_df = on_road %>%
 # # if do on_road then get unique values in row)sm of 0, 5, 9, 4 
 # # will need to figure out if this works when add in other columns
 
-# Create new variable that divides observations into shared, contraflow and rest 
-on_road = on_road %>%
-  mutate(type = case_when(CLT_SHARED == TRUE ~ "Shared",
-                          CLT_CONTRA == TRUE ~ "Contraflow",
-                          TRUE ~ "Rest"))
-on_road %>%
-  st_drop_geometry() %>%
-  group_by(type) %>%
-  summarise(count = n())
-#   type       count
-#   <chr>      <int>
-# 1 Contraflow  1435
-# 2 Rest        9685
-# 3 Shared      2845
-1435+9685+2845 
-# = 13965 
 
 
-# Convert Factors to numeric
-# $ CLT_SEGREG: Factor w/ 2 levels "FALSE","TRUE": 1 1 1 1 1 1 1 1 1 1 ...
-on_road_numeric = on_road %>%
-  mutate(CLT_SEGREG_NUMERIC = as.numeric(on_road$CLT_SEGREG)) %>%
-  mutate(CLT_STEPP_NUMERIC = as.numeric(on_road$CLT_STEPP))  %>%
-  mutate(CLT_PARSEG_NUMERIC = as.numeric(on_road$CLT_PARSEG))  %>%
-  mutate(CLT_MANDAT_NUMERIC = as.numeric(on_road$CLT_MANDAT))  %>%
-  mutate(CLT_ADVIS_NUMERIC = as.numeric(on_road$CLT_ADVIS)) %>%
-  mutate(CLT_SHARED_NUMERIC = as.numeric(on_road$CLT_SHARED)) %>%
-  mutate(CLT_CONTRA_NUMERIC = as.numeric(on_road$CLT_CONTRA)) %>%
-  mutate(CLT_PARKR_NUMERIC = as.numeric(on_road$CLT_PARKR))
-  # converts all False to 1 and True to 2
-
-# Convert 1(false) to 0 and 2(true) to 1
-on_road_numeric$CLT_SEGREG_NUMERIC = ifelse(on_road_numeric$CLT_SEGREG_NUMERIC == 1, 0, 1)
-on_road_numeric$CLT_STEPP_NUMERIC = ifelse(on_road_numeric$CLT_STEPP_NUMERIC == 1, 0, 1)
-on_road_numeric$CLT_PARSEG_NUMERIC = ifelse(on_road_numeric$CLT_PARSEG_NUMERIC == 1, 0, 1)
-on_road_numeric$CLT_MANDAT_NUMERIC = ifelse(on_road_numeric$CLT_MANDAT_NUMERIC == 1, 0, 1)
-on_road_numeric$CLT_ADVIS_NUMERIC = ifelse(on_road_numeric$CLT_ADVIS_NUMERIC == 1, 0, 1)
-on_road_numeric$CLT_SHARED_NUMERIC = ifelse(on_road_numeric$CLT_SHARED_NUMERIC == 1, 0, 1)
-on_road_numeric$CLT_CONTRA_NUMERIC = ifelse(on_road_numeric$CLT_CONTRA_NUMERIC == 1, 0, 1)
-on_road_numeric$CLT_PARKR_NUMERIC = ifelse(on_road_numeric$CLT_PARKR_NUMERIC == 1, 0, 1)
-
-# Check now gives the count that I expect
-sum(on_road_numeric$CLT_SEGREG_NUMERIC) # n = 1371
-sum(on_road_numeric$CLT_STEPP_NUMERIC) # n = 94
-sum(on_road_numeric$CLT_PARSEG_NUMERIC) # n = 349
-sum(on_road_numeric$CLT_MANDAT_NUMERIC) # n = 1854
-sum(on_road_numeric$CLT_ADVIS_NUMERIC) # n = 7273
-sum(on_road_numeric$CLT_SHARED_NUMERIC) # n = 2845
-sum(on_road_numeric$CLT_CONTRA_NUMERIC) # n = 1463
-sum(on_road_numeric$CLT_PARKR_NUMERIC) # n = 108
-
-# Recode to give weighted value
-on_road_numeric$CLT_SEGREG_weight = ifelse(on_road_numeric$CLT_SEGREG_NUMERIC == 1, 10000, 0)
-on_road_numeric$CLT_STEPP_weight = ifelse(on_road_numeric$CLT_STEPP_NUMERIC == 1, 1000, 0)
-on_road_numeric$CLT_PARSEG_weight = ifelse(on_road_numeric$CLT_PARSEG_NUMERIC == 1, 100, 0)
-on_road_numeric$CLT_MANDAT_weight = ifelse(on_road_numeric$CLT_MANDAT_NUMERIC == 1, 10, 0)
-on_road_numeric$CLT_ADVIS_weight = ifelse(on_road_numeric$CLT_ADVIS_NUMERIC == 1, 1, 0)
-
-# Create new column with weights for the 5 classes of separation
-on_road_numeric = on_road_numeric %>%
-  rowwise() %>%
-  mutate(weight_5 = sum(c_across(CLT_SEGREG_weight:CLT_ADVIS_weight)))
-unique(on_road_numeric$weight_5)
-# 1    10   100 10000   110     0   101 11000  1001 10010  1000 10001
-on_road_numeric %>%
-  st_drop_geometry() %>%
-  group_by(weight_5) %>%
-  summarise(count = n())
-
-#       weight_5 count
-#           <dbl> <int>
-# 1            0  3372  # none of the 5 categories - might be shared or contraf
-# 2            1  7196  advisory cycle lane only
-# 3           10  1672  mand cycle lane only
-# 4          100   100  part segregated only
-# 5          101    73  part seg + advisory
-# 6          110   176  part seg + mand
-# 7         1000     3  stepped only
-# 8         1001     2  stepped + advisory 
-# 9        10000  1274  segregated only
-# 10       10001     2  segregated + advisory
-# 11       10010     6  segregated + mandatory
-# 12       11000    89  segregated + stepped
 
 
-##  Create factored column where labelled by the 'highest' degree of separation
-# factor numeric
-on_road_factor = on_road_numeric %>%
-  mutate(Highest_separation = factor(weight_5))
 
-# convert factored numbers to relevent labels
-on_road_factor = on_road_factor %>%
-  mutate(Highest_separation = fct_collapse(Highest_separation, 
-           "Segregated" = c("10000","10001","10010", "11000"),
-           "Stepped" = c("1000", "1001"),
-           "Part-segregated" = c("100", "101", "110"),
-           "Mandatory cycle lane" = c("10"),
-           "Advisory cycle lane" = c("1"),
-           "No separation" = c("0")))
 
-# relevel order of factors in the degree of separation
-on_road_factor = on_road_factor %>%
-  mutate(Highest_separation = fct_relevel(Highest_separation, 
-                                           c("Segregated", "Stepped", "Part-segregated",
-                                             "Mandatory cycle lane", "Advisory cycle lane",
-                                             "No separation")))
-# # Check to see works ok
-# on_road_factor %>%
-#   st_drop_geometry() %>%
-#   group_by(Highest_separation) %>%
-#   summarise(count = n())
+
+
+
+
+# on_road_numeric = on_road_numeric %>%
+#   rowwise() %>%
+#   mutate(weight_3 = sum(c_across(CLT_SHARED_weight:CLT_PARKR_weight)))
 # 
-# #   Highest_separation     count
-# #   <fct>                  <int>
-# # 1 Segregated              1371
-# # 2 Stepped                    5
-# # 3 Part-segregated          349
-# # 4 Mandatory cycle lane    1672
-# # 5 Advisory cycle lane     7196
-# # 6 No level of separation  3372                            
-                                    
-
-# create datasets by type
-contra = on_road_factor %>%
-  filter(type == "Contraflow") # n = 1435
-
-
-# create shared dataset
-shared = on_road_factor %>%
-  filter(type == "Shared") # n = 2845
-
-
-
-# create rest dataset
-rest = on_road_factor %>%
-  filter(type == "Rest") # n= 9685
-
-
-
-# create df of degrees of separation by type
-rest_sep = rest %>%
-  st_drop_geometry() %>%
-  group_by(Highest_separation) %>%
-  summarise(rest_count = n())
-contra_sep = contra %>%
-  st_drop_geometry() %>%
-  group_by(Highest_separation) %>%
-  summarise(contra_count = n())
-shared_sep = shared %>%
-  st_drop_geometry() %>%
-  group_by(Highest_separation) %>%
-  summarise(shared_count = n())
-summary_high_sep = left_join(rest_sep, contra_sep) %>%
-  left_join(shared_sep)
-summary_high_sep[is.na(summary_high_sep)] <- 0
-# Highest_separation   rest_count contra_count shared_count
-# <fct>                     <int>        <int>        <int>
-# 1 Segregated                  976          393            2
-# 2 Stepped                       5            0            0
-# 3 Part-segregated             273           72            4
-# 4 Mandatory cycle lane       1501          165            6
-# 5 Advisory cycle lane        6877          283           36
-# 6 No separation                53          522         2797
-
-
-
-
-contra_weight_5_count = contra %>%
-  st_drop_geometry() %>%
-  group_by(weight_5) %>%
-  summarise(count = n())
-sum(weight_5_count$count) # = 13965 ie this totals the total number of on_road obs
-
-
-
-on_road_numeric = on_road_numeric %>%
-  rowwise() %>%
-  mutate(weight_3 = sum(c_across(CLT_SHARED_weight:CLT_PARKR_weight)))
-
-unique(on_road_numeric$weight_3)
-#  0  20 200 220   2 202  22
-
-weight_3_count = on_road_numeric %>%
-  st_drop_geometry() %>%
-  group_by(weight_3) %>%
-  summarise(count = n())
-sum(weight_3_count$count)  # n = 13965
+# unique(on_road_numeric$weight_3)
+# #  0  20 200 220   2 202  22
+# 
+# weight_3_count = on_road_numeric %>%
+#   st_drop_geometry() %>%
+#   group_by(weight_3) %>%
+#   summarise(count = n())
+# sum(weight_3_count$count)  # n = 13965
 
 # weight_3 count
 # <dbl> <int>
