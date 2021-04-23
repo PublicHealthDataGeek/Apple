@@ -365,6 +365,7 @@ separation_map_type = tm_shape(lon_lad_2020_c2c) +
 
 ####################################################################
 # Generating borough level data on lengths by degree of separation #
+# and visualisations                                               #
 ####################################################################
 
 borough_separation_length = on_road_factor %>%
@@ -372,35 +373,16 @@ borough_separation_length = on_road_factor %>%
   group_by(BOROUGH, Highest_separation) %>%
   summarise(total_length = sum(length_m))
 
+total_borough_separation_length = on_road_factor %>%
+  st_drop_geometry() %>%
+  group_by(BOROUGH) %>%
+  summarise(total_length = sum(length_m))# max = Croydon 58331.287 [m], min = Sutton 5832.761 [m]
+
+# remove units to allow plotting
 borough_separation_length$total_length = as.integer(round(units::drop_units(borough_separation_length$total_length)))
 
-barnet = borough_separation_length %>%
-  filter(BOROUGH == "Barnet")
-
-ggplot(barnet) +
-  geom_bar(aes(x = Highest_separation, y = total_length, fill = Highest_separation), 
-           stat = "identity")+
-  coord_flip() +
-  scale_fill_viridis(discrete = TRUE) # highest separation is at the bottom of x, want to reorder so at top
-
-# slightly weird but cool stacked bar chart
-ggplot(barnet) +
-  geom_bar(aes(x = -Highest_separation, y = total_length, fill = Highest_separation), 
-           stat = "identity")+
-  coord_flip() +
-  scale_fill_viridis(discrete = TRUE) # this creates an interesting almost stacked bar
-
-#this gives bar chart with segregated at top for both bars and legend
-barnet_reorder <- barnet
-barnet_reorder$Highest_separation = fct_rev(barnet_reorder$Highest_separation)
-ggplot(barnet_reorder) +
-  geom_bar(aes(x = Highest_separation, y = total_length, fill = Highest_separation), 
-           stat = "identity")+
-  coord_flip() +
-  scale_fill_viridis(discrete = TRUE, direction = -1, guide = guide_legend(reverse = TRUE)) 
-
 # Now try with full dataset
-borough_separation_length_reorder <- borough_separation_length
+borough_separation_length_reorder <- borough_separation_length # reorder so that Segregated appears at top
 borough_separation_length_reorder$Highest_separation = fct_rev(borough_separation_length_reorder$Highest_separation)
 ggplot(borough_separation_length_reorder) +
   geom_bar(aes(x = Highest_separation, y = total_length, fill = Highest_separation), 
@@ -421,7 +403,162 @@ ggplot(borough_separation_length_reorder) +
   theme(axis.text.y = element_blank(),
         axis.ticks.y = element_blank())
 
+# Now want to get arranged spatially as per https://github.com/rogerbeecham/od-flowvis-ggplot2
+# source data  = "https://github.com/aftertheflood/londonsquared/blob/master/site/data/grid.csv"
 
+# get london squares positions
+london_squared = read.table(file = "/home/bananafan/Downloads/londonsquared.txt", header = TRUE, sep = ",")
+# rename columns
+london_squared$fY <-london_squared$y
+london_squared$fX <-london_squared$x
+
+# Helper function for rescaling
+map_scale <- function(value, min1, max1, min2, max2) {
+  return  (min2+(max2-min2)*((value-min1)/(max1-min1)))
+}
+# Used to reverse london_squared layout for use in ggplot2 facet_grid().
+max_y <- max(london_squared$fY)
+min_y <- min(london_squared$fY)
+
+london_squared <- london_squared %>% mutate(fY=map_scale(fY, min_y, max_y, max_y, min_y))
+rm(min_y,max_y)
+
+# relabel values in london_squared so can join to borough_separation
+london_squared$BOROUGH <- london_squared$name
+london_squared$BOROUGH = as.factor(london_squared$BOROUGH) 
+london_squared$BOROUGH = fct_recode(london_squared$BOROUGH, 
+                                      "Kensington & Chelsea" = "Kensington and Chelsea", 
+                                      "Barking & Dagenham" = "Barking and Dagenham",
+                                      "Hammersmith & Fulham" = "Hammersmith and Fulham")                            
+
+# Create new variable that labels the Boroughs by number (matches the overall map)
+london_squared$Borough_number = fct_recode(london_squared$BOROUGH, 
+                                             "7" = "Kensington & Chelsea",
+                                             "32" = "Barking & Dagenham",
+                                             "8" = "Hammersmith & Fulham",
+                                             "25" = "Kingston upon Thames",
+                                             "24" = "Richmond upon Thames",
+                                             "1" = "City of London",
+                                             "15" = "Waltham Forest",
+                                             "28" = "Croydon",
+                                             "29" = "Bromley",
+                                             "23" = "Hounslow",
+                                             "20" = "Ealing",
+                                             "31" = "Havering",
+                                             "22" = "Hillingdon",
+                                             "21" = "Harrow",
+                                             "19" = "Brent",
+                                             "18" = "Barnet",
+                                             "10" = "Lambeth",
+                                             "11" = "Southwark", 
+                                             "12" = "Lewisham",
+                                             "13" = "Greenwich",
+                                             "30" = "Bexley",
+                                             "17" = "Enfield",
+                                             "33" = "Redbridge",
+                                             "27" = "Sutton",
+                                             "26" = "Merton",
+                                             "9" = "Wandsworth",
+                                             "6" = "Westminster",
+                                             "5" = "Camden",
+                                             "2" = "Tower Hamlets",
+                                             "4" = "Islington",
+                                             "3" = "Hackney",
+                                             "16" = "Haringey",
+                                             "14" = "Newham")
+
+# simplify dataset for joining
+london_squared_tidy = london_squared %>%
+  select(c("BOROUGH", "Borough_number", "fY", "fX"))
+
+# Join london_squared to cycle lane lengths
+borough_separation_length_spatial = left_join(borough_separation_length_reorder, london_squared_tidy, by = "BOROUGH")
+
+# basic plot works ok - keep as gives the basic layout
+ggplot(borough_separation_length_spatial, aes(x = -Highest_separation, y = total_length, fill = Highest_separation)) +
+  geom_bar(stat = "identity")+
+  coord_flip() +
+  scale_fill_viridis(discrete = TRUE, direction = -1, guide = guide_legend(reverse = TRUE)) +
+  facet_grid(-fY ~ fX) +  # need to do -fY to get correct orientation with enfield top row and sutton bottom row
+  theme(axis.text.y = element_blank(),
+        axis.ticks.y = element_blank(),
+        panel.spacing=unit(-0.5, "lines"))  # THis works in a basic way. 
+
+#fiddling to make look better
+ggplot(borough_separation_length_spatial, aes(x = -Highest_separation, y = total_length, fill = Highest_separation)) +
+  geom_bar(stat = "identity")+  # geom_bar(stat = "identity", color = "black", size = 0.1) +
+  coord_flip() +
+  scale_fill_viridis(discrete = TRUE, direction = -1, guide = guide_legend(reverse = TRUE)) +
+  scale_y_continuous(breaks = c(0, 60000)) +  # 58000 uis the highest total value (Croydon)
+  facet_grid(-fY ~ fX) +
+  theme_classic() +
+  theme(axis.text.y = element_blank(),
+        axis.ticks.y = element_blank(),
+        strip.text = element_blank(),
+        panel.spacing=unit(-0.5, "lines"),
+        plot.title = element_text(hjust = 0.5)) 
+  #ggtitle(paste(borough_separation_length_spatial$Borough_number)) # doesnt work -just gives the last one
+
+# Things that need sorting
+# - label facets by borough number
+# - draw rectangle so that can directly can compare with croydon (max value)
+# ? do another one that just shows seg,step, part seg, cycle lane, no sep?  
+# ? can fiddle with panel spacing to make look better?  
+
+
+# testing to add text to facet
+data_text <- data.frame(label = c("Text_1", "", "Text_3"),  # Create data for text
+                        group = names(table(data$group)),
+                        x = c(5, 0, 7),
+                        y = c(5, 0, 3))
+ggp +                                                       # Add individual text to plot
+  geom_text(data = london_squared_tidy,
+            mapping = aes(x = fX,
+                          y = fY,
+                          label = Borough_number)) # this just gives white screen
+ggp + annotate("text", label = "my test", x = 5, y = 5) # this works but test is on every facet
+
+
+
+
+
+
+# More testing just on the barent plot 
+
+# slightly weird but cool stacked bar chart
+barnet = borough_separation_length_spatial %>%
+  filter(BOROUGH == "Barnet")
+
+ggplot(barnet) +
+  geom_bar(aes(x = -Highest_separation, y = total_length, fill = Highest_separation), stat = "identity")+
+  coord_flip() +
+  #geom_text(aes(label = barnet$Borough_number)) +
+  # geom_hline(yintercept = 60000) +
+  theme_classic() + 
+  scale_fill_viridis(discrete = TRUE) +   
+  theme(axis.line.y = element_blank(), 
+        axis.ticks.y = element_blank(), 
+        axis.line.x = element_blank(),
+        panel.border = element_rect(fill = NA, color = "black"),
+        plot.title = element_text(hjust = 0.5)) +
+  ggtitle(paste(barnet$Borough_number))
+
+
+ggplot(barnet, aes(x = -Highest_separation, y = total_length, fill = Highest_separation)) +
+  #geom_rect(aes(xmin=-1, xmax=-1, ymin=0, ymax=33)) +
+  geom_col()+
+  #geom_text(aes(label = Borough_number)) #doesnt work
+  coord_flip() +
+  # geom_hline(yintercept = 60000) +
+  theme_classic() + 
+  scale_fill_viridis(discrete = TRUE) +   
+  theme(axis.line.y = element_blank(), 
+        axis.ticks.y = element_blank(), 
+        axis.line.x = element_blank(), 
+        legend.position = "none", 
+        panel.spacing=unit(-0.2, "lines"),
+        panel.border = element_rect(fill = NA, color = "black"))
+ 
 
 
 #########################################
