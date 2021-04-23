@@ -345,8 +345,7 @@ separation_map_type = tm_shape(lon_lad_2020_c2c) +
            lwd = 2.5, 
            alpha = 0.75) + 
   tm_facets(by = "type",
-        free.coords = FALSE, 
-        ncol = 1) +
+        free.coords = FALSE) +
   tm_layout(legend.position = c("left", "top"))
 
 # Other colour options
@@ -363,6 +362,66 @@ separation_map_type = tm_shape(lon_lad_2020_c2c) +
 #   tm_lines("Highest_separation",
 #            palette = "magma",
 #            lwd = 2)  
+
+####################################################################
+# Generating borough level data on lengths by degree of separation #
+####################################################################
+
+borough_separation_length = on_road_factor %>%
+  st_drop_geometry() %>%
+  group_by(BOROUGH, Highest_separation) %>%
+  summarise(total_length = sum(length_m))
+
+borough_separation_length$total_length = as.integer(round(units::drop_units(borough_separation_length$total_length)))
+
+barnet = borough_separation_length %>%
+  filter(BOROUGH == "Barnet")
+
+ggplot(barnet) +
+  geom_bar(aes(x = Highest_separation, y = total_length, fill = Highest_separation), 
+           stat = "identity")+
+  coord_flip() +
+  scale_fill_viridis(discrete = TRUE) # highest separation is at the bottom of x, want to reorder so at top
+
+# slightly weird but cool stacked bar chart
+ggplot(barnet) +
+  geom_bar(aes(x = -Highest_separation, y = total_length, fill = Highest_separation), 
+           stat = "identity")+
+  coord_flip() +
+  scale_fill_viridis(discrete = TRUE) # this creates an interesting almost stacked bar
+
+#this gives bar chart with segregated at top for both bars and legend
+barnet_reorder <- barnet
+barnet_reorder$Highest_separation = fct_rev(barnet_reorder$Highest_separation)
+ggplot(barnet_reorder) +
+  geom_bar(aes(x = Highest_separation, y = total_length, fill = Highest_separation), 
+           stat = "identity")+
+  coord_flip() +
+  scale_fill_viridis(discrete = TRUE, direction = -1, guide = guide_legend(reverse = TRUE)) 
+
+# Now try with full dataset
+borough_separation_length_reorder <- borough_separation_length
+borough_separation_length_reorder$Highest_separation = fct_rev(borough_separation_length_reorder$Highest_separation)
+ggplot(borough_separation_length_reorder) +
+  geom_bar(aes(x = Highest_separation, y = total_length, fill = Highest_separation), 
+           stat = "identity")+
+  coord_flip() +
+  scale_fill_viridis(discrete = TRUE, direction = -1, guide = guide_legend(reverse = TRUE)) +
+  facet_wrap(~ BOROUGH) +
+  theme(axis.text.y = element_blank(),
+        axis.ticks.y = element_blank())
+
+# This does the stacked bar chart
+ggplot(borough_separation_length_reorder) +
+  geom_bar(aes(x = -Highest_separation, y = total_length, fill = Highest_separation), 
+           stat = "identity")+
+  coord_flip() +
+  scale_fill_viridis(discrete = TRUE, direction = -1, guide = guide_legend(reverse = TRUE)) +
+  facet_wrap(~ BOROUGH) +
+  theme(axis.text.y = element_blank(),
+        axis.ticks.y = element_blank())
+
+
 
 
 #########################################
