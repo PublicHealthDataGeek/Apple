@@ -22,6 +22,7 @@ library(tmap)
 #library(summarytools) # dont run if want to use mapview as it stops it working
 library(sf)
 library(tmaptools) # for palette explorer 
+library(viridis)
 #library(ggpubr) # for text grobs
 #library(ggspatial) # get north arrow and bar
 
@@ -376,24 +377,30 @@ borough_separation_length = on_road_factor %>%
 total_borough_separation_length = on_road_factor %>%
   st_drop_geometry() %>%
   group_by(BOROUGH) %>%
-  summarise(total_length = sum(length_m))# max = Croydon 58331.287 [m], min = Sutton 5832.761 [m]
+  summarise(total_borough_length = sum(length_m))# max = Croydon 58331.287 [m], min = Sutton 5832.761 [m]
 
 # remove units to allow plotting
 borough_separation_length$total_length = as.integer(round(units::drop_units(borough_separation_length$total_length)))
+total_borough_separation_length$total_borough_length = as.integer(round(units::drop_units(total_borough_separation_length$total_borough_length)))
+
+# join total borough lengths to borough_separation_length
+borough_separation_length = left_join(borough_separation_length, total_borough_separation_length)
 
 # Now try with full dataset
 borough_separation_length_reorder <- borough_separation_length # reorder so that Segregated appears at top
 borough_separation_length_reorder$Highest_separation = fct_rev(borough_separation_length_reorder$Highest_separation)
+
+# Create multiple bar charts of each Borough by degree of separation
 ggplot(borough_separation_length_reorder) +
   geom_bar(aes(x = Highest_separation, y = total_length, fill = Highest_separation), 
-           stat = "identity")+
+           stat = "identity") +
   coord_flip() +
   scale_fill_viridis(discrete = TRUE, direction = -1, guide = guide_legend(reverse = TRUE)) +
   facet_wrap(~ BOROUGH) +
   theme(axis.text.y = element_blank(),
         axis.ticks.y = element_blank())
 
-# This does the stacked bar chart
+# This creates multiple deep stacked bar charts faceted by borough - easier to see size of bar than the second approach before
 ggplot(borough_separation_length_reorder) +
   geom_bar(aes(x = -Highest_separation, y = total_length, fill = Highest_separation), 
            stat = "identity")+
@@ -402,6 +409,18 @@ ggplot(borough_separation_length_reorder) +
   facet_wrap(~ BOROUGH) +
   theme(axis.text.y = element_blank(),
         axis.ticks.y = element_blank())
+
+# This creates multiple stacked bar charts faceted by borough - bar charts are located in various y positions relating to the order of the Borough
+ggplot(borough_separation_length_reorder) +
+  geom_bar(aes(x = BOROUGH, y = total_length, fill = Highest_separation), 
+           stat = "identity")+
+  coord_flip() +
+  scale_fill_viridis(discrete = TRUE, direction = -1, guide = guide_legend(reverse = TRUE)) +
+  facet_wrap(~ BOROUGH) +
+  theme(axis.text.y = element_blank(),
+        axis.ticks.y = element_blank())
+
+
 
 # Now want to get arranged spatially as per https://github.com/rogerbeecham/od-flowvis-ggplot2
 # source data  = "https://github.com/aftertheflood/londonsquared/blob/master/site/data/grid.csv"
@@ -477,6 +496,8 @@ borough_separation_length_spatial = left_join(borough_separation_length_reorder,
 # basic plot works ok - keep as gives the basic layout
 ggplot(borough_separation_length_spatial, aes(x = -Highest_separation, y = total_length, fill = Highest_separation)) +
   geom_bar(stat = "identity")+
+  #geom_text(aes(x = fX, y = fY, label = Borough_number)) +
+  geom_text(aes(label = Borough_number, y = Borough_number)) +
   coord_flip() +
   scale_fill_viridis(discrete = TRUE, direction = -1, guide = guide_legend(reverse = TRUE)) +
   facet_grid(-fY ~ fX) +  # need to do -fY to get correct orientation with enfield top row and sutton bottom row
@@ -487,78 +508,46 @@ ggplot(borough_separation_length_spatial, aes(x = -Highest_separation, y = total
 #fiddling to make look better
 ggplot(borough_separation_length_spatial, aes(x = -Highest_separation, y = total_length, fill = Highest_separation)) +
   geom_bar(stat = "identity")+  # geom_bar(stat = "identity", color = "black", size = 0.1) +
+  #geom_text(aes(label = Borough_number, y = Borough_number)) +  # labels facets by borough number but looks at bit rubbish - need to convert borough number to numeric to use
   coord_flip() +
+  geom_abline(slope=0, intercept= 60000,  col = "red",lty=2) +
   scale_fill_viridis(discrete = TRUE, direction = -1, guide = guide_legend(reverse = TRUE)) +
   scale_y_continuous(breaks = c(0, 60000)) +  # 58000 uis the highest total value (Croydon)
   facet_grid(-fY ~ fX) +
   theme_classic() +
   theme(axis.text.y = element_blank(),
+        axis.text.x = element_blank(),
         axis.ticks.y = element_blank(),
+        axis.ticks.x = element_blank(),axis.line = element_blank(),
+        axis.title = element_blank(),
         strip.text = element_blank(),
         panel.spacing=unit(-0.5, "lines"),
-        plot.title = element_text(hjust = 0.5)) 
-  #ggtitle(paste(borough_separation_length_spatial$Borough_number)) # doesnt work -just gives the last one
+        #panel.border = element_rect(fill = NA, color = "black"),
+        plot.title = element_text(hjust = 0.5))
+
 
 # Things that need sorting
-# - label facets by borough number
-# - draw rectangle so that can directly can compare with croydon (max value)
+# - label facets by borough number  CANT SEEM TO DO THIS APART FROM IT LOOKING BAD
+# - draw rectangle so that can directly can compare with croydon (max value) - AGAIN CANT SEEM TO DO THIS
 # ? do another one that just shows seg,step, part seg, cycle lane, no sep?  
 # ? can fiddle with panel spacing to make look better?  
 
 
-# testing to add text to facet
-data_text <- data.frame(label = c("Text_1", "", "Text_3"),  # Create data for text
-                        group = names(table(data$group)),
-                        x = c(5, 0, 7),
-                        y = c(5, 0, 3))
-ggp +                                                       # Add individual text to plot
-  geom_text(data = london_squared_tidy,
-            mapping = aes(x = fX,
-                          y = fY,
-                          label = Borough_number)) # this just gives white screen
-ggp + annotate("text", label = "my test", x = 5, y = 5) # this works but test is on every facet
-
-
-
-
-
-
-# More testing just on the barent plot 
-
-# slightly weird but cool stacked bar chart
-barnet = borough_separation_length_spatial %>%
-  filter(BOROUGH == "Barnet")
-
-ggplot(barnet) +
-  geom_bar(aes(x = -Highest_separation, y = total_length, fill = Highest_separation), stat = "identity")+
+# Create bar chart (like for the assets) for total length by borough
+ggplot(borough_separation_length_spatial) +
+  geom_bar(aes(x = reorder(Borough_number, -total_borough_length), y = total_length, fill = Highest_separation), 
+           stat = "identity") +
   coord_flip() +
-  #geom_text(aes(label = barnet$Borough_number)) +
-  # geom_hline(yintercept = 60000) +
-  theme_classic() + 
-  scale_fill_viridis(discrete = TRUE) +   
-  theme(axis.line.y = element_blank(), 
-        axis.ticks.y = element_blank(), 
-        axis.line.x = element_blank(),
-        panel.border = element_rect(fill = NA, color = "black"),
-        plot.title = element_text(hjust = 0.5)) +
-  ggtitle(paste(barnet$Borough_number))
+  scale_fill_viridis(discrete = TRUE, direction = -1, guide = guide_legend(reverse = TRUE)) +
+  scale_y_continuous(limits = c(0, 62000), expand = c(0,0), breaks = c(20000, 40000, 60000)) +
+  theme_classic() +
+  labs(y = "Total length (km)", x = NULL) +
+  theme(axis.ticks.y = element_blank(),
+        axis.line = element_blank(),
+        legend.position = "none")
 
 
-ggplot(barnet, aes(x = -Highest_separation, y = total_length, fill = Highest_separation)) +
-  #geom_rect(aes(xmin=-1, xmax=-1, ymin=0, ymax=33)) +
-  geom_col()+
-  #geom_text(aes(label = Borough_number)) #doesnt work
-  coord_flip() +
-  # geom_hline(yintercept = 60000) +
-  theme_classic() + 
-  scale_fill_viridis(discrete = TRUE) +   
-  theme(axis.line.y = element_blank(), 
-        axis.ticks.y = element_blank(), 
-        axis.line.x = element_blank(), 
-        legend.position = "none", 
-        panel.spacing=unit(-0.2, "lines"),
-        panel.border = element_rect(fill = NA, color = "black"))
- 
+
 
 
 #########################################
