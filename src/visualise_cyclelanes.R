@@ -547,6 +547,214 @@ ggplot(borough_separation_length_spatial) +
         legend.position = "none")
 
 
+# Speed data 
+# load packages
+library(osmextract)
+library(sf)
+library(mapview)
+library(tidyverse)
+
+# Set Mapview options to use data CRS rather than OSM projections
+mapviewOptions(native.crs = TRUE)
+
+# Load 2019 OSM dataset
+gl_pbf19 = "/home/bananafan/Documents/PhD/Paper1/data/greater-london-190101.osm.pbf"
+gl_osm_lines19 = oe_read(gl_pbf, quiet = FALSE) # Simple feature collection with 355244 features and 10 fields, CRS WGS84
+
+# Change CRS to match ONS and CID
+gl_osm_lines19 = st_transform(gl_osm_lines19, crs=27700) # PROJCRS["OSGB 1936 / British National Grid",
+
+# import May 2020 ONS LA boundary data (required for NA management)
+lon_lad_2020 = readRDS(file = "./map_data/lon_LAD_boundaries_May_2020_BFE.Rds")
+
+
+names(gl_osm_lines19)
+# [1] "osm_id"     "name"       "highway"    "waterway"   "aerialway"  "barrier"   
+# [7] "man_made"   "maxspeed"   "z_order"    "other_tags" "geometry"  
+
+unique(gl_osm_lines19$maxspeed) # looks like all sorts of speeds for different types of infrastructure
+# [1] "30 mph"   "40 mph"   NA         "20 mph"   "70 mph"   "10 mph"  
+# [7] "60 mph"   "50 mph"   "85 mph"   "80 mph"   "15 mph"   "75 mph"  
+# [13] "5 mph"    "45 mph"   "110 mph"  "100 mph"  "25 mph"   "12 mph"  
+# [19] "115 mph"  "230"      "105 mph"  "90 mph"   "7"        "30"      
+# [25] "60"       "100"      "35 mph"   "65 mph"   "55 mph"   "20"      
+# [31] "10mph"    "95 mph"   "64"       "none"     "5"        "16.09"   
+# [37] "walk"     "signals"  "variable" "50"       "4 mph"    "national"
+# [43] "15"       "10"       "125 mph"  "40"      
+
+unique(gl_osm_lines19$highway)
+# [1] "primary"         "residential"     "trunk"           "trunk_link"     
+# [5] "footway"         "service"         "unclassified"    "tertiary"       
+# [9] "secondary"       "motorway_link"   "cycleway"        NA               
+# [13] "motorway"        "tertiary_link"   "bridleway"       "secondary_link" 
+# [17] "pedestrian"      "primary_link"    "path"            "living_street"  
+# [21] "steps"           "track"           "construction"    "proposed"       
+# [25] "raceway"         "road"            "no"              "corridor"       
+# [29] "escalator"       "elevator"        "cy"              "stepping_stones"
+# [33] "disused"         "crossing"        "access" 
+
+# https://wiki.openstreetmap.org/wiki/Key:highway
+# highway=* distinguishes roads by function and importance rather by their physical characteristic and legal classification.
+
+### Make decisions about which values from highway to keep
+
+# [1] "primary"      KEEP      "residential"   KEEP  "trunk"         KEEP  "trunk_link"     KEEP
+# [5] "footway"      DROP      "service"       KEEP  "unclassified"  KEEP  "tertiary"       KEEP       
+# [9] "secondary"    KEEP      "motorway_link" DROP  "cycleway"      DROP        NA         ??      
+# [13] "motorway"    DROP      "tertiary_link" KEEP  "bridleway"     DROP  "secondary_link" KEEP
+# [17] "pedestrian"  FALSE     "primary_link"  KEEP   "path"         DROP  "living_street"  KEEP
+# [21] "steps"       DROP      "track"                "construction" DROP  "proposed"       DROP       
+# [25] "raceway"     DROP      "road" ????            "no"                  "corridor"      DROP 
+# [29] "escalator"   DROP      "elevator"     DROP        "cy"      DROP    "stepping_stones" DROP
+# [33] "disused"     DROP      "crossing"     DROP        "access"  DROP
+
+highways_to_keep = c("primary", "residential", "trunk", "trunk_link", "service", "unclassified", "tertiary",
+                     "secondary", "tertiary_link", "secondary_link", "primary_link", "living_street")
+
+os_relevent_highways = gl_osm_lines19 %>%
+  filter(highway %in% highways_to_keep) # n = 1777000
+unique(os_relevent_highways$maxspeed) 
+max_speed_count = os_relevent_highways %>%
+  st_drop_geometry() %>%
+  group_by(maxspeed) %>%
+  summarise(count = n())
+
+max_speed_count %>% print(n = Inf)
+#maxspeed count
+# <chr>    <int>
+# 1 10           7
+# 2 10 mph     459
+# 3 100          1
+# 4 10mph        5
+# 5 12 mph      34
+# 6 15           4
+# 7 15 mph     150
+# 8 16.09        1
+# 9 20          13
+# 10 20 mph   49513
+# 11 25 mph       2
+# 12 30          40
+# 13 30 mph   24239
+# 14 4 mph       12
+# 15 40           1
+# 16 40 mph    2528
+# 17 5            8
+# 18 5 mph      775
+# 19 50           3
+# 20 50 mph    1133
+# 21 60           1
+# 22 60 mph     138
+# 23 64           1
+# 24 7            4
+# 25 70 mph     170
+# 26 national     1
+# 27 signals      7
+# 28 variable     1
+# 29 NA       98449
+
+# drop observations with no speed limit data
+os_speed_limits = os_relevent_highways %>%
+  filter(!is.na(maxspeed)) # n = 79251
+
+# drop observations with signals or variable in the maxspeed
+os_speed_limits = os_speed_limits %>%
+  filter(maxspeed != "variable") %>%
+  filter(maxspeed != "signals") %>%
+  filter(maxspeed != "national") %>%
+  filter(maxspeed != "100") # n = 79241
+
+# REmove mph and convert to integer 
+os_speed_limits$maxspeed_num = sapply(str_split(os_speed_limits$maxspeed, " mph"), `[`,1) # works byt still have 10mph so run again
+os_speed_limits$maxspeed_num = sapply(str_split(os_speed_limits$maxspeed, "mph"), `[`,1)
+os_speed_limits$maxspeed_num = as.integer(os_speed_limits$maxspeed_num)
+
+# Create speed limit groups
+os_speed_limits = os_speed_limits %>%
+  mutate(speed_limit = cut(maxspeed_num,
+                           breaks = seq(0, 70, by = 10),
+                           labels = c("10mph", "20mph", "30mph", "40mph", "50mph", "60mph", "70mph"))) 
+tidy_speed_limit = os_speed_limits %>%
+  st_drop_geometry() %>%
+  group_by(speed_limit) %>%
+  summarise(count = n())
+# speed_limit count
+# 1 10mph        1270
+# 2 20mph       49715
+# 3 30mph       24281
+# 4 40mph        2529
+# 5 50mph        1136
+# 6 60mph         139
+# 7 70mph         171
+
+mapview(os_speed_limits, zcol = "speed_limit")
+
+
+# Limit OS data to inside London Boundary
+# import May 2020 ONS LA boundary data
+lon_lad_2020 = readRDS(file = "./map_data/lon_LAD_boundaries_May_2020_BFE.Rds")
+
+# Create spatial object for all 33 boroughs
+london_union = st_union(lon_lad_2020) 
+
+# Limit road links to within the Outer London Boundary
+lon_os_speed_limits = st_intersection(os_speed_limits, london_union) # n = 78757
+
+lon_os_speed_limits_tidy = lon_os_speed_limits %>%
+  select(c("osm_id", "name", "highway", "maxspeed_num", "speed_limit", "geometry"))
+
+#  Now test how to join the speed limit data to the CID data
+# select small amount of data
+barnet = on_road_factor %>%
+  filter(BOROUGH == "Barnet")
+
+mapview(barnet, zcol = "Highest_separation")
+
+barnet_speed_intersects = st_join(barnet, lon_os_speed_limits_tidy) # => 22 assets have speed limit data - this uses st_intersects
+barnet_speed_nearest = st_join(barnet, lon_os_speed_limits_tidy, join = st_nearest_feature) #= all assets have speed limit data
+barnet_speed_within = st_join(barnet, lon_os_speed_limits_tidy, join = st_nearest_feature)
+
+mapview(barnet_speed_nearest, zcol = "Highest_separation") # this doesnt appear to work propertly
+
+
+# now write some logic that checks to see if degree of separation matches the road speed limit.  
+# use max speed nuermic from os
+
+#40+ can onlyl be fully seg
+# 30+ can be seg, step or par
+# 20mph can be any
+
+# if speed limit = 40+ then higest seg must be segregate 
+# if speed limit - 30 + then seg must be seg step or part seg_levels
+# if speed limit =20 then seg can be any value.  
+
+#column = is seg approp to speed limit - do want t/f
+
+barnet_speed_near_test = barnet_speed_nearest %>%
+  mutate(seg_appro_speed_limit = case_when((maxspeed_num == 40) & (Highest_separation == "Segregated") ~ "TRUE",
+                                           (maxspeed_num == 30) & (Highest_separation == "Segregated") ~ "TRUE",
+                                           (maxspeed_num == 30) & (Highest_separation == "Stepped") ~ "TRUE",
+                                           (maxspeed_num == 30) & (Highest_separation == "Part-segregated") ~ "TRUE",
+                                           (maxspeed_num <= 20) & (Highest_separation == "Segregated") ~ "TRUE",
+                                           (maxspeed_num <= 20) & (Highest_separation == "Stepped") ~ "TRUE",
+                                           (maxspeed_num <= 20) & (Highest_separation == "Part-segregated") ~ "TRUE",
+                                           (maxspeed_num <= 20) & (Highest_separation == "Mandatory cycle lane") ~ "TRUE",
+                                           (maxspeed_num <= 20) & (Highest_separation == "Advisory cycle lane") ~ "TRUE",
+                                           (maxspeed_num <= 20) & (Highest_separation == "No separation") ~ "FALSE",
+                                           TRUE ~ "FALSE"))
+# THis seems to work for barnet - need to check on other datasets
+
+test = st_join(on_road_factor, lon_os_speed_limits_tidy, join = st_nearest_feature)
+
+# Count the number of highways by type and percent of total count
+highway_count = gl_osm_lines20 %>%
+  st_drop_geometry() %>%
+  group_by(highway) %>%
+  summarise(count = n()) %>%
+  mutate(percent = round(count/sum(count)*100)) %>%
+  arrange(desc(percent), desc(count))
+
+
+
 
 
 
