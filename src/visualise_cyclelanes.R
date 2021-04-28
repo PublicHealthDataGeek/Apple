@@ -1,4 +1,4 @@
-#################################################
+####################################################################################
 # Visualise cycle lanes 
 # 
 # This code aims to visualise on road cycle lanes by the degree of separation
@@ -15,7 +15,7 @@
 #Load packages
 library(tidyverse)
 library(mapview)
-
+library(osmextract)
 library(tmap)
 #library(cowplot)
 #library(patchwork)
@@ -31,11 +31,9 @@ mapviewOptions(native.crs = TRUE)
 tmap_design_mode(design.mode = FALSE)
 
 
-################################
-# Load and manipulate datasets #
-################################
-
-# 1) Local Authority spatial data
+#######################################################################
+# Load and manipulate Local Authority spatial data for visualisations #
+#######################################################################
 
 # import May 2020 ONS LA boundary data clipped to coastline (used so that River Thames appears)
 lon_lad_2020_c2c = readRDS(file = "./map_data/lon_LAD_boundaries_May_2020_BFC.Rds")
@@ -80,10 +78,89 @@ lon_lad_2020_c2c$Borough_number = fct_recode(lon_lad_2020_c2c$BOROUGH,
                                              "14" = "Newham")
 
 # Select variables of interest
-lon_lad_2020_c2c_reduced = lon_lad_2020_c2c %>%
+lon_lad_2020_c2c = lon_lad_2020_c2c %>%
   select(c("BOROUGH", "Borough_number", "geometry"))
 
-# 1) CID data
+
+###########################################################################################
+# Import and manipulate london_squared dataset to enable spatial arrangement of barcharts #
+###########################################################################################
+
+# Example of what trying to acheive: https://github.com/rogerbeecham/od-flowvis-ggplot2
+
+# source data  = "https://github.com/aftertheflood/londonsquared/blob/master/site/data/grid.csv"
+
+# Import london squared dataset
+london_squared = read.table(file = "/home/bananafan/Downloads/londonsquared.txt", header = TRUE, sep = ",")
+
+# Rename columns
+london_squared$fY <-london_squared$y
+london_squared$fX <-london_squared$x
+
+# Helper function for rescaling
+map_scale <- function(value, min1, max1, min2, max2) {
+  return  (min2+(max2-min2)*((value-min1)/(max1-min1)))
+}
+
+# Used to reverse london_squared layout for use in ggplot2 facet_grid().
+max_y <- max(london_squared$fY)
+min_y <- min(london_squared$fY)
+
+london_squared <- london_squared %>% mutate(fY=map_scale(fY, min_y, max_y, max_y, min_y))
+rm(min_y,max_y)
+
+# relabel values in london_squared so can join to borough_separation
+london_squared$BOROUGH <- london_squared$name
+london_squared$BOROUGH = as.factor(london_squared$BOROUGH) 
+london_squared$BOROUGH = fct_recode(london_squared$BOROUGH, 
+                                    "Kensington & Chelsea" = "Kensington and Chelsea", 
+                                    "Barking & Dagenham" = "Barking and Dagenham",
+                                    "Hammersmith & Fulham" = "Hammersmith and Fulham")                            
+
+# Create new variable that labels the Boroughs by number (matches the overall map)
+london_squared$Borough_number = fct_recode(london_squared$BOROUGH, 
+                                           "7" = "Kensington & Chelsea",
+                                           "32" = "Barking & Dagenham",
+                                           "8" = "Hammersmith & Fulham",
+                                           "25" = "Kingston upon Thames",
+                                           "24" = "Richmond upon Thames",
+                                           "1" = "City of London",
+                                           "15" = "Waltham Forest",
+                                           "28" = "Croydon",
+                                           "29" = "Bromley",
+                                           "23" = "Hounslow",
+                                           "20" = "Ealing",
+                                           "31" = "Havering",
+                                           "22" = "Hillingdon",
+                                           "21" = "Harrow",
+                                           "19" = "Brent",
+                                           "18" = "Barnet",
+                                           "10" = "Lambeth",
+                                           "11" = "Southwark", 
+                                           "12" = "Lewisham",
+                                           "13" = "Greenwich",
+                                           "30" = "Bexley",
+                                           "17" = "Enfield",
+                                           "33" = "Redbridge",
+                                           "27" = "Sutton",
+                                           "26" = "Merton",
+                                           "9" = "Wandsworth",
+                                           "6" = "Westminster",
+                                           "5" = "Camden",
+                                           "2" = "Tower Hamlets",
+                                           "4" = "Islington",
+                                           "3" = "Hackney",
+                                           "16" = "Haringey",
+                                           "14" = "Newham")
+
+# simplify dataset for joining
+london_squared_tidy = london_squared %>%
+  select(c("BOROUGH", "Borough_number", "fY", "fX"))
+
+
+##########################
+# Import cycle lane data #
+##########################
 
 # Import Cycle Lanes and Tracks dataset (created from TFL datasets downloaded 25/2/21)
 c_cyclelanetrack = readRDS(file = "/home/bananafan/Documents/PhD/Paper1/data/cleansed_cycle_lane_track")
@@ -134,7 +211,7 @@ on_road = c_cyclelanetrack %>%
 on_road_drop = on_road %>%
   st_drop_geometry() %>%
   select(-c("length_m", "length_km"))
-view(dfSummary(on_road_drop))
+#view(dfSummary(on_road_drop))
 
 # seg = 1371
 # stepped = 94
@@ -147,24 +224,24 @@ view(dfSummary(on_road_drop))
 
 
 # Examine the dataset as think that some assets are coded with more than one level of segregation
-test_code_seg = on_road_drop %>%
-  select(c("FEATURE_ID", "CLT_SEGREG", "CLT_STEPP", "CLT_PARSEG", "CLT_MANDAT", "CLT_ADVIS"))
+# test_code_seg = on_road_drop %>%
+#   select(c("FEATURE_ID", "CLT_SEGREG", "CLT_STEPP", "CLT_PARSEG", "CLT_MANDAT", "CLT_ADVIS"))
 
-# Findings when looking at CLT_SEGREG
-view(ctable(x = test_code_seg$CLT_SEGREG, y = test_code_seg$CLT_STEPP))
-# Of the 1371 on road segregated cycle lanes 89 are also coded as stepped
-view(ctable(x = test_code_seg$CLT_SEGREG, y = test_code_seg$CLT_PARSEG))
-# none are part segregated
-view(ctable(x = test_code_seg$CLT_SEGREG, y = test_code_seg$CLT_MANDAT))
-# 6 are also coded as mandatory cycle lanes
-view(ctable(x = test_code_seg$CLT_SEGREG, y = test_code_seg$CLT_ADVIS))
-# 2 are also coded as advisory cycle lanes
+# Findings when looking at CLT_SEGREG - this code runs using summarytools package
+# view(ctable(x = test_code_seg$CLT_SEGREG, y = test_code_seg$CLT_STEPP))
+# # Of the 1371 on road segregated cycle lanes 89 are also coded as stepped
+# view(ctable(x = test_code_seg$CLT_SEGREG, y = test_code_seg$CLT_PARSEG))
+# # none are part segregated
+# view(ctable(x = test_code_seg$CLT_SEGREG, y = test_code_seg$CLT_MANDAT))
+# # 6 are also coded as mandatory cycle lanes
+# view(ctable(x = test_code_seg$CLT_SEGREG, y = test_code_seg$CLT_ADVIS))
+# # 2 are also coded as advisory cycle lanes
 
 #################################################################
 # CID dataset manipulation to enable analysis and visualisation #
 #################################################################
 
-# Create new variable that divides observations into shared, contraflow and rest 
+# Create new variable that divides observations into shared, contraflow and rest as these seem to have different patterns of segregation
 on_road = on_road %>%
   mutate(type = case_when(CLT_SHARED == TRUE ~ "Shared",
                           CLT_CONTRA == TRUE ~ "Contraflow",
@@ -177,15 +254,15 @@ on_road %>%
   summarise(count = n())
 #   type       count
 #   <chr>      <int>
-# 1 Contraflow  1435
-# 2 Rest        9685
-# 3 Shared      2845
+# 1 Rest        9685
+# 2 Shared      2845
+# 3 Contraflow  1435
 1435+9685+2845 
 # = 13965 
 
 
 # Convert Factors to numeric
-# $ CLT_SEGREG: Factor w/ 2 levels "FALSE","TRUE": 1 1 1 1 1 1 1 1 1 1 ...
+# e.g.  CLT_SEGREG: Factor w/ 2 levels "FALSE","TRUE": 1 1 1 1 1 1 1 1 1 1 ...
 on_road_numeric = on_road %>%
   mutate(CLT_SEGREG_NUMERIC = as.numeric(on_road$CLT_SEGREG)) %>%
   mutate(CLT_STEPP_NUMERIC = as.numeric(on_road$CLT_STEPP))  %>%
@@ -252,11 +329,12 @@ on_road_numeric %>%
 
 
 ##  Create factored column where labelled by the 'highest' degree of separation
-# factor numeric
+# Factor weight_5
 on_road_factor = on_road_numeric %>%
   mutate(Highest_separation = factor(weight_5))
+rm(on_road_numeric) # remove this dataframe to avoid confusion
 
-# convert factored numbers to relevent labels
+# Convert factored numbers to relevant labels
 on_road_factor = on_road_factor %>%
   mutate(Highest_separation = fct_collapse(Highest_separation, 
            "Segregated" = c("10000","10001","10010", "11000"),
@@ -296,8 +374,6 @@ shared = on_road_factor %>%
 rest = on_road_factor %>%
   filter(type == "Rest") # n= 9685
 
-
-
 # create df of degrees of separation by type
 rest_sep = rest %>%
   st_drop_geometry() %>%
@@ -323,9 +399,11 @@ summary_high_sep[is.na(summary_high_sep)] <- 0
 # 5 Advisory cycle lane        6877          283           36
 # 6 No separation                53          522         2797
 
-##################################################
-# Create visualisations of degrees of separation #
-##################################################
+rm(rest, rest_sep, shared, shared_sep, contra, contra_sep) # remove redundant objects
+
+##########################################################################
+# Create visualisations of cycle lanes coloured by degrees of separation #
+##########################################################################
 
 separation_map = tm_shape(lon_lad_2020_c2c) +
   tm_polygons(col = "gray98", border.col = "gray70") +
@@ -366,14 +444,17 @@ separation_map_type = tm_shape(lon_lad_2020_c2c) +
 
 ####################################################################
 # Generating borough level data on lengths by degree of separation #
-# and visualisations                                               #
+# and visualisations                                              #
+#    PART 1 - all assets together                                  #
 ####################################################################
 
+# Create variable for length by Highest Separation by Borough
 borough_separation_length = on_road_factor %>%
   st_drop_geometry() %>%
   group_by(BOROUGH, Highest_separation) %>%
   summarise(total_length = sum(length_m))
 
+# Create variable for total length by Borough of all on road cycle lanes
 total_borough_separation_length = on_road_factor %>%
   st_drop_geometry() %>%
   group_by(BOROUGH) %>%
@@ -381,12 +462,13 @@ total_borough_separation_length = on_road_factor %>%
 
 # remove units to allow plotting
 borough_separation_length$total_length = as.integer(round(units::drop_units(borough_separation_length$total_length)))
-total_borough_separation_length$total_borough_length = as.integer(round(units::drop_units(total_borough_separation_length$total_borough_length)))
+total_borough_separation_length$total_borough_length = as.integer(round(units::drop_units(
+  total_borough_separation_length$total_borough_length)))
 
 # join total borough lengths to borough_separation_length
 borough_separation_length = left_join(borough_separation_length, total_borough_separation_length)
 
-# Now try with full dataset
+# Reorder factors so Segregated is 'highest' value
 borough_separation_length_reorder <- borough_separation_length # reorder so that Segregated appears at top
 borough_separation_length_reorder$Highest_separation = fct_rev(borough_separation_length_reorder$Highest_separation)
 
@@ -421,74 +503,79 @@ ggplot(borough_separation_length_reorder) +
         axis.ticks.y = element_blank())
 
 
+####################################################################
+# Generating borough level data on lengths by degree of separation #
+# and visualisations                                               #
+#  PART 2 - by rest, contra and shared                             #
+####################################################################
 
-# Now want to get arranged spatially as per https://github.com/rogerbeecham/od-flowvis-ggplot2
-# source data  = "https://github.com/aftertheflood/londonsquared/blob/master/site/data/grid.csv"
+# Create variable for total length by Borough of all on road cycle lanes
+test = on_road_factor %>%
+  st_drop_geometry() %>%
+  group_by(BOROUGH, type) %>%
+  mutate(total_borough_sep_length_bytype = sum(length_m)) %>%
+  ungroup()
 
-# get london squares positions
-london_squared = read.table(file = "/home/bananafan/Downloads/londonsquared.txt", header = TRUE, sep = ",")
-# rename columns
-london_squared$fY <-london_squared$y
-london_squared$fX <-london_squared$x
+# Create variable for length by Highest Separation by Borough
+test = test %>%
+  group_by(BOROUGH, type, Highest_separation) %>%
+  mutate(total_length_bytype = sum(length_m)) %>%
+  ungroup()
 
-# Helper function for rescaling
-map_scale <- function(value, min1, max1, min2, max2) {
-  return  (min2+(max2-min2)*((value-min1)/(max1-min1)))
-}
-# Used to reverse london_squared layout for use in ggplot2 facet_grid().
-max_y <- max(london_squared$fY)
-min_y <- min(london_squared$fY)
+# now create totals for all lanes - not by type
+test = test %>%
+  group_by(BOROUGH) %>%
+  mutate(total_borough_sep_length = sum(length_m)) %>%
+  ungroup()
 
-london_squared <- london_squared %>% mutate(fY=map_scale(fY, min_y, max_y, max_y, min_y))
-rm(min_y,max_y)
+# Create variable for length by Highest Separation by Borough
+test = test %>%
+  group_by(BOROUGH, Highest_separation) %>%
+  mutate(total_length = sum(length_m)) %>%
+  ungroup()
 
-# relabel values in london_squared so can join to borough_separation
-london_squared$BOROUGH <- london_squared$name
-london_squared$BOROUGH = as.factor(london_squared$BOROUGH) 
-london_squared$BOROUGH = fct_recode(london_squared$BOROUGH, 
-                                      "Kensington & Chelsea" = "Kensington and Chelsea", 
-                                      "Barking & Dagenham" = "Barking and Dagenham",
-                                      "Hammersmith & Fulham" = "Hammersmith and Fulham")                            
 
-# Create new variable that labels the Boroughs by number (matches the overall map)
-london_squared$Borough_number = fct_recode(london_squared$BOROUGH, 
-                                             "7" = "Kensington & Chelsea",
-                                             "32" = "Barking & Dagenham",
-                                             "8" = "Hammersmith & Fulham",
-                                             "25" = "Kingston upon Thames",
-                                             "24" = "Richmond upon Thames",
-                                             "1" = "City of London",
-                                             "15" = "Waltham Forest",
-                                             "28" = "Croydon",
-                                             "29" = "Bromley",
-                                             "23" = "Hounslow",
-                                             "20" = "Ealing",
-                                             "31" = "Havering",
-                                             "22" = "Hillingdon",
-                                             "21" = "Harrow",
-                                             "19" = "Brent",
-                                             "18" = "Barnet",
-                                             "10" = "Lambeth",
-                                             "11" = "Southwark", 
-                                             "12" = "Lewisham",
-                                             "13" = "Greenwich",
-                                             "30" = "Bexley",
-                                             "17" = "Enfield",
-                                             "33" = "Redbridge",
-                                             "27" = "Sutton",
-                                             "26" = "Merton",
-                                             "9" = "Wandsworth",
-                                             "6" = "Westminster",
-                                             "5" = "Camden",
-                                             "2" = "Tower Hamlets",
-                                             "4" = "Islington",
-                                             "3" = "Hackney",
-                                             "16" = "Haringey",
-                                             "14" = "Newham")
+croydon_test = test %>%
+  filter(BOROUGH == "Croydon") %>%
+  select(c("FEATURE_ID", "BOROUGH", "type", "length_m", "length_km", "Highest_separation",
+           "total_borough_sep_length_bytype", "total_length_bytype", "total_borough_sep_length", "total_length"))
 
-# simplify dataset for joining
-london_squared_tidy = london_squared %>%
-  select(c("BOROUGH", "Borough_number", "fY", "fX"))
+
+
+# remove units to allow plotting
+test$total_length = as.integer(round(units::drop_units(test$total_length)))
+test$total_borough_length = as.integer(round(units::drop_units(
+  test$total_borough_length)))
+
+# Reorder factors so Segregated is 'highest' value
+test_reorder <- test # reorder so that Segregated appears at top
+test_reorder$Highest_separation = fct_rev(test$Highest_separation)
+
+
+
+# Create multiple bar charts of each Borough by degree of separation
+test_reorder %>%
+  filter(type == "Rest") %>%
+  group_by(BOROUGH) %>%
+  ggplot(aes(x = -Highest_separation, y = total_length, fill = Highest_separation)) +
+  geom_bar(stat = "identity") +
+  coord_flip() +
+  scale_fill_viridis(discrete = TRUE, direction = -1, guide = guide_legend(reverse = TRUE)) +
+  facet_wrap(~ BOROUGH) +
+  theme(axis.text.y = element_blank(),
+        axis.ticks.y = element_blank())
+
+
+
+
+
+
+
+
+
+###############################################################
+# Create bar charts spatially located by Borough + standalone #
+###############################################################
 
 # Join london_squared to cycle lane lengths
 borough_separation_length_spatial = left_join(borough_separation_length_reorder, london_squared_tidy, by = "BOROUGH")
@@ -497,7 +584,7 @@ borough_separation_length_spatial = left_join(borough_separation_length_reorder,
 ggplot(borough_separation_length_spatial, aes(x = -Highest_separation, y = total_length, fill = Highest_separation)) +
   geom_bar(stat = "identity")+
   #geom_text(aes(x = fX, y = fY, label = Borough_number)) +
-  geom_text(aes(label = Borough_number, y = Borough_number)) +
+  #geom_text(aes(label = Borough_number, y = Borough_number)) +
   coord_flip() +
   scale_fill_viridis(discrete = TRUE, direction = -1, guide = guide_legend(reverse = TRUE)) +
   facet_grid(-fY ~ fX) +  # need to do -fY to get correct orientation with enfield top row and sutton bottom row
@@ -510,7 +597,7 @@ ggplot(borough_separation_length_spatial, aes(x = -Highest_separation, y = total
   geom_bar(stat = "identity")+  # geom_bar(stat = "identity", color = "black", size = 0.1) +
   #geom_text(aes(label = Borough_number, y = Borough_number)) +  # labels facets by borough number but looks at bit rubbish - need to convert borough number to numeric to use
   coord_flip() +
-  geom_abline(slope=0, intercept= 60000,  col = "red",lty=2) +
+  #geom_abline(slope=0, intercept= 60000,  col = "red",lty=2) +
   scale_fill_viridis(discrete = TRUE, direction = -1, guide = guide_legend(reverse = TRUE)) +
   scale_y_continuous(breaks = c(0, 60000)) +  # 58000 uis the highest total value (Croydon)
   facet_grid(-fY ~ fX) +
@@ -546,26 +633,27 @@ ggplot(borough_separation_length_spatial) +
         axis.line = element_blank(),
         legend.position = "none")
 
-
-# Speed data 
-# load packages
-library(osmextract)
-library(sf)
-library(mapview)
-library(tidyverse)
-
-# Set Mapview options to use data CRS rather than OSM projections
-mapviewOptions(native.crs = TRUE)
+################################################################################
+#                   Import and data cleanse OSM speed limit data               #
+################################################################################
 
 # Load 2019 OSM dataset
 gl_pbf19 = "/home/bananafan/Documents/PhD/Paper1/data/greater-london-190101.osm.pbf"
-gl_osm_lines19 = oe_read(gl_pbf, quiet = FALSE) # Simple feature collection with 355244 features and 10 fields, CRS WGS84
+gl_osm_lines19 = oe_read(gl_pbf19, quiet = FALSE, extra_tags = "maxspeed") # Simple feature collection with 313409 features and 10 fields, CRS WGS84
 
 # Change CRS to match ONS and CID
 gl_osm_lines19 = st_transform(gl_osm_lines19, crs=27700) # PROJCRS["OSGB 1936 / British National Grid",
 
-# import May 2020 ONS LA boundary data (required for NA management)
+# Limit OS data to inside London Boundary
+# import May 2020 ONS LA boundary data
 lon_lad_2020 = readRDS(file = "./map_data/lon_LAD_boundaries_May_2020_BFE.Rds")
+
+# Create spatial object for all 33 boroughs
+london_union = st_union(lon_lad_2020) 
+
+# Limit road links to within the Outer London Boundary
+gl_osm_lines19 = st_intersection(gl_osm_lines19, london_union) # n = ???
+
 
 
 names(gl_osm_lines19)
@@ -573,25 +661,21 @@ names(gl_osm_lines19)
 # [7] "man_made"   "maxspeed"   "z_order"    "other_tags" "geometry"  
 
 unique(gl_osm_lines19$maxspeed) # looks like all sorts of speeds for different types of infrastructure
-# [1] "30 mph"   "40 mph"   NA         "20 mph"   "70 mph"   "10 mph"  
-# [7] "60 mph"   "50 mph"   "85 mph"   "80 mph"   "15 mph"   "75 mph"  
-# [13] "5 mph"    "45 mph"   "110 mph"  "100 mph"  "25 mph"   "12 mph"  
-# [19] "115 mph"  "230"      "105 mph"  "90 mph"   "7"        "30"      
-# [25] "60"       "100"      "35 mph"   "65 mph"   "55 mph"   "20"      
-# [31] "10mph"    "95 mph"   "64"       "none"     "5"        "16.09"   
-# [37] "walk"     "signals"  "variable" "50"       "4 mph"    "national"
-# [43] "15"       "10"       "125 mph"  "40"      
+# [1] "30 mph"   "40 mph"   NA         "20 mph"   "70 mph"   "60 mph"   "50 mph"   "85 mph"  
+# [9] "80 mph"   "10 mph"   "15 mph"   "75 mph"   "5 mph"    "45 mph"   "110 mph"  "100 mph" 
+# [17] "30 mpoh"  "25 mph"   "50"       "30"       "115 mph"  "230"      "105 mph"  "90 mph"  
+# [25] "7"        "signals"  "35 mph"   "65 mph"   "40"       "55 mph"   "20"       "10mph"   
+# [33] "12 mph"   "95 mph"   "national" "64"       "none"     "30 mpj"   "5"        "16.09"   
+# [41] "walk"     "variable" "4 mph"    "15"       "10"       "125 mph"  "5mph"     "4mph"     
 
 unique(gl_osm_lines19$highway)
-# [1] "primary"         "residential"     "trunk"           "trunk_link"     
-# [5] "footway"         "service"         "unclassified"    "tertiary"       
-# [9] "secondary"       "motorway_link"   "cycleway"        NA               
-# [13] "motorway"        "tertiary_link"   "bridleway"       "secondary_link" 
-# [17] "pedestrian"      "primary_link"    "path"            "living_street"  
-# [21] "steps"           "track"           "construction"    "proposed"       
-# [25] "raceway"         "road"            "no"              "corridor"       
-# [29] "escalator"       "elevator"        "cy"              "stepping_stones"
-# [33] "disused"         "crossing"        "access" 
+# [1] "primary"         "residential"     "trunk"           "footway"         "service"        
+# [6] "unclassified"    "tertiary"        "secondary"       "motorway_link"   "cycleway"       
+# [11] NA                "motorway"        "tertiary_link"   "secondary_link"  "construction"   
+# [16] "bridleway"       "trunk_link"      "pedestrian"      "primary_link"    "path"           
+# [21] "living_street"   "steps"           "track"           "unsurfaced"      "raceway"        
+# [26] "proposed"        "road"            "no"              "corridor"        "crossing"       
+# [31] "escalator"       "elevator"        "stepping_stones" "disused"         "bus_stop"
 
 # https://wiki.openstreetmap.org/wiki/Key:highway
 # highway=* distinguishes roads by function and importance rather by their physical characteristic and legal classification.
@@ -612,7 +696,7 @@ highways_to_keep = c("primary", "residential", "trunk", "trunk_link", "service",
                      "secondary", "tertiary_link", "secondary_link", "primary_link", "living_street")
 
 os_relevent_highways = gl_osm_lines19 %>%
-  filter(highway %in% highways_to_keep) # n = 1777000
+  filter(highway %in% highways_to_keep) # n = 157202
 unique(os_relevent_highways$maxspeed) 
 max_speed_count = os_relevent_highways %>%
   st_drop_geometry() %>%
@@ -620,52 +704,55 @@ max_speed_count = os_relevent_highways %>%
   summarise(count = n())
 
 max_speed_count %>% print(n = Inf)
-#maxspeed count
+# maxspeed count
 # <chr>    <int>
-# 1 10           7
-# 2 10 mph     459
-# 3 100          1
-# 4 10mph        5
-# 5 12 mph      34
-# 6 15           4
-# 7 15 mph     150
-# 8 16.09        1
-# 9 20          13
-# 10 20 mph   49513
-# 11 25 mph       2
-# 12 30          40
-# 13 30 mph   24239
-# 14 4 mph       12
-# 15 40           1
-# 16 40 mph    2528
-# 17 5            8
-# 18 5 mph      775
-# 19 50           3
-# 20 50 mph    1133
-# 21 60           1
-# 22 60 mph     138
-# 23 64           1
-# 24 7            4
-# 25 70 mph     170
-# 26 national     1
-# 27 signals      7
-# 28 variable     1
-# 29 NA       98449
+#  1 10           6
+# 2 10 mph     381
+# 3 10mph        6
+# 4 12 mph      11
+# 5 15           4
+# 6 15 mph     126
+# 7 16.09        1
+# 8 20          13
+# 9 20 mph   44152
+# 10 25 mph       2
+# 11 30          40
+# 12 30 mph   22850
+# 13 30 mpj       2
+# 14 30 mpoh      1
+# 15 4 mph        7
+# 16 40           2
+# 17 40 mph    2326
+# 18 4mph         1
+# 19 5            8
+# 20 5 mph      644
+# 21 50          10
+# 22 50 mph    1113
+# 23 5mph         2
+# 24 60 mph     124
+# 25 64           1
+# 26 7            4
+# 27 70 mph     160
+# 28 national     1
+# 29 signals     17
+# 30 variable     1
+# 31 NA       85186
 
 # drop observations with no speed limit data
 os_speed_limits = os_relevent_highways %>%
-  filter(!is.na(maxspeed)) # n = 79251
+  filter(!is.na(maxspeed)) # n = 72016
 
 # drop observations with signals or variable in the maxspeed
 os_speed_limits = os_speed_limits %>%
   filter(maxspeed != "variable") %>%
   filter(maxspeed != "signals") %>%
-  filter(maxspeed != "national") %>%
-  filter(maxspeed != "100") # n = 79241
+  filter(maxspeed != "national") # n = 71997
 
-# REmove mph and convert to integer 
+# Remove mph and convert to integer 
 os_speed_limits$maxspeed_num = sapply(str_split(os_speed_limits$maxspeed, " mph"), `[`,1) # works byt still have 10mph so run again
 os_speed_limits$maxspeed_num = sapply(str_split(os_speed_limits$maxspeed, "mph"), `[`,1)
+os_speed_limits$maxspeed_num = sapply(str_split(os_speed_limits$maxspeed_num, " mpj"), `[`,1)
+os_speed_limits$maxspeed_num = sapply(str_split(os_speed_limits$maxspeed_num, " mpoh"), `[`,1)
 os_speed_limits$maxspeed_num = as.integer(os_speed_limits$maxspeed_num)
 
 # Create speed limit groups
@@ -677,43 +764,64 @@ tidy_speed_limit = os_speed_limits %>%
   st_drop_geometry() %>%
   group_by(speed_limit) %>%
   summarise(count = n())
+
 # speed_limit count
-# 1 10mph        1270
-# 2 20mph       49715
-# 3 30mph       24281
-# 4 40mph        2529
-# 5 50mph        1136
-# 6 60mph         139
-# 7 70mph         171
+# 1 10mph        1059
+# 2 20mph       44307
+# 3 30mph       22895
+# 4 40mph        2328
+# 5 50mph        1123
+# 6 60mph         124
+# 7 70mph         161
 
 mapview(os_speed_limits, zcol = "speed_limit")
 
 
-# Limit OS data to inside London Boundary
-# import May 2020 ONS LA boundary data
-lon_lad_2020 = readRDS(file = "./map_data/lon_LAD_boundaries_May_2020_BFE.Rds")
+############################################
+# Join speed limit data to Cycle lane data #
+############################################
 
-# Create spatial object for all 33 boroughs
-london_union = st_union(lon_lad_2020) 
-
-# Limit road links to within the Outer London Boundary
-lon_os_speed_limits = st_intersection(os_speed_limits, london_union) # n = 78757
-
+# Select OSM variables to keep 
 lon_os_speed_limits_tidy = lon_os_speed_limits %>%
   select(c("osm_id", "name", "highway", "maxspeed_num", "speed_limit", "geometry"))
 
 #  Now test how to join the speed limit data to the CID data
 # select small amount of data
-barnet = on_road_factor %>%
+barnet_cl = on_road_factor %>%
+  filter(BOROUGH == "Barnet") # 93 obs
+barnet_borough = lon_lad_2020 %>%
   filter(BOROUGH == "Barnet")
+barnet_os_speeds_limits = st_intersection(lon_os_speed_limits_tidy, barnet_borough)
 
-mapview(barnet, zcol = "Highest_separation")
+# View data
+m1 =  mapview(barnet_cl, zcol = "Highest_separation")
+m2 = mapview(barnet_os_speeds_limits, zcol = "speed_limit", color = brewer.pal(9, "YlOrRd"))
+leafsync::sync(m1,m2)
 
-barnet_speed_intersects = st_join(barnet, lon_os_speed_limits_tidy) # => 22 assets have speed limit data - this uses st_intersects
-barnet_speed_nearest = st_join(barnet, lon_os_speed_limits_tidy, join = st_nearest_feature) #= all assets have speed limit data
-barnet_speed_within = st_join(barnet, lon_os_speed_limits_tidy, join = st_nearest_feature)
 
-mapview(barnet_speed_nearest, zcol = "Highest_separation") # this doesnt appear to work propertly
+# Try different spatial join approaches to examine impact
+# 1) st_join with st_intersects
+barnet_speed_intersects = st_join(barnet_cl, lon_os_speed_limits_tidy) # => 22 assets have speed limit data - this uses st_intersects
+
+#2) st_join with nearest neighbour - ? query not granular enough
+barnet_speed_nearest = st_join(barnet_cl, lon_os_speed_limits_tidy, join = st_nearest_feature) #= all assets have speed limit data
+
+# 3) Create buffer around osm speed data observations then join based on within certain distance
+barnet_sl_buffer = st_buffer(barnet_os_speeds_limits, dist = 3)
+mapview(barnet_sl_buffer)
+barnet_speed_buffer_within = st_join(barnet_cl, barnet_sl_buffer, join = st_within) # ie entire cycle lane is within the speed limit buffer
+# 7 assets had speed limit data
+
+barnet_speed_buffer_touches = st_join(barnet_cl, barnet_sl_buffer, join = st_touches) 
+# 0 assets
+
+# 4) try buffer around CID
+barnet_cl_buffer = st_buffer(barnet_cl, dist = 2) # 2m buffer around cycle lanes
+mapview(barnet_cl_buffer) + mapview(barnet_cl, zcol = "Highest_separation")
+
+barnet_cl_buffer_touches = st_join(barnet_cl_buffer,barnet_os_speeds_limits, join = st_touches) # 0 assets
+barnet_cl_buffer_intersects = st_join(barnet_cl_buffer,barnet_os_speeds_limits)  # now have 113 assets - some new ones created by the intersections, others dont have speed limit attached
+
 
 
 # now write some logic that checks to see if degree of separation matches the road speed limit.  
@@ -730,7 +838,8 @@ mapview(barnet_speed_nearest, zcol = "Highest_separation") # this doesnt appear 
 #column = is seg approp to speed limit - do want t/f
 
 barnet_speed_near_test = barnet_speed_nearest %>%
-  mutate(seg_appro_speed_limit = case_when((maxspeed_num == 40) & (Highest_separation == "Segregated") ~ "TRUE",
+  mutate(seg_appro_speed_limit = case_when((maxspeed_num == 50) & (Highest_separation == "Segregated") ~ "TRUE",
+                                           (maxspeed_num == 40) & (Highest_separation == "Segregated") ~ "TRUE",
                                            (maxspeed_num == 30) & (Highest_separation == "Segregated") ~ "TRUE",
                                            (maxspeed_num == 30) & (Highest_separation == "Stepped") ~ "TRUE",
                                            (maxspeed_num == 30) & (Highest_separation == "Part-segregated") ~ "TRUE",
