@@ -509,17 +509,31 @@ ggplot(borough_separation_length_reorder) +
 #  PART 2 - by rest, contra and shared                             #
 ####################################################################
 
+contra_test = contra %>%
+  group_by(BOROUGH, Highest_separation) %>%
+  summarise(total_length = sum(length_m)) %>%
+  filter(BOROUGH == "Croydon")
+
+contra_test = contra %>%
+  group_by(BOROUGH) %>%
+  summarise(total_borough_seplength_bytype = sum(length_m)) %>%
+  filter(BOROUGH == "Croydon")
+rest_test = rest %>%
+  group_by(BOROUGH, Highest_separation) %>%
+  summarise(total_length = sum(length_m)) %>%
+  filter(BOROUGH == "Croydon")
+###THIS TEST WORKS
 # Create variable for total length by Borough of all on road cycle lanes
 test = on_road_factor %>%
   st_drop_geometry() %>%
   group_by(BOROUGH, type) %>%
-  mutate(total_borough_sep_length_bytype = sum(length_m)) %>%
+  mutate(total_borough_sep_length_by_type = sum(length_m)) %>%
   ungroup()
 
 # Create variable for length by Highest Separation by Borough
 test = test %>%
   group_by(BOROUGH, type, Highest_separation) %>%
-  mutate(total_length_bytype = sum(length_m)) %>%
+  mutate(total_length_by_type = sum(length_m)) %>%
   ungroup()
 
 # now create totals for all lanes - not by type
@@ -534,18 +548,13 @@ test = test %>%
   mutate(total_length = sum(length_m)) %>%
   ungroup()
 
-
-croydon_test = test %>%
-  filter(BOROUGH == "Croydon") %>%
-  select(c("FEATURE_ID", "BOROUGH", "type", "length_m", "length_km", "Highest_separation",
-           "total_borough_sep_length_bytype", "total_length_bytype", "total_borough_sep_length", "total_length"))
-
-
-
 # remove units to allow plotting
 test$total_length = as.integer(round(units::drop_units(test$total_length)))
-test$total_borough_length = as.integer(round(units::drop_units(
-  test$total_borough_length)))
+test$total_borough_sep_length = as.integer(round(units::drop_units(
+  test$total_borough_sep_length)))
+test$total_length_by_type = as.integer(round(units::drop_units(test$total_length_by_type)))
+test$total_borough_sep_length_by_type = as.integer(round(units::drop_units(
+  test$total_borough_sep_length_by_type)))
 
 # Reorder factors so Segregated is 'highest' value
 test_reorder <- test # reorder so that Segregated appears at top
@@ -554,19 +563,82 @@ test_reorder$Highest_separation = fct_rev(test$Highest_separation)
 
 
 # Create multiple bar charts of each Borough by degree of separation
+Rest = 
+
 test_reorder %>%
   filter(type == "Rest") %>%
   group_by(BOROUGH) %>%
-  ggplot(aes(x = -Highest_separation, y = total_length, fill = Highest_separation)) +
+  ggplot() +
+  geom_bar(aes(x = -Highest_separation, y = total_length_by_type, fill = Highest_separation), stat = "identity") +
+  coord_flip() +
+  scale_fill_viridis(discrete = TRUE, direction = -1, guide = guide_legend(reverse = TRUE)) +
+  facet_wrap(~ BOROUGH) +
+  labs(title = "Rest") +
+  theme(axis.text.y = element_blank(),
+        axis.ticks.y = element_blank())
+
+test_reorder %>%
+  filter(type == "Shared") %>%
+  #group_by(BOROUGH) %>%
+  ggplot() +
+  geom_bar(aes(x = -Highest_separation, y = total_length_by_type, fill = Highest_separation), stat = "identity") +
+  coord_flip() +
+  scale_fill_viridis(discrete = TRUE, direction = -1, guide = guide_legend(reverse = TRUE)) +
+  facet_wrap(~ BOROUGH) +
+  labs(title = "Shared") +
+  theme(axis.text.y = element_blank(),
+        axis.ticks.y = element_blank())
+
+test_reorder %>%
+  filter(type == "Contraflow") %>%
+  group_by(BOROUGH) %>%
+  ggplot(aes(x = -Highest_separation, y = total_length_by_type, fill = Highest_separation)) +
   geom_bar(stat = "identity") +
   coord_flip() +
   scale_fill_viridis(discrete = TRUE, direction = -1, guide = guide_legend(reverse = TRUE)) +
   facet_wrap(~ BOROUGH) +
+  labs(title = "Contraflow") +
+  theme(axis.text.y = element_blank(),
+        axis.ticks.y = element_blank())
+
+#try just for croydon - facet by type - NB hard to understand as rest has a total of 44790
+test_reorder %>%
+  filter(BOROUGH == "Croydon") %>%
+  ggplot(aes(x = -Highest_separation, y = total_length_by_type, fill = Highest_separation)) +
+  geom_bar(stat = "identity") +
+  coord_flip() +
+  facet_wrap(~ type) +
+  scale_fill_viridis(discrete = TRUE, direction = -1, guide = guide_legend(reverse = TRUE)) +
+  labs(title = "Rest - Croydon") +
+  theme(axis.text.y = element_blank(),
+        axis.ticks.y = element_blank())
+
+# do individuatl croydon bar charts
+
+test_reorder %>%
+  filter(type == "Rest" & BOROUGH == "Croydon") %>%
+  ggplot(aes(x = -Highest_separation, y = total_length_by_type, fill = Highest_separation)) +
+  geom_bar(stat = "identity") +
+  coord_flip() +
+  scale_fill_viridis(discrete = TRUE, direction = -1, guide = guide_legend(reverse = TRUE)) +
+  labs(title = "Rest - Croydon") +
   theme(axis.text.y = element_blank(),
         axis.ticks.y = element_blank())
 
 
+croydon_test = test %>%
+  filter(BOROUGH == "Croydon") %>%
+  select(c("FEATURE_ID", "BOROUGH", "type", "length_m", "length_km", "Highest_separation",
+           "total_borough_sep_length_by_type", "total_length_by_type", "total_borough_sep_length", "total_length"))
 
+croydon_test %>%
+  group_by(type)
+
+
+croydon__borough_separation_length = borough_separation_length %>%
+  filter(BOROUGH == "Croydon")
+croydon__total_borough_separation_length = total_borough_separation_length  %>%
+  filter(BOROUGH == "Croydon")
 
 
 
