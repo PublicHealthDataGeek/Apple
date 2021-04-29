@@ -207,9 +207,9 @@ on_road = c_cyclelanetrack %>%
   filter(CLT_CARR == TRUE) # n = 13965
 
 # Create dataframe so can obtain a df summary
-on_road_drop = on_road %>%
-  st_drop_geometry() %>%
-  select(-c("length_m", "length_km"))
+# on_road_drop = on_road %>%
+#   st_drop_geometry() %>%
+#   select(-c("length_m", "length_km"))
 #view(dfSummary(on_road_drop))
 
 # seg = 1371
@@ -304,12 +304,14 @@ on_road_numeric$CLT_ADVIS_weight = ifelse(on_road_numeric$CLT_ADVIS_NUMERIC == 1
 on_road_numeric = on_road_numeric %>%
   rowwise() %>%
   mutate(weight_5 = sum(c_across(CLT_SEGREG_weight:CLT_ADVIS_weight)))
-unique(on_road_numeric$weight_5)
+
+#unique(on_road_numeric$weight_5)
 # 1    10   100 10000   110     0   101 11000  1001 10010  1000 10001
-on_road_numeric %>%
-  st_drop_geometry() %>%
-  group_by(weight_5) %>%
-  summarise(count = n())
+
+# on_road_numeric %>%
+#   st_drop_geometry() %>%
+#   group_by(weight_5) %>%
+#   summarise(count = n())
 
 #       weight_5 count
 #           <dbl> <int>
@@ -401,7 +403,7 @@ summary_high_sep[is.na(summary_high_sep)] <- 0
 rm(rest, rest_sep, shared, shared_sep, contra, contra_sep) # remove redundant objects
 
 ##########################################################################
-# Create visualisations of cycle lanes coloured by degrees of separation #
+# Create maps of cycle lanes coloured by degrees of separation #
 ##########################################################################
 
 separation_map = tm_shape(lon_lad_2020_c2c) +
@@ -453,7 +455,7 @@ borough_separation_length = on_road_factor %>%
   group_by(BOROUGH, Highest_separation) %>%
   summarise(total_length = sum(length_m))
 
-# Create variable for total length by Borough of all on road cycle lanes
+# Create variable for total length by Borough of all on road cycle lanes - needed for inset barchart
 total_borough_separation_length = on_road_factor %>%
   st_drop_geometry() %>%
   group_by(BOROUGH) %>%
@@ -508,65 +510,33 @@ ggplot(borough_separation_length_reorder) +
 #  PART 2 - by rest, contra and shared                             #
 ####################################################################
 
-contra_test = contra %>%
-  group_by(BOROUGH, Highest_separation) %>%
-  summarise(total_length = sum(length_m)) %>%
-  filter(BOROUGH == "Croydon")
+# Create variable for length by Highest Separation by Borough for each type
+type_borough_separation_length = on_road_factor %>%
+  st_drop_geometry() %>%
+  group_by(BOROUGH, type, Highest_separation) %>%
+  summarise(total_length_by_type = sum(length_m))
 
-contra_test = contra %>%
-  group_by(BOROUGH) %>%
-  summarise(total_borough_seplength_bytype = sum(length_m)) %>%
-  filter(BOROUGH == "Croydon")
-rest_test = rest %>%
-  group_by(BOROUGH, Highest_separation) %>%
-  summarise(total_length = sum(length_m)) %>%
-  filter(BOROUGH == "Croydon")
-###THIS TEST WORKS
-# Create variable for total length by Borough of all on road cycle lanes
-test = on_road_factor %>%
+total_type_borough_separation_length = on_road_factor %>%  # needed for insert bar chart
   st_drop_geometry() %>%
   group_by(BOROUGH, type) %>%
-  mutate(total_borough_sep_length_by_type = sum(length_m)) %>%
-  ungroup()
-
-# Create variable for length by Highest Separation by Borough
-test = test %>%
-  group_by(BOROUGH, type, Highest_separation) %>%
-  mutate(total_length_by_type = sum(length_m)) %>%
-  ungroup()
-
-# now create totals for all lanes - not by type
-test = test %>%
-  group_by(BOROUGH) %>%
-  mutate(total_borough_sep_length = sum(length_m)) %>%
-  ungroup()
-
-# Create variable for length by Highest Separation by Borough
-test = test %>%
-  group_by(BOROUGH, Highest_separation) %>%
-  mutate(total_length = sum(length_m)) %>%
-  ungroup()
+  summarise(total_borough_length_by_type = sum(length_m))#  
 
 # remove units to allow plotting
-test$total_length = as.integer(round(units::drop_units(test$total_length)))
-test$total_borough_sep_length = as.integer(round(units::drop_units(
-  test$total_borough_sep_length)))
-test$total_length_by_type = as.integer(round(units::drop_units(test$total_length_by_type)))
-test$total_borough_sep_length_by_type = as.integer(round(units::drop_units(
-  test$total_borough_sep_length_by_type)))
+type_borough_separation_length$total_length_by_type = as.integer(round(units::drop_units(
+  type_borough_separation_length$total_length_by_type)))
+total_type_borough_separation_length$total_borough_length_by_type = as.integer(round(units::drop_units(
+  total_type_borough_separation_length$total_borough_length_by_type)))
+
+# join total borough lengths to borough_separation_length
+type_borough_separation_length = left_join(type_borough_separation_length, total_type_borough_separation_length)
 
 # Reorder factors so Segregated is 'highest' value
-test_reorder <- test # reorder so that Segregated appears at top
-test_reorder$Highest_separation = fct_rev(test$Highest_separation)
+type_borough_separation_length_reorder <- type_borough_separation_length # reorder so that Segregated appears at top
+type_borough_separation_length_reorder$Highest_separation = fct_rev(type_borough_separation_length_reorder$Highest_separation)
 
-
-
-# Create multiple bar charts of each Borough by degree of separation
-Rest = 
-
-test_reorder %>%
+# Create stacked bar charts for each type faceted by Borough
+type_borough_separation_length_reorder %>%
   filter(type == "Rest") %>%
-  group_by(BOROUGH) %>%
   ggplot() +
   geom_bar(aes(x = -Highest_separation, y = total_length_by_type, fill = Highest_separation), stat = "identity") +
   coord_flip() +
@@ -576,9 +546,8 @@ test_reorder %>%
   theme(axis.text.y = element_blank(),
         axis.ticks.y = element_blank())
 
-test_reorder %>%
+type_borough_separation_length_reorder %>%
   filter(type == "Shared") %>%
-  #group_by(BOROUGH) %>%
   ggplot() +
   geom_bar(aes(x = -Highest_separation, y = total_length_by_type, fill = Highest_separation), stat = "identity") +
   coord_flip() +
@@ -588,11 +557,10 @@ test_reorder %>%
   theme(axis.text.y = element_blank(),
         axis.ticks.y = element_blank())
 
-test_reorder %>%
+type_borough_separation_length_reorder %>%
   filter(type == "Contraflow") %>%
-  group_by(BOROUGH) %>%
-  ggplot(aes(x = -Highest_separation, y = total_length_by_type, fill = Highest_separation)) +
-  geom_bar(stat = "identity") +
+  ggplot() +
+  geom_bar(aes(x = -Highest_separation, y = total_length_by_type, fill = Highest_separation), stat = "identity") +
   coord_flip() +
   scale_fill_viridis(discrete = TRUE, direction = -1, guide = guide_legend(reverse = TRUE)) +
   facet_wrap(~ BOROUGH) +
@@ -600,53 +568,16 @@ test_reorder %>%
   theme(axis.text.y = element_blank(),
         axis.ticks.y = element_blank())
 
-#try just for croydon - facet by type - NB hard to understand as rest has a total of 44790
-test_reorder %>%
-  filter(BOROUGH == "Croydon") %>%
-  ggplot(aes(x = -Highest_separation, y = total_length_by_type, fill = Highest_separation)) +
-  geom_bar(stat = "identity") +
-  coord_flip() +
-  facet_wrap(~ type) +
-  scale_fill_viridis(discrete = TRUE, direction = -1, guide = guide_legend(reverse = TRUE)) +
-  labs(title = "Rest - Croydon") +
-  theme(axis.text.y = element_blank(),
-        axis.ticks.y = element_blank())
-
-# do individuatl croydon bar charts
-
-test_reorder %>%
-  filter(type == "Rest" & BOROUGH == "Croydon") %>%
-  ggplot(aes(x = -Highest_separation, y = total_length_by_type, fill = Highest_separation)) +
-  geom_bar(stat = "identity") +
-  coord_flip() +
-  scale_fill_viridis(discrete = TRUE, direction = -1, guide = guide_legend(reverse = TRUE)) +
-  labs(title = "Rest - Croydon") +
-  theme(axis.text.y = element_blank(),
-        axis.ticks.y = element_blank())
-
-
-croydon_test = test %>%
-  filter(BOROUGH == "Croydon") %>%
-  select(c("FEATURE_ID", "BOROUGH", "type", "length_m", "length_km", "Highest_separation",
-           "total_borough_sep_length_by_type", "total_length_by_type", "total_borough_sep_length", "total_length"))
-
-croydon_test %>%
-  group_by(type)
-
-
-croydon__borough_separation_length = borough_separation_length %>%
-  filter(BOROUGH == "Croydon")
-croydon__total_borough_separation_length = total_borough_separation_length  %>%
-  filter(BOROUGH == "Croydon")
-
-
-
-
 
 
 ###############################################################
 # Create bar charts spatially located by Borough + standalone #
 ###############################################################
+
+############################
+# PART 1 - all cycle lanes #
+############################
+
 
 # Join london_squared to cycle lane lengths
 borough_separation_length_spatial = left_join(borough_separation_length_reorder, london_squared_tidy, by = "BOROUGH")
@@ -705,13 +636,131 @@ ggplot(borough_separation_length_spatial) +
         legend.position = "none")
 
 
-#########################################
-#  Next steps:
 
-# lengths - by borough summed by type
-# ? any focus on seg/step/partseg
+############################
+# PART 2 - by type   lanes #
+############################
 
-# ? heatmap of x axis speed, y axis borough, colour = proportion infrastructure that is segreg etc?
+
+# Join london_squared to cycle lane lengths by type
+type_borough_separation_length_spatial = left_join(type_borough_separation_length_reorder, london_squared_tidy, by = "BOROUGH")
+
+# FOr Rest
+type_borough_separation_length_spatial %>%
+  filter(type == "Rest") %>%
+  ggplot() +
+  geom_bar(aes(x = -Highest_separation, y = total_length_by_type, fill = Highest_separation), stat = "identity")+
+  coord_flip() +
+  scale_fill_viridis(discrete = TRUE, direction = -1, guide = guide_legend(reverse = TRUE)) +
+  facet_grid(-fY ~ fX) +  # need to do -fY to get correct orientation with enfield top row and sutton bottom row
+  labs(title = "Rest") +
+  theme_classic() +
+  theme(axis.text.y = element_blank(),
+        axis.text.x = element_blank(),
+        axis.ticks.y = element_blank(),
+        axis.ticks.x = element_blank(),axis.line = element_blank(),
+        axis.title = element_blank(),
+        strip.text = element_blank(),
+        panel.spacing=unit(-0.5, "lines"),
+        plot.title = element_text(hjust = 0.5))
+
+# FOr SHared
+type_borough_separation_length_spatial %>%
+  filter(type == "Shared") %>%
+  ggplot() +
+  geom_bar(aes(x = -Highest_separation, y = total_length_by_type, fill = Highest_separation), stat = "identity")+
+  coord_flip() +
+  scale_fill_viridis(discrete = TRUE, direction = -1, guide = guide_legend(reverse = TRUE)) +
+  facet_grid(-fY ~ fX) +  # need to do -fY to get correct orientation with enfield top row and sutton bottom row
+  labs(title = "Shared") +
+  theme_classic() +
+  theme(axis.text.y = element_blank(),
+        axis.text.x = element_blank(),
+        axis.ticks.y = element_blank(),
+        axis.ticks.x = element_blank(),axis.line = element_blank(),
+        axis.title = element_blank(),
+        strip.text = element_blank(),
+        panel.spacing=unit(-0.5, "lines"),
+        plot.title = element_text(hjust = 0.5))
+
+# FOr COntraflow
+type_borough_separation_length_spatial %>%
+  filter(type == "Contraflow") %>%
+  ggplot() +
+  geom_bar(aes(x = -Highest_separation, y = total_length_by_type, fill = Highest_separation), stat = "identity")+
+  coord_flip() +
+  scale_fill_viridis(discrete = TRUE, direction = -1, guide = guide_legend(reverse = TRUE)) +
+  facet_grid(-fY ~ fX) +  # need to do -fY to get correct orientation with enfield top row and sutton bottom row
+  labs(title = "Contraflow") +
+  theme_classic() +
+  theme(axis.text.y = element_blank(),
+        axis.text.x = element_blank(),
+        axis.ticks.y = element_blank(),
+        axis.ticks.x = element_blank(),axis.line = element_blank(),
+        axis.title = element_blank(),
+        strip.text = element_blank(),
+        panel.spacing=unit(-0.5, "lines"),
+        plot.title = element_text(hjust = 0.5))
+
+# Create bar chart (like for the assets) for total length by borough faceted by type
+ggplot(type_borough_separation_length_spatial) +
+  geom_bar(aes(x = reorder(Borough_number, -total_borough_length_by_type), y = total_length_by_type, fill = Highest_separation),
+           stat = "identity") +
+  coord_flip() +
+  scale_fill_viridis(discrete = TRUE, direction = -1, guide = guide_legend(reverse = TRUE)) +
+  scale_y_continuous(limits = c(0, 62000), expand = c(0,0), breaks = c(20000, 40000, 60000)) +
+  theme_classic() +
+  facet_wrap(~ type) +
+  labs(y = "Total length (km)", x = NULL) +
+  theme(axis.ticks.y = element_blank(),
+        axis.line = element_blank(),
+        legend.position = "none")
+
+# Create individual bar charts for each type
+type_borough_separation_length_spatial %>%
+  filter(type == "Rest") %>%
+  ggplot() +
+  geom_bar(aes(x = reorder(Borough_number, -total_borough_length_by_type), y = total_length_by_type, fill = Highest_separation),
+           stat = "identity") +
+  coord_flip() +
+  scale_fill_viridis(discrete = TRUE, direction = -1, guide = guide_legend(reverse = TRUE)) +
+  scale_y_continuous(limits = c(0, 50000), expand = c(0,0), breaks = c(20000, 40000)) +
+  theme_classic() +
+  labs(y = "Total length (km)", x = NULL, title = "Rest") +
+  theme(axis.ticks.y = element_blank(),
+        axis.line = element_blank(),
+        legend.position = "none")
+
+type_borough_separation_length_spatial %>%
+  filter(type == "Shared") %>%
+  ggplot() +
+  geom_bar(aes(x = reorder(Borough_number, -total_borough_length_by_type), y = total_length_by_type, fill = Highest_separation),
+           stat = "identity") +
+  coord_flip() +
+  scale_fill_viridis(discrete = TRUE, direction = -1, guide = guide_legend(reverse = TRUE)) +
+  scale_y_continuous(limits = c(0, 25000), expand = c(0,0), breaks = 20000) +
+  theme_classic() +
+  labs(y = "Total length (km)", x = NULL, title = "Shared") +
+  theme(axis.ticks.y = element_blank(),
+        axis.line = element_blank(),
+        legend.position = "none")
+
+type_borough_separation_length_spatial %>%
+  filter(type == "Contraflow") %>%
+  ggplot() +
+  geom_bar(aes(x = reorder(Borough_number, -total_borough_length_by_type), y = total_length_by_type, fill = Highest_separation),
+           stat = "identity") +
+  coord_flip() +
+  scale_fill_viridis(discrete = TRUE, direction = -1, guide = guide_legend(reverse = TRUE)) +
+  scale_y_continuous(limits = c(0, 12500), expand = c(0,0), breaks = 10000) +
+  theme_classic() +
+  labs(y = "Total length (km)", x = NULL, title = "Contraflow") +
+  theme(axis.ticks.y = element_blank(),
+        axis.line = element_blank(),
+        legend.position = "none")
+
+
+
 
 
 
