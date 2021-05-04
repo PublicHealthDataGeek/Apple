@@ -402,6 +402,9 @@ summary_high_sep[is.na(summary_high_sep)] <- 0
 
 rm(rest, rest_sep, shared, shared_sep, contra, contra_sep) # remove redundant objects
 
+# Save onroad cycle lane dataset for use with LTN 1/20 analysis
+saveRDS(on_road_factor, file = "/home/bananafan/Documents/PhD/Paper1/data/onroad_cyclelanes_segregation.Rds")
+
 ##########################################################################
 # Create maps of cycle lanes coloured by degrees of separation #
 ##########################################################################
