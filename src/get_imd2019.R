@@ -141,20 +141,48 @@ tm_shape(lon_imd19) +
   tm_polygons("decile_ranked_average_rank", 
               #breaks = c(0, 30, 60, 90, 120, 150, 180),
               #legend.format = list(text.separator = "<"),
-              palette = "Blues") + 
+              palette = "-Purples") + 
   tm_layout(title = "Borough Rank of average Index of Multiple deprivation rank for LSOAs in Borough, 2019 (population-weighted)",
             legend.title.size = 1,
             legend.text.size = 0.7,
             legend.position = c("left","bottom"),
             legend.bg.alpha = 1,
-            inner.margins = c(0.1,0.1,0.1,0.42), # creates wide right margin for barchart
-            frame = FALSE) +
-  tm_add_legend(labels = c("Most deprived 10%", "", "", "", "", "", "", "", "", "Least deprived 10%"), 
-                title = "Decile of ranked average rank")  # will need to add colours using col = argument when ready
+            inner.margins = c(0.1,0.1,0.1,0.1),
+            frame = FALSE) 
+  #+ tm_add_legend(labels = c("Most deprived 10%", "", "", "", "", "", "", "", "", "Least deprived 10%"), 
+  #              title = "Decile of ranked average rank")  # will need to add colours using col = argument when ready
 
+#bar chart for this  
+# Generate new column that makes imd rank numeric
+lon_imd19 <- lon_imd19 %>%
+  mutate(numeric_decile_ranked_average_rank = as.numeric(cut(IMD_ranked_average_rank,
+                                                  breaks = 10,
+                                                  labels = c("1", "2", "3", "4", "5", "6", "7", "8", "9", "10"),
+                                                  ordered_result = TRUE)))
+
+# # # Create vector of colours that match the chloropleth
+#imd_colours = c("#edf8e9", "#bae4b3", "#74c476", "#238b45")
+
+# create Bar chart
+ggplot(lon_imd19, aes(x = reorder(Borough_number, -numeric_decile_ranked_average_rank),
+                      y = numeric_decile_ranked_average_rank,
+                      fill = numeric_decile_ranked_average_rank)) +
+  geom_bar(stat = "identity", color = "black", size = 0.1) +  # adds borders to bars
+  coord_flip() +
+  labs(y = "IMD decile ", x = NULL) +
+  theme_classic() +
+  scale_y_continuous(expand = c(0,0)) +  # ensures axis starts at 0 so no gap
+  #scale_fill_manual(values = imd_colours) +
+  #scale_fill_brewer(palette = "Purple", direction = -1)
+  theme(axis.line.y = element_blank(),
+        axis.ticks.y = element_blank(),
+        axis.line.x = element_blank(),
+        legend.position = "none")
+  
+  
 tm_shape(lon_imd19) +
   tm_polygons("decile_ranked_average_score", 
-              palette = "Blues") + 
+              palette = "-Blues") + 
   tm_layout(title = "Borough Rank of average Index of Multiple deprivation score for LSOAs in Borough, 2019 (population-weighted)",
             legend.title.size = 1,
             legend.text.size = 0.7,
