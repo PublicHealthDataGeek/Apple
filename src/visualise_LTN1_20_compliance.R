@@ -25,6 +25,8 @@ library(mapview)
 #library(tmap)
 library(sf)
 library(RColorBrewer)
+library(leafem) # for adding labels to mapview
+library(leafsync) # for syncing mapview maps
 #library(tmaptools) # for palette explorer 
 #library(viridis)
 #library(ggpubr) # for text grobs
@@ -198,21 +200,84 @@ cycle_lanes = readRDS(file = "/home/bananafan/Documents/PhD/Paper1/data/cleansed
 
 # Import tidied london OSM speed limit dataset
 osm_speed_limits_tidy = readRDS(file = "/home/bananafan/Documents/PhD/Paper1/data/lon_osm_speed_limits_tidy.Rds")
+# refactor speed limit
+osm_speed_limits_tidy$speed_limit = fct_collapse(osm_speed_limits_tidy$speed_limit, 
+               "20mph" = c("10mph", "20mph"))
 
+# import May 2020 ONS LA boundary data
+lon_lad_2020_bfe = readRDS(file = "./map_data/lon_LAD_boundaries_May_2020_BFE.Rds")
 
 #  Now test how to join the speed limit data to the CID data
 # select small amount of data
 barnet_cl = cycle_lanes %>%
-  filter(BOROUGH == "Barnet") # 93 obs
+  filter(BOROUGH == "Barnet") # 93 observations of cycle lanes in Barnet
 barnet_borough = lon_lad_2020_bfe %>%
-  filter(BOROUGH == "Barnet")
-barnet_speeds_limits = st_intersection(osm_speed_limits_tidy, barnet_borough) # n = 4810
+  filter(BOROUGH == "Barnet") # obtain boundaries of Barnet
+barnet_speeds_limits = st_intersection(osm_speed_limits_tidy, barnet_borough) # n = 4810, osm objects within Barnet borough
 
 # View data
 m1 =  mapview(barnet_cl, zcol = "Highest_separation")
-m2 = mapview(barnet_speeds_limits, zcol = "speed_limit", color = brewer.pal(9, "YlOrRd"))
-m3 = mapview(barnet_speeds_limits, zcol = "lanes") 
-leafsync::sync(m1, m2, m3)
+b_speedlimits = mapview(barnet_speeds_limits, zcol = "speed_limit", color = brewer.pal(9, "YlOrRd"))
+leafsync::sync(m1, m2)  # initial visualisation suggests that unlikely that any cycle lanes are on roads > 30mph
+
+barnet_cl_buffer = st_buffer(barnet_cl, dist = 6) #6m buffer around cycle lanes
+barnet_sl_buffer_73 = st_buffer(barnet_speeds_limits, dist = 7.3) # 7.3m around road - allowing for 2 way traffic
+barnet_intersects = st_join(barnet_cl_buffer, barnet_sl_buffer_73) # n = 297 (was 93)
+
+barnet_intersects %>%
+  st_drop_geometry() %>%
+  group_by(speed_limit) %>%
+  summarise(count = n())
+
+# 1 20mph          22
+# 2 30mph         262
+# 3 40mph           2
+# 4 50mph           7
+# 5 NA              4
+
+# examine whether speed limits differ by new segments of each FEATURE_ID
+count_na <- function(x) sum(is.na(x))  # function that counts number of NAs in a row
+test = barnet_intersects %>%
+  st_drop_geometry() %>%
+  select(c("FEATURE_ID", "speed_limit")) %>%
+  pivot_wider(id_cols = c("FEATURE_ID", "speed_limit"), 
+              names_from = speed_limit,
+              values_from = speed_limit,
+              names_glue = "{speed_limit}_{.value}",
+              values_fn = length) %>%
+  select(c("FEATURE_ID", "20mph_speed_limit", "30mph_speed_limit", "40mph_speed_limit", "50mph_speed_limit", "NA_speed_limit")) %>%
+  mutate(count_na = apply(., 1, count_na)) %>%
+  mutate(single_speed_limit = case_when(count_na == 4  ~ TRUE,
+                                        TRUE ~ TRUE))  # if there are 4 NAs and 1 speedlimit then set 'single_speed_limit' to TRUE
+
+# 79 only had 1 speed limit, 14 had 2 different speed limits
+
+         
+         
+##########################################################################################         
+barnet_20 = barnet_intersects %>%
+  filter(speed_limit == "20mph")
+b_20_map = mapview(barnet_20) 
+b_20_sl = barnet_speeds_limits %>%
+  filter(speed_limit == "20mph")
+b_20_sl_map = mapview(b_20_sl)
+
+leafsync::sync(b_20_map, b_20_sl_map)
+
+barnet_NA = barnet_intersects %>%
+  filter(is.na(speed_limit)) # n = 4
+b_NA_map = mapview(barnet_NA) 
+b_NA_map = leafem::addStaticLabels(b_NA_map, label =  barnet_NA$FEATURE_ID)
+
+barnet_NA_map = leafsync::sync(b_NA_map, b_speedlimits)
+
+
+bar_intersects_map = mapview(barnet_intersects, zcol = "speed_limit")
+b_sl_73 = mapview(barnet_buffer_73, zcol = "speed_limit", color = brewer.pal(9, "YlOrRd"))
+leafsync::sync(br, b_sl_73)
+
+
+
 
 # Divide barnet_cl dataset into rest, contra and shared as likely to need different sized buffers
 rest_barnet_cl = barnet_cl %>%
@@ -305,6 +370,7 @@ barnet_cl_buffer_intersects = st_join(barnet_cl_buffer,barnet_os_speeds_limits) 
 
 #column = is seg approp to speed limit - do want t/f
 
+# draft attempt - might not be correct
 barnet_speed_near_test = barnet_speed_nearest %>%
   mutate(seg_appro_speed_limit = case_when((maxspeed_num == 50) & (Highest_separation == "Segregated") ~ "TRUE",
                                            (maxspeed_num == 40) & (Highest_separation == "Segregated") ~ "TRUE",
@@ -316,7 +382,7 @@ barnet_speed_near_test = barnet_speed_nearest %>%
                                            (maxspeed_num <= 20) & (Highest_separation == "Part-segregated") ~ "TRUE",
                                            (maxspeed_num <= 20) & (Highest_separation == "Mandatory cycle lane") ~ "TRUE",
                                            (maxspeed_num <= 20) & (Highest_separation == "Advisory cycle lane") ~ "TRUE",
-                                           (maxspeed_num <= 20) & (Highest_separation == "No separation") ~ "FALSE",
+                                           (maxspeed_num <= 20) & (Highest_separation == "No separation") ~ "FALSE",   ### IS tHIS CORRECT??? Lots are shared bus lanes
                                            TRUE ~ "FALSE"))
 # THis seems to work for barnet - need to check on other datasets
 
