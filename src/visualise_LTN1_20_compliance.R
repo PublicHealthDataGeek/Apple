@@ -24,6 +24,7 @@ library(tidyverse)
 library(mapview)
 #library(tmap)
 library(sf)
+library(RColorBrewer)
 #library(tmaptools) # for palette explorer 
 #library(viridis)
 #library(ggpubr) # for text grobs
@@ -40,36 +41,30 @@ tmap_design_mode(design.mode = FALSE)
 
 # Load 2019 OSM dataset
 gl_pbf19 = "/home/bananafan/Documents/PhD/Paper1/data/greater-london-190101.osm.pbf"
-gl_osm_lines19 = oe_read(gl_pbf19, quiet = FALSE, extra_tags = "maxspeed") # Simple feature collection with 313409 features and 10 fields, CRS WGS84
+gl_osm_lines19 = oe_read(gl_pbf19, quiet = FALSE, 
+                         extra_tags = c("maxspeed", "width", "maxwidth", "lanes")) # Simple feature collection with 313409 features and 10 fields, CRS WGS84
 
 # Change CRS to match ONS and CID
-gl_osm_lines19 = st_transform(gl_osm_lines19, crs=27700) # PROJCRS["OSGB 1936 / British National Grid",
+gl_osm_lines19 = st_transform(gl_osm_lines19, crs=27700) # PROJCRS["OSGB 1936 / British National Grid", n = 313409
 
 # Limit OS data to inside London Boundary
 # import May 2020 ONS LA boundary data
-lon_lad_2020 = readRDS(file = "./map_data/lon_LAD_boundaries_May_2020_BFE.Rds")
+lon_lad_2020_bfe = readRDS(file = "./map_data/lon_LAD_boundaries_May_2020_BFE.Rds")
 
 # Create spatial object for all 33 boroughs
-london_union = st_union(lon_lad_2020) 
+london_union_bfe = st_union(lon_lad_2020_bfe) 
 
 # Limit road links to within the Outer London Boundary
-gl_osm_lines19 = st_intersection(gl_osm_lines19, london_union) # n = ???
+lon_osm_lines19 = st_intersection(gl_osm_lines19, london_union_bfe) # n = 310848
 
 
+names(lon_osm_lines19)
+# 1] "osm_id"     "name"       "highway"    "waterway"   "aerialway"  "barrier"    "man_made"  
+# [8] "maxspeed"   "width"      "maxwidth"   "lanes"      "z_order"    "other_tags" "geometry"   
 
-names(gl_osm_lines19)
-# [1] "osm_id"     "name"       "highway"    "waterway"   "aerialway"  "barrier"   
-# [7] "man_made"   "maxspeed"   "z_order"    "other_tags" "geometry"  
-
-unique(gl_osm_lines19$maxspeed) # looks like all sorts of speeds for different types of infrastructure
-# [1] "30 mph"   "40 mph"   NA         "20 mph"   "70 mph"   "60 mph"   "50 mph"   "85 mph"  
-# [9] "80 mph"   "10 mph"   "15 mph"   "75 mph"   "5 mph"    "45 mph"   "110 mph"  "100 mph" 
-# [17] "30 mpoh"  "25 mph"   "50"       "30"       "115 mph"  "230"      "105 mph"  "90 mph"  
-# [25] "7"        "signals"  "35 mph"   "65 mph"   "40"       "55 mph"   "20"       "10mph"   
-# [33] "12 mph"   "95 mph"   "national" "64"       "none"     "30 mpj"   "5"        "16.09"   
-# [41] "walk"     "variable" "4 mph"    "15"       "10"       "125 mph"  "5mph"     "4mph"     
-
-unique(gl_osm_lines19$highway)
+  
+# Keep observations that are highway types that would be relevent to onroad cycle lanes
+unique(lon_osm_lines19$highway)
 # [1] "primary"         "residential"     "trunk"           "footway"         "service"        
 # [6] "unclassified"    "tertiary"        "secondary"       "motorway_link"   "cycleway"       
 # [11] NA                "motorway"        "tertiary_link"   "secondary_link"  "construction"   
@@ -82,7 +77,6 @@ unique(gl_osm_lines19$highway)
 # highway=* distinguishes roads by function and importance rather by their physical characteristic and legal classification.
 
 ### Make decisions about which values from highway to keep
-
 # [1] "primary"      KEEP      "residential"   KEEP  "trunk"         KEEP  "trunk_link"     KEEP
 # [5] "footway"      DROP      "service"       KEEP  "unclassified"  KEEP  "tertiary"       KEEP       
 # [9] "secondary"    KEEP      "motorway_link" DROP  "cycleway"      DROP        NA         ??      
@@ -96,10 +90,12 @@ unique(gl_osm_lines19$highway)
 highways_to_keep = c("primary", "residential", "trunk", "trunk_link", "service", "unclassified", "tertiary",
                      "secondary", "tertiary_link", "secondary_link", "primary_link", "living_street")
 
-os_relevent_highways = gl_osm_lines19 %>%
-  filter(highway %in% highways_to_keep) # n = 157202
-unique(os_relevent_highways$maxspeed) 
-max_speed_count = os_relevent_highways %>%
+osm_relevent_highways = lon_osm_lines19 %>%
+  filter(highway %in% highways_to_keep) # n = 155920
+
+
+# Examine maxspeed variable
+max_speed_count = osm_relevent_highways %>%
   st_drop_geometry() %>%
   group_by(maxspeed) %>%
   summarise(count = n())
@@ -107,111 +103,179 @@ max_speed_count = os_relevent_highways %>%
 max_speed_count %>% print(n = Inf)
 # maxspeed count
 # <chr>    <int>
-#  1 10           6
-# 2 10 mph     381
+# 1 10           6
+# 2 10 mph     368
 # 3 10mph        6
 # 4 12 mph      11
-# 5 15           4
-# 6 15 mph     126
+# 5 15           3
+# 6 15 mph     115
 # 7 16.09        1
 # 8 20          13
-# 9 20 mph   44152
+# 9 20 mph   44134
 # 10 25 mph       2
 # 11 30          40
-# 12 30 mph   22850
+# 12 30 mph   22714
 # 13 30 mpj       2
 # 14 30 mpoh      1
 # 15 4 mph        7
 # 16 40           2
-# 17 40 mph    2326
+# 17 40 mph    2259
 # 18 4mph         1
 # 19 5            8
-# 20 5 mph      644
+# 20 5 mph      635
 # 21 50          10
-# 22 50 mph    1113
+# 22 50 mph    1097
 # 23 5mph         2
-# 24 60 mph     124
+# 24 60 mph      96
 # 25 64           1
 # 26 7            4
-# 27 70 mph     160
+# 27 70 mph     122
 # 28 national     1
 # 29 signals     17
 # 30 variable     1
-# 31 NA       85186
+# 31 NA       84241
 
 # drop observations with no speed limit data
-os_speed_limits = os_relevent_highways %>%
-  filter(!is.na(maxspeed)) # n = 72016
+osm_speed_limits = osm_relevent_highways %>%
+  filter(!is.na(maxspeed)) # n = 71679
 
 # drop observations with signals or variable in the maxspeed
-os_speed_limits = os_speed_limits %>%
+osm_speed_limits = osm_speed_limits %>%
   filter(maxspeed != "variable") %>%
   filter(maxspeed != "signals") %>%
-  filter(maxspeed != "national") # n = 71997
+  filter(maxspeed != "national") # n = 71660
 
 # Remove mph and convert to integer 
-os_speed_limits$maxspeed_num = sapply(str_split(os_speed_limits$maxspeed, " mph"), `[`,1) # works byt still have 10mph so run again
-os_speed_limits$maxspeed_num = sapply(str_split(os_speed_limits$maxspeed, "mph"), `[`,1)
-os_speed_limits$maxspeed_num = sapply(str_split(os_speed_limits$maxspeed_num, " mpj"), `[`,1)
-os_speed_limits$maxspeed_num = sapply(str_split(os_speed_limits$maxspeed_num, " mpoh"), `[`,1)
-os_speed_limits$maxspeed_num = as.integer(os_speed_limits$maxspeed_num)
+osm_speed_limits$maxspeed_num = sapply(str_split(osm_speed_limits$maxspeed, " mph"), `[`,1) # works byt still have 10mph so run again
+osm_speed_limits$maxspeed_num = sapply(str_split(osm_speed_limits$maxspeed, "mph"), `[`,1)
+osm_speed_limits$maxspeed_num = sapply(str_split(osm_speed_limits$maxspeed_num, " mpj"), `[`,1)
+osm_speed_limits$maxspeed_num = sapply(str_split(osm_speed_limits$maxspeed_num, " mpoh"), `[`,1)
+osm_speed_limits$maxspeed_num = as.integer(osm_speed_limits$maxspeed_num)
 
 # Create speed limit groups
-os_speed_limits = os_speed_limits %>%
+osm_speed_limits = osm_speed_limits %>%
   mutate(speed_limit = cut(maxspeed_num,
                            breaks = seq(0, 70, by = 10),
                            labels = c("10mph", "20mph", "30mph", "40mph", "50mph", "60mph", "70mph"))) 
-tidy_speed_limit = os_speed_limits %>%
+tidy_speed_limit = osm_speed_limits %>%
   st_drop_geometry() %>%
   group_by(speed_limit) %>%
   summarise(count = n())
 
 # speed_limit count
-# 1 10mph        1059
-# 2 20mph       44307
-# 3 30mph       22895
-# 4 40mph        2328
-# 5 50mph        1123
-# 6 60mph         124
-# 7 70mph         161
+# <fct>       <int>
+# 1 10mph        1037
+# 2 20mph       44277
+# 3 30mph       22759
+# 4 40mph        2261
+# 5 50mph        1107
+# 6 60mph          96
+# 7 70mph         123
 
-mapview(os_speed_limits, zcol = "speed_limit")
+mapview(osm_speed_limits, zcol = "speed_limit")
+
+# Select OSM variables to keep 
+osm_speed_limits_tidy = osm_speed_limits %>%
+  select(c("osm_id", "name", "highway", "maxspeed_num", "speed_limit", "geometry", "lanes"))
+
+#################
+# Save OSM data #
+#################
+
+#saveRDS(osm_speed_limits_tidy, file = "/home/bananafan/Documents/PhD/Paper1/data/lon_osm_speed_limits_tidy.Rds")
+
+
+
+
 
 
 ############################################
 # Join speed limit data to Cycle lane data #
 ############################################
 
-#IMPORT cid DATA FROM VISUALISE CYCLELANES.r
+# Import cleansed onroad cycle lanes dataframe that has segregation information coded (created in VISUALISE CYCLELANES.r)
+cycle_lanes = readRDS(file = "/home/bananafan/Documents/PhD/Paper1/data/cleansed_onroad_cyclelanes_segregation.Rds")
 
+# Import tidied london OSM speed limit dataset
+osm_speed_limits_tidy = readRDS(file = "/home/bananafan/Documents/PhD/Paper1/data/lon_osm_speed_limits_tidy.Rds")
 
-# Select OSM variables to keep 
-lon_os_speed_limits_tidy = lon_os_speed_limits %>%
-  select(c("osm_id", "name", "highway", "maxspeed_num", "speed_limit", "geometry"))
 
 #  Now test how to join the speed limit data to the CID data
 # select small amount of data
-barnet_cl = on_road_factor %>%
+barnet_cl = cycle_lanes %>%
   filter(BOROUGH == "Barnet") # 93 obs
-barnet_borough = lon_lad_2020 %>%
+barnet_borough = lon_lad_2020_bfe %>%
   filter(BOROUGH == "Barnet")
-barnet_os_speeds_limits = st_intersection(lon_os_speed_limits_tidy, barnet_borough)
+barnet_speeds_limits = st_intersection(osm_speed_limits_tidy, barnet_borough) # n = 4810
 
 # View data
 m1 =  mapview(barnet_cl, zcol = "Highest_separation")
-m2 = mapview(barnet_os_speeds_limits, zcol = "speed_limit", color = brewer.pal(9, "YlOrRd"))
-leafsync::sync(m1,m2)
+m2 = mapview(barnet_speeds_limits, zcol = "speed_limit", color = brewer.pal(9, "YlOrRd"))
+m3 = mapview(barnet_speeds_limits, zcol = "lanes") 
+leafsync::sync(m1, m2, m3)
+
+# Divide barnet_cl dataset into rest, contra and shared as likely to need different sized buffers
+rest_barnet_cl = barnet_cl %>%
+  filter(type == "Rest") # n = 63
+contra_barnet_cl = barnet_cl %>%
+  filter(type == "Contraflow") # n = 7
+shared_barnet_cl = barnet_cl %>%
+  filter(type == "Shared") # n= 23  ? will shared need this - ?most likely to be along a normal road
+
+# # work on contra to start with - the below all works and correctly identifies that the contraflow cycle lanes are 30mph
+# mapview(contra_barnet_cl, zcol = "FEATURE_ID")
+# contra_barnet_cl_6m = st_buffer(contra_barnet_cl, dist = 6)  #6m buffer around contraflow cycle lane
+# barnet_buffer_365 = st_buffer(barnet_os_speeds_limits, dist = 3.65)  # 3.65m buffer around roads
+# barnet_contra_intersects = st_join(contra_barnet_cl_6m, barnet_buffer_365) # intersect buffers -> 16 obs (originally was 7)
+# bc = mapview(barnet_contra_intersects) 
+# b_sl = mapview(barnet_os_speeds_limits)
+# leafsync::sync(bc, b_sl)
+
+# Try Barnet rest dataset
+mapview(rest_barnet_cl)
+rest_barnet_buffer = st_buffer(rest_barnet_cl, dist = 6) #6m buffer around cycle lanes
+barnet_buffer_73 = st_buffer(barnet_os_speeds_limits, dist = 7.3) # 7.3m around road - allowing for 2 way traffic
+barnet_rest_intersects = st_join(rest_barnet_buffer, barnet_buffer_73) # n = 208 (was 63)
+br = mapview(barnet_rest_intersects)
+b_sl_73 = mapview(barnet_buffer_73, zcol = "speed_limit", color = brewer.pal(9, "YlOrRd"))
+leafsync::sync(br, b_sl_73)
+
+
 
 
 # Try different spatial join approaches to examine impact
 # 1) st_join with st_intersects
-barnet_speed_intersects = st_join(barnet_cl, lon_os_speed_limits_tidy) # => 22 assets have speed limit data - this uses st_intersects
+barnet_speed_intersect_buffer = st_join(barnet_cl, barnet_buffer_365) # => only 22 assets have speed limit data - this uses st_intersects
 
 #2) st_join with nearest neighbour - ? query not granular enough
-barnet_speed_nearest = st_join(barnet_cl, lon_os_speed_limits_tidy, join = st_nearest_feature) #= all assets have speed limit data
+barnet_speed_nearest = st_join(barnet_cl, barnet_speeds_limits, join = st_nearest_feature) #= all assets have speed limit data
 
-# 3) Create buffer around osm speed data observations then join based on within certain distance
-barnet_sl_buffer = st_buffer(barnet_os_speeds_limits, dist = 3)
+# 3) Create buffer around CID
+barnet_cl_buffer2 = st_buffer(barnet_cl, dist = 2) # 2m buffer around cycle lanes
+barnet_cl_buffer3 = st_buffer(barnet_cl, dist = 3) # 3m buffer around cycle lanes
+barnet_cl_buffer4 = st_buffer(barnet_cl, dist = 4) # 4m buffer around cycle lanes
+
+# visualise the above
+mapview(barnet_cl_buffer3) + mapview(barnet_cl, zcol = "Highest_separation") + 
+  mapview(barnet_speeds_limits, zcol = "speed_limit", color = brewer.pal(9, "YlOrRd"))
+# can see that the osm speed limit is represented by a single line that isnt necessarily touched by the cycle lane buffers.  
+
+
+
+
+
+# code useful for checking? 
+intersections_lp <- st_intersection(lines, polygons) %>% 
+  mutate(int_name = paste0(line_name, "-", polygon_name)) # gives a column with a name of the line that intersects with the polygon
+#then can plot
+ggplot() +
+  #--- here are all the original polygons  ---#
+  geom_sf(data = polygons, aes(fill = polygon_name), alpha = 0.3) +
+  #--- here is what is returned after st_intersection ---#
+  geom_sf(data = intersections_lp, aes(color = int_name), size = 1.5)
+
+# osm speed data observations then join based on within certain distance
+barnet_sl_buffer = st_buffer(barnet_speeds_limits, dist = 3)
 mapview(barnet_sl_buffer)
 barnet_speed_buffer_within = st_join(barnet_cl, barnet_sl_buffer, join = st_within) # ie entire cycle lane is within the speed limit buffer
 # 7 assets had speed limit data
@@ -219,9 +283,9 @@ barnet_speed_buffer_within = st_join(barnet_cl, barnet_sl_buffer, join = st_with
 barnet_speed_buffer_touches = st_join(barnet_cl, barnet_sl_buffer, join = st_touches) 
 # 0 assets
 
-# 4) try buffer around CID
-barnet_cl_buffer = st_buffer(barnet_cl, dist = 2) # 2m buffer around cycle lanes
-mapview(barnet_cl_buffer) + mapview(barnet_cl, zcol = "Highest_separation")
+
+
+
 
 barnet_cl_buffer_touches = st_join(barnet_cl_buffer,barnet_os_speeds_limits, join = st_touches) # 0 assets
 barnet_cl_buffer_intersects = st_join(barnet_cl_buffer,barnet_os_speeds_limits)  # now have 113 assets - some new ones created by the intersections, others dont have speed limit attached
@@ -273,6 +337,36 @@ highway_count = gl_osm_lines20 %>%
 
 
 
-
+#ADDITIONAL CODE EXAMINING IF OTHER TAGS ARE USEFUL
+# Look at other tags to see if useful for obtaining the best spatial joins of OSM to CID data
+# unique(osm_speed_limits$width)
+# #  [1] NA      "6.5"   "3"     "4"     "2.5 m" "6'6\"" "3.7"   "5"     "2.13"  "7.4"   "2"     "2.5"  
+# # [13] "10 m"  "8.5"   "11"    "13"    "1"     "11.4"  "14.6"  "15.4"  "11.7"  "12.6"  "12.5"  "12"   
+# # [25] "7"     "6"     "0"  
+# 
+# unique(osm_speed_limits$maxwidth)
+# # [1] NA       "2.1"    "2"      "2.2"    "6'6\""  "1.98"   "1.9"    "2.4"    "7'0\""  "2.13"   "7 ft"  
+# # [12] "2.1336" "2.18"   "2.0"    "6'0\""  "3 m"    "7 '"    "5'6\""  "2 m"    "7'2\""  "7'0''" 
+# 
+# unique(osm_speed_limits$lanes)
+# #[1] NA    "2"   "4"   "3"   "1"   "5"   "6"   "0"   "1.5" "8"  
+# 
+# osm_speed_limits %>%
+#   st_drop_geometry() %>%
+#   group_by(width) %>%
+#   summarise(count = n()) %>%
+#   print(n = Inf)  # 71565/71660 were NA
+# 
+# osm_speed_limits %>%
+#   st_drop_geometry() %>%
+#   group_by(maxwidth) %>%
+#   summarise(count = n()) %>%
+#   print(n = Inf)  # 71534/71660 were NA
+# 
+# osm_speed_limits %>%
+#   st_drop_geometry() %>%
+#   group_by(lanes) %>%
+#   summarise(count = n()) %>%
+#   print(n = Inf)  # 60365/71660 were NA
 
 
