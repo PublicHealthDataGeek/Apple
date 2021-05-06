@@ -218,11 +218,22 @@ barnet_speeds_limits = st_intersection(osm_speed_limits_tidy, barnet_borough) # 
 # View data
 m1 =  mapview(barnet_cl, zcol = "Highest_separation")
 b_speedlimits = mapview(barnet_speeds_limits, zcol = "speed_limit", color = brewer.pal(9, "YlOrRd"))
-leafsync::sync(m1, m2)  # initial visualisation suggests that unlikely that any cycle lanes are on roads > 30mph
+leafsync::sync(m1, b_speedlimits)  # initial visualisation suggests that unlikely that any cycle lanes are on roads > 30mph
 
 barnet_cl_buffer = st_buffer(barnet_cl, dist = 6) #6m buffer around cycle lanes
 barnet_sl_buffer_73 = st_buffer(barnet_speeds_limits, dist = 7.3) # 7.3m around road - allowing for 2 way traffic
 barnet_intersects = st_join(barnet_cl_buffer, barnet_sl_buffer_73) # n = 297 (was 93)
+
+barnet_within = st_join(barnet_cl_buffer, barnet_sl_buffer_73, join = st_within) # n = 93)
+road_intersects = barnet_speeds_limits[barnet_cl_buffer, ]  # this code spatial selects - see geocomp with R
+mapview(road_intersects) + mapview(barnet_cl_buffer)  
+
+# Next steps from d/w RL
+#try 1) increasing buffer size (10m for roads) and use st_within 
+# and if that doesn’t work then 2) use line_segment (?stplanr) to break up road lengths 
+# Raise issue on github stplanr 
+
+
 
 barnet_intersects %>%
   st_drop_geometry() %>%
@@ -237,7 +248,7 @@ barnet_intersects %>%
 
 # examine whether speed limits differ by new segments of each FEATURE_ID
 count_na <- function(x) sum(is.na(x))  # function that counts number of NAs in a row
-test = barnet_intersects %>%
+single_speed_limit = barnet_intersects %>%
   st_drop_geometry() %>%
   select(c("FEATURE_ID", "speed_limit")) %>%
   pivot_wider(id_cols = c("FEATURE_ID", "speed_limit"), 
@@ -248,7 +259,7 @@ test = barnet_intersects %>%
   select(c("FEATURE_ID", "20mph_speed_limit", "30mph_speed_limit", "40mph_speed_limit", "50mph_speed_limit", "NA_speed_limit")) %>%
   mutate(count_na = apply(., 1, count_na)) %>%
   mutate(single_speed_limit = case_when(count_na == 4  ~ TRUE,
-                                        TRUE ~ TRUE))  # if there are 4 NAs and 1 speedlimit then set 'single_speed_limit' to TRUE
+                                        TRUE ~ FALSE))  # if there are 4 NAs and 1 speedlimit then set 'single_speed_limit' to TRUE
 
 # 79 only had 1 speed limit, 14 had 2 different speed limits
 
