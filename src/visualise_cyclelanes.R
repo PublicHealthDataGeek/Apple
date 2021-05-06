@@ -9,7 +9,10 @@
 # Initial code sorts out the assets that have more than one label for separation
 # e.g. jointly labelled as being segregated and stepped.  
 
-
+####JOBS:
+# update spatial bar charts once have agreed style
+# delete code no longer needed
+# tidy up this code file
 
 
 #Load packages
@@ -513,6 +516,11 @@ ggplot(borough_separation_length_reorder) +
 #  PART 2 - by rest, contra and shared                             #
 ####################################################################
 
+
+
+#####NEED TO UPDATE BELOW CODE ONCE HAVE GOT AGREEMENT ON THE ABOVE SPATIAL BAR PLOT STYLE
+
+
 # Create variable for length by Highest Separation by Borough for each type
 type_borough_separation_length = on_road_factor %>%
   st_drop_geometry() %>%
@@ -588,8 +596,6 @@ borough_separation_length_spatial = left_join(borough_separation_length_reorder,
 # basic plot works ok - keep as gives the basic layout
 ggplot(borough_separation_length_spatial, aes(x = -Highest_separation, y = total_length, fill = Highest_separation)) +
   geom_bar(stat = "identity")+
-  #geom_text(aes(x = fX, y = fY, label = Borough_number)) +
-  #geom_text(aes(label = Borough_number, y = Borough_number)) +
   coord_flip() +
   scale_fill_viridis(discrete = TRUE, direction = -1, guide = guide_legend(reverse = TRUE)) +
   facet_grid(-fY ~ fX) +  # need to do -fY to get correct orientation with enfield top row and sutton bottom row
@@ -599,10 +605,8 @@ ggplot(borough_separation_length_spatial, aes(x = -Highest_separation, y = total
 
 #fiddling to make look better
 ggplot(borough_separation_length_spatial, aes(x = -Highest_separation, y = total_length, fill = Highest_separation)) +
-  geom_bar(stat = "identity")+  # geom_bar(stat = "identity", color = "black", size = 0.1) +
-  #geom_text(aes(label = Borough_number, y = Borough_number)) +  # labels facets by borough number but looks at bit rubbish - need to convert borough number to numeric to use
+  geom_bar(stat = "identity") +  
   coord_flip() +
-  #geom_abline(slope=0, intercept= 60000,  col = "red",lty=2) +
   scale_fill_viridis(discrete = TRUE, direction = -1, guide = guide_legend(reverse = TRUE)) +
   scale_y_continuous(breaks = c(0, 60000)) +  # 58000 uis the highest total value (Croydon)
   facet_grid(-fY ~ fX) +
@@ -614,15 +618,38 @@ ggplot(borough_separation_length_spatial, aes(x = -Highest_separation, y = total
         axis.title = element_blank(),
         strip.text = element_blank(),
         panel.spacing=unit(-0.5, "lines"),
-        #panel.border = element_rect(fill = NA, color = "black"),
         plot.title = element_text(hjust = 0.5))
 
+# Code developed with Roger THIS WORKS
+# borough_separation_length_spatial %>%
+#   ungroup() %>%
+#   mutate(total_length2 = total_length/max(total_length)) %>%
+#   ggplot() +
+#   geom_rect(data=.%>% filter(Highest_separation == "No separation"), xmin = 0.2, xmax = 1.8, ymin = -0.2, ymax = 1.5, fill = "#aeaeae") +
+#   geom_bar(aes(x = -Highest_separation, y = total_length2, fill = Highest_separation), stat = "identity") +
+#   geom_text(data=.%>% filter(Highest_separation == "No separation"), x = 1, y = 0.5, aes(label = Borough_number)) +
+#   coord_flip() +
+#   scale_fill_viridis(discrete = TRUE, direction = -1, guide = guide_legend(reverse = TRUE)) +
+#   facet_grid(-fY ~ fX) +  # need to do -fY to get correct orientation with enfield top row and sutton bottom row
+#   theme(axis.text.y = element_blank(),
+#         axis.ticks.y = element_blank(),
+#         panel.spacing=unit(-0.5, "lines")) +
+#   theme_void()
 
-# Things that need sorting
-# - label facets by borough number  CANT SEEM TO DO THIS APART FROM IT LOOKING BAD
-# - draw rectangle so that can directly can compare with croydon (max value) - AGAIN CANT SEEM TO DO THIS
-# ? do another one that just shows seg,step, part seg, cycle lane, no sep?  
-# ? can fiddle with panel spacing to make look better?  
+# Amended roger code - panel spacing may not be right depending on saving size
+borough_separation_length_spatial %>%
+  ungroup() %>%
+  mutate(total_length2 = total_length/max(total_length)) %>%
+  ggplot() +
+  geom_rect(data=.%>% filter(Highest_separation == "No separation"), xmin = 0.5, xmax = 1.5, ymin = -0.2, ymax = 1.5, fill = "#cdcdcd") +
+  geom_bar(aes(x = -Highest_separation, y = total_length2, fill = Highest_separation), stat = "identity") +
+  geom_text(data=.%>% filter(Highest_separation == "No separation"), x = 1, y = 0.7, aes(label = Borough_number)) +
+  coord_flip() +
+  scale_fill_viridis(discrete = TRUE, direction = -1, guide = guide_legend(reverse = TRUE)) +
+  facet_grid(-fY ~ fX) +  # need to do -fY to get correct orientation with enfield top row and sutton bottom row
+  theme_void() +
+  theme(strip.text = element_blank(),
+        panel.spacing.y = unit(-0.8, "lines"))
 
 
 # Create bar chart (like for the assets) for total length by borough
