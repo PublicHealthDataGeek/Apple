@@ -69,6 +69,8 @@ lon_lad_2020_c2c_reduced = lon_lad_2020_c2c %>%
 # Load and manipulate local authority IMD scores #
 ##################################################
 
+#IMD website  https://www.gov.uk/government/statistics/english-indices-of-deprivation-2019
+
 # Download and import IMD data
 download.file("https://assets.publishing.service.gov.uk/government/uploads/system/uploads/attachment_data/file/833995/File_10_-_IoD2019_Local_Authority_District_Summaries__lower-tier__.xlsx",
               "/home/bananafan/Downloads/IMD_19_LA.xlsx")
