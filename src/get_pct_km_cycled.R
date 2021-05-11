@@ -18,7 +18,7 @@ library(sf)
 library(mapview)
 mapviewOptions(native.crs = TRUE, legend = FALSE) # set mapview options so that matches crs
 
-# import May 2020 ONS LA boundary data
+# import May 2020 ONS LA boundary data full extent of realmn
 lon_lad_2020 = readRDS(file = "./map_data/lon_LAD_boundaries_May_2020_BFE.Rds")
 
 # Create Outer London Spatial object for boundary
