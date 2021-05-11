@@ -79,7 +79,7 @@ anyNA(f_crossings$BOROUGH) # = TRUE
 
 # Create dataset for those with a Borough coded 
 crossings_borough = f_crossings %>%
-  filter(!is.na(BOROUGH)) # 1659 observations (1687 - 28 which dont have a borough) 
+  filter(!is.na(BOROUGH)) # 1659 observations (ie 1687 original obs - 28 NAs) 
 
 crossings_borough_split = st_intersection(lon_lad_2020, crossings_borough) # n = 1668 ie 9 extra
 
@@ -171,10 +171,10 @@ f_crossings = rbind(f_crossings, RWG273925_corrected) # n= 1688
 
 
 
-# new_segment_1 = new_segments %>%
-#   filter(FEATURE_ID == multi_feature_id_list[1])
-# mapview(new_segment_1, zcol = "BOROUGH") + mapview(lon_lad_2020, alpha.regions = 0.1, legend = FALSE, lwd = 1)
-# # new_segment_1, RWG055875 = K&C
+new_segment_1 = new_segments %>%
+  filter(FEATURE_ID == multi_feature_id_list[1])
+mapview(new_segment_1, zcol = "BOROUGH") + mapview(lon_lad_2020, alpha.regions = 0.1, legend = FALSE, lwd = 1)
+# new_segment_1, RWG055875 = K&C
 # 
 # new_segment_2 = new_segments %>%
 #   filter(FEATURE_ID == multi_feature_id_list[2])
