@@ -111,6 +111,16 @@ f_advanced_stop_line$BOROUGH = factor(f_advanced_stop_line$BOROUGH) %>%
 # anyNA(f_advanced_stop_line$BOROUGH) # = FALSE so no NAs
 
 
+
+# Check missing url data post correction of Borough etc
+# f_advanced_stop_line = readRDS(file = "/home/bananafan/Documents/PhD/Paper1/data/cleansed_asl")
+# count_photo1 =  f_advanced_stop_line %>%
+#   st_drop_geometry() %>%
+#   count(PHOTO1_URL) # 48 have no asset photo 1
+# count_photo2 =  f_advanced_stop_line %>%
+#   st_drop_geometry() %>%
+#   count(PHOTO2_URL) # 51 have no asset photo 2
+
 ######################
 # SAVE CLEAN DATASET #
 ######################
