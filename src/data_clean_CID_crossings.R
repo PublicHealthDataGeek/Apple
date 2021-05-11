@@ -312,8 +312,10 @@ x = crossing_boroughs %>%
 total <- sapply(x[,2:4], sum) # this gives figures of:
 # 1688 total count
 # 30 observation recoded (26 plus the 2+2 observations that had the same FEATURE_ID)
-# new total number of observations in the crossins dataset of 1690 - 
-## ie the original 1688 that now have the correct Borough plus the extra 2 observations that have the FEATURE_ID_2 codes
+
+# new total number of observations in the crossings dataset of 1690 - 
+## ie the original 1688 that now have the correct Borough (1 extra because RWG273925 
+# was split) plus the extra 2 observations that have the FEATURE_ID_2 codes
 
 ######################
 # SAVE CLEAN DATASET #
