@@ -160,7 +160,7 @@ multi_feature_id = cycle_lane_borough_split %>%
   group_by(FEATURE_ID) %>%
   summarise(num_obs = n())%>%
   group_by(num_obs) %>%
-  filter(num_obs == 2) %>%
+  filter(num_obs == 2) %>% # NB nil have more than 2 segments
   ungroup() 
 
 # create list of FEATURE_IDs that have 2 segments
