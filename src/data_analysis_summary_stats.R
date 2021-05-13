@@ -6,11 +6,15 @@
 # This code generates the summary statistics used in Paper 1                   #
 # 1) Calculate total number of assets and total length                         #
 # 2) Calculate dates and year of surveying                                     #
-# 3) URL NAs                                                                   #
+# 3) URL NAs
+# 4) Summary of 5 safety datasets (counts and % and then lengths % for CLT too)
+# 5) Comparison of variables of on v off road infrastructure
 
 
 # load packages
 library(tidyverse)
+library(sf)
+library(summarytools)
 
 # load datasets
 # These datasets were downloaded from TFL 25th February 2021 and data cleansed
@@ -139,7 +143,6 @@ count_photo1 =  original_URL_NAs %>%
   mutate(photo_1_na_count = n()) %>%
   group_by(type)
 
-
 totals = original_URL_NAs %>%
   group_by(type) %>%
   summarise(total = n())
@@ -172,5 +175,296 @@ summary_URL_NAs = left_join(totals, photo_1_na_count) %>%
 # 7 signage      118826             1347             1336        1.1        1.1  237652             1.1
 # 8 signals         443                8                8        1.8        1.8     886             1.8
 # 9 trafficcalm…  58565              805              810        1.4        1.4  117130             1.4
-> 
+
+
+
+
+# 4) Summary of 5 safety datasets
+library(summarytools)
+
+###### By count
+c_asl %>%
+  st_drop_geometry() %>%
+  summarytools::dfSummary()
+
+c_crossings %>%
+  st_drop_geometry() %>%
+  summarytools::dfSummary()
+
+c_cyclelanetrack %>%
+  st_drop_geometry() %>%
+  select(-c("length_m", "length_km")) %>%
+  summarytools::dfSummary()  # works out counts
+
+c_signals %>%
+  st_drop_geometry() %>%
+  summarytools::dfSummary()
+
+c_trafficcalming %>%
+  st_drop_geometry() %>%
+  summarytools::dfSummary()
+
+##### By length for CLT
+c_cyclelanetrack %>%
+  st_drop_geometry() %>%
+  group_by(CLT_CARR) %>%
+  summarise(total_length = round(sum(length_km), digit = 1)) %>%
+  mutate(percentage = round((total_length/2903.5*100), digit = 1))
+  
+c_cyclelanetrack %>%
+    st_drop_geometry() %>%
+    group_by(CLT_SEGREG) %>%
+    summarise(total_length = round(sum(length_km), digit = 1)) %>%
+    mutate(percentage = round((total_length/2903.5*100), digit = 1))
+  
+c_cyclelanetrack %>%
+  st_drop_geometry() %>%
+  group_by(CLT_STEPP) %>%
+  summarise(total_length = round(sum(length_km), digit = 1)) %>%
+  mutate(percentage = round((total_length/2903.5*100), digit = 1))
+
+c_cyclelanetrack %>%
+  st_drop_geometry() %>%
+  group_by(CLT_PARSEG) %>%
+  summarise(total_length = round(sum(length_km), digit = 1)) %>%
+  mutate(percentage = round((total_length/2903.5*100), digit = 1))
+
+c_cyclelanetrack %>%
+  st_drop_geometry() %>%
+  group_by(CLT_MANDAT) %>%
+  summarise(total_length = round(sum(length_km), digit = 1)) %>%
+  mutate(percentage = round((total_length/2903.5*100), digit = 1))
+
+c_cyclelanetrack %>%
+  st_drop_geometry() %>%
+  group_by(CLT_ADVIS) %>%
+  summarise(total_length = round(sum(length_km), digit = 1)) %>%
+  mutate(percentage = round((total_length/2903.5*100), digit = 1))
+
+c_cyclelanetrack %>%
+  st_drop_geometry() %>%
+  group_by(CLT_PRIORI) %>%
+  summarise(total_length = round(sum(length_km), digit = 1)) %>%
+  mutate(percentage = round((total_length/2903.5*100), digit = 1))
+
+c_cyclelanetrack %>%
+  st_drop_geometry() %>%
+  group_by(CLT_CONTRA) %>%
+  summarise(total_length = round(sum(length_km), digit = 1)) %>%
+  mutate(percentage = round((total_length/2903.5*100), digit = 1))
+
+c_cyclelanetrack %>%
+  st_drop_geometry() %>%
+  group_by(CLT_BIDIRE) %>%
+  summarise(total_length = round(sum(length_km), digit = 1)) %>%
+  mutate(percentage = round((total_length/2903.5*100), digit = 1))
+
+c_cyclelanetrack %>%
+  st_drop_geometry() %>%
+  group_by(CLT_CBYPAS) %>%
+  summarise(total_length = round(sum(length_km), digit = 1)) %>%
+  mutate(percentage = round((total_length/2903.5*100), digit = 1))
+
+c_cyclelanetrack %>%
+  st_drop_geometry() %>%
+  group_by(CLT_BBYPAS) %>%
+  summarise(total_length = round(sum(length_km), digit = 1)) %>%
+  mutate(percentage = round((total_length/2903.5*100), digit = 1))
+
+c_cyclelanetrack %>%
+  st_drop_geometry() %>%
+  group_by(CLT_PARKR) %>%
+  summarise(total_length = round(sum(length_km), digit = 1)) %>%
+  mutate(percentage = round((total_length/2903.5*100), digit = 1))
+
+c_cyclelanetrack %>%
+  st_drop_geometry() %>%
+  group_by(CLT_WATERR) %>%
+  summarise(total_length = round(sum(length_km), digit = 1)) %>%
+  mutate(percentage = round((total_length/2903.5*100), digit = 1))
+
+c_cyclelanetrack %>%
+  st_drop_geometry() %>%
+  group_by(CLT_PTIME) %>%
+  summarise(total_length = round(sum(length_km), digit = 1)) %>%
+  mutate(percentage = round((total_length/2903.5*100), digit = 1))
+
+c_cyclelanetrack %>%
+  st_drop_geometry() %>%
+  group_by(CLT_COLOUR) %>%
+  summarise(total_length = round(sum(length_km), digit = 1)) %>%
+  mutate(percentage = round((total_length/2903.5*100), digit = 1))
+2903.5 - 2483.7 # 419.8
+100 - 85.5 # 14.5
+
+
+##### CLT counts for on and off road
+
+c_cyclelanetrack %>%
+  st_drop_geometry() %>%
+  select(-c("length_m", "length_km")) %>%
+  filter(CLT_CARR == TRUE) %>%
+  summarytools::dfSummary()  # works out counts
+
+c_cyclelanetrack %>%
+  st_drop_geometry() %>%
+  select(-c("length_m", "length_km")) %>%
+  filter(CLT_CARR == FALSE) %>%
+  summarytools::dfSummary()  # works out counts
+
+
+
+#5) Comparison of variables of on v off road infrastructure
+# create new variable which is clearly on/off road
+clt_on_off = c_cyclelanetrack %>%
+  st_drop_geometry() %>%
+  mutate(on_off = case_when(CLT_CARR == 'TRUE' ~ "onroad", 
+                            TRUE ~ "offroad")) 
+# create multiple datasets that count variables by on/off road status
+seg_c = clt_on_off %>%
+  group_by(on_off) %>%
+  filter(CLT_SEGREG == TRUE) %>%
+  summarise(segreg = n()) %>%
+  mutate(seg_perc = round((segreg/1931*100), digit = 1))
+stepp_c = clt_on_off %>%
+  group_by(on_off) %>%
+  filter(CLT_STEPP == TRUE) %>%
+  summarise(stepp = n()) %>%
+  mutate(stepp_perc = round((stepp/104*100), digit = 1))
+partseg_c = clt_on_off %>%
+  group_by(on_off) %>%
+  filter(CLT_PARSEG == TRUE) %>%
+  summarise(partsegreg = n()) %>%
+  mutate(partseg_perc = round((partsegreg/3583*100), digit = 1))
+shared_c = clt_on_off %>%
+  group_by(on_off) %>%
+  filter(CLT_SHARED == TRUE) %>%
+  summarise(shared = n()) %>%
+  mutate(shared_perc = round((shared/10391*100), digit = 1))
+mandat_c = clt_on_off %>%
+  group_by(on_off) %>%
+  filter(CLT_MANDAT == TRUE) %>%
+  summarise(mandat = n()) %>%
+  mutate(mandat_perc = round((mandat/1857*100), digit = 1))
+advis_c = clt_on_off %>%
+  group_by(on_off) %>%
+  filter(CLT_ADVIS == TRUE) %>%
+  summarise(advis = n()) %>%
+  mutate(advis_perc = round((advis/7277*100), digit = 1))
+priority_c = clt_on_off %>%
+  group_by(on_off) %>%
+  filter(CLT_PRIORI == TRUE) %>%
+  summarise(priority = n()) %>%
+  mutate(priority_perc = round((priority/2286*100), digit = 1))
+contra_c = clt_on_off %>%
+  group_by(on_off) %>%
+  filter(CLT_CONTRA == TRUE) %>%
+  summarise(contra = n()) %>%
+  mutate(contra_perc = round((contra/1493*100), digit = 1))
+bidir_c = clt_on_off %>%
+  group_by(on_off) %>%
+  filter(CLT_BIDIRE == TRUE) %>%
+  summarise(bidir = n()) %>%
+  mutate(bidir_perc = round((bidir/10432*100), digit = 1))
+bypass_c = clt_on_off %>%
+  group_by(on_off) %>%
+  filter(CLT_CBYPAS == TRUE) %>%
+  summarise(bypass = n()) %>%
+  mutate(bypass_perc = round((bypass/63*100), digit = 1))
+busbypass_c = clt_on_off %>%
+  group_by(on_off) %>%
+  filter(CLT_BBYPAS == TRUE) %>%
+  summarise(busbypass = n()) %>%
+  mutate(busbypass_perc = round((busbypass/132*100), digit = 1))
+park_c = clt_on_off %>%
+  group_by(on_off) %>%
+  filter(CLT_PARKR == TRUE) %>%
+  summarise(park = n()) %>%
+  mutate(park_perc = round((park/4194*100), digit = 1))
+water_c = clt_on_off %>%
+  group_by(on_off) %>%
+  filter(CLT_WATERR == TRUE) %>%
+  summarise(water = n()) %>%
+  mutate(water_perc = round((water/611*100), digit = 1))
+parttime_c = clt_on_off %>%
+  group_by(on_off) %>%
+  filter(CLT_PTIME == TRUE) %>%
+  summarise(parttime = n()) %>%
+  mutate(parttime_perc = round((parttime/2800*100), digit = 1))
+colour_c = clt_on_off %>%
+  group_by(on_off) %>%
+  filter(CLT_COLOUR != "NONE") %>%
+  summarise(colour = n()) %>%
+  mutate(colour_perc = round((colour/6191*100), digit = 1))
+
+# join these datasets together to get summary of on/off road comparison of counts
+on_off_clt_comparison_counts = plyr::join_all(
+  list(colour_c, parttime_c, water_c, park_c, busbypass_c, bypass_c, bidir_c, contra_c, 
+       priority_c, advis_c, mandat_c, shared_c, partseg_c, stepp_c, seg_c),
+  by = 'on_off', type = 'left')
+
+# convert NAs to 0 (there are no onroad lanes that are by water)
+on_off_clt_comparison_counts$water[is.na(on_off_clt_comparison_counts$water)] = 0 
+on_off_clt_comparison_counts$water_perc[is.na(on_off_clt_comparison_counts$water_perc)] = 0 
+#    on_off colour colour_perc parttime parttime_perc water water_perc park
+# 1 offroad   1853        29.9      492          17.6   611        100 4086
+# 2  onroad   4338        70.1     2308          82.4     0          0  108
+#   park_perc busbypass busbypass_perc bypass bypass_perc bidir bidir_perc contra
+# 1      97.4        64           48.5     58        92.1 10051       96.3     30
+# 2       2.6        68           51.5      5         7.9   381        3.7   1463
+#   contra_perc priority priority_perc advis advis_perc mandat mandat_perc shared
+# 1           2        1             0     4        0.1      3         0.2   7546
+# 2          98     2285           100  7273       99.9   1854        99.8   2845
+#   shared_perc partsegreg partseg_perc stepp stepp_perc segreg seg_perc
+# 1        72.6       3234         90.3    10        9.6    560       29
+# 2        27.4        349          9.7    94       90.4   1371       71
+
+# get in format suitable for ggplot 
+on_off_comparison_counts4ggplot = on_off_clt_comparison_counts %>%
+  pivot_longer(cols = c(colour_perc, parttime_perc, water_perc, park_perc, busbypass_perc, bypass_perc, bidir_perc, contra_perc, 
+                        priority_perc, advis_perc, mandat_perc, shared_perc, partseg_perc, stepp_perc, seg_perc), 
+               names_to = c('variable', '.value'),
+               names_sep = "\\_")
+ggplot() +
+  geom_bar(data = on_off_comparison_counts4ggplot_order, 
+           aes(x = perc, y = variable, fill = on_off), stat = "identity") # this does basic plot - will need tidying
+   
+
+# Below creates new column that we use to order the bars - may need to add rename list too too
+on_off_comparison_counts4ggplot_order = on_off_comparison_counts4ggplot %>% 
+               mutate(variable_order = factor(variable, 
+                              levels = c("colour", "parttime", "water", "park", 
+                                         "busbypass", "bypass","bidir", "contra",
+                                         "priority", "advis","mandat", "shared",
+                                         "partseg", "stepp", "seg")))
+ggplot() +
+  geom_bar(data = on_off_comparison_counts4ggplot_order, 
+           aes(x = perc, y = variable_order, fill = on_off), stat = "identity") +
+  labs(title = "Percentage of counts of assets")# this then plots in a much more sensible order
+
+#potential renames
+# Coloured", "Part-time", "Water route", "Park route", 
+# +                                          "busbypass", "Bypass","Bidirectional", "Contraflow",
+# +                                          "Given Priority", "Advisory cycle lane","Mandatory cycle lane", "Shared cycle lane",
+# +                                          "Part-segregated", "Stepped", "Fully-segregated"
+
+##################
+# NOw need to do version of lengths. 
+
+
+
+
+# ggplot(chloropleth_dataset, aes(x = reorder(Borough_number, -Borough_Area_km2_no_units), 
+#                                            y = Borough_Area_km2_no_units, fill = area_group)) +
+#   geom_bar(stat = "identity", color = "black", size = 0.1) +  # adds borders to bars
+#   coord_flip() +
+#   labs(y = "Area (km^2)", x = NULL) +
+#   theme_classic() + 
+#   scale_y_continuous(limits = c(0, 160), expand = c(0,0),
+#                      breaks = c(0, 100)) +  
+#   scale_fill_manual(values = area_colours) +
+#   theme(axis.line.y = element_blank(), 
+#         axis.ticks.y = element_blank(),
+#         axis.line.x = element_blank(),
+#         legend.position = "none")
 
