@@ -15,6 +15,7 @@
 library(tidyverse)
 library(sf)
 library(summarytools)
+library(units)
 
 # load datasets
 # These datasets were downloaded from TFL 25th February 2021 and data cleansed
@@ -461,84 +462,87 @@ seg_l = clt_on_off %>%
   group_by(on_off) %>%
   filter(CLT_SEGREG == TRUE) %>%
   summarise(segreg = sum(length_km)) %>%
-  mutate(seg_l_perc = round((segreg/sum(segreg)*100), digit = 1))
+  mutate(segreg_l_perc = drop_units(round((segreg/sum(segreg)*100), digit = 1)))
 stepp_l = clt_on_off %>%
   group_by(on_off) %>%
   filter(CLT_STEPP == TRUE) %>%
   summarise(stepp = sum(length_km)) %>%
-  mutate(stepp_l_perc = round((stepp/sum(stepp)*100), digit = 1))
+  mutate(stepp_l_perc = drop_units(round((stepp/sum(stepp)*100), digit = 1)))
 partseg_l = clt_on_off %>%
   group_by(on_off) %>%
   filter(CLT_PARSEG == TRUE) %>%
   summarise(partsegreg = sum(length_km)) %>%
-  mutate(partseg_l_perc = round((partsegreg/sum(partsegreg)*100), digit = 1))
+  mutate(partsegreg_l_perc = drop_units(round((partsegreg/sum(partsegreg)*100), digit = 1)))
 shared_l = clt_on_off %>%
   group_by(on_off) %>%
   filter(CLT_SHARED == TRUE) %>%
   summarise(shared = sum(length_km)) %>%
-  mutate(shared_l_perc = round((shared/sum(shared)*100), digit = 1))
+  mutate(shared_l_perc = drop_units(round((shared/sum(shared)*100), digit = 1)))
 mandat_l = clt_on_off %>%
   group_by(on_off) %>%
   filter(CLT_MANDAT == TRUE) %>%
   summarise(mandat = sum(length_km)) %>%
-  mutate(mandat_l_perc = round((mandat/sum(mandat)*100), digit = 1))
+  mutate(mandat_l_perc = drop_units(round((mandat/sum(mandat)*100), digit = 1)))
 advis_l = clt_on_off %>%
   group_by(on_off) %>%
   filter(CLT_ADVIS == TRUE) %>%
   summarise(advis = sum(length_km)) %>%
-  mutate(advis_l_perc = round((advis/sum(advis)*100), digit = 1))
+  mutate(advis_l_perc = drop_units(round((advis/sum(advis)*100), digit = 1)))
 priority_l = clt_on_off %>%
   group_by(on_off) %>%
   filter(CLT_PRIORI == TRUE) %>%
   summarise(priority = sum(length_km)) %>%
-  mutate(priority_l_perc = round((priority/sum(priority)*100), digit = 1))
+  mutate(priority_l_perc = drop_units(round((priority/sum(priority)*100), digit = 1)))
 contra_l = clt_on_off %>%
   group_by(on_off) %>%
   filter(CLT_CONTRA == TRUE) %>%
   summarise(contra = sum(length_km)) %>%
-  mutate(contra_l_perc = round((contra/sum(contra)*100), digit = 1))
+  mutate(contra_l_perc = drop_units(round((contra/sum(contra)*100), digit = 1)))
 bidir_l = clt_on_off %>%
   group_by(on_off) %>%
   filter(CLT_BIDIRE == TRUE) %>%
   summarise(bidir = sum(length_km)) %>%
-  mutate(bidir_l_perc = round((bidir/sum(bidir)*100), digit = 1))
+  mutate(bidir_l_perc = drop_units(round((bidir/sum(bidir)*100), digit = 1)))
 bypass_l = clt_on_off %>%
   group_by(on_off) %>%
   filter(CLT_CBYPAS == TRUE) %>%
   summarise(bypass = sum(length_km)) %>%
-  mutate(bypass_l_perc = round((bypass/sum(bypass)*100), digit = 1))
+  mutate(bypass_l_perc = drop_units(round((bypass/sum(bypass)*100), digit = 1)))
 busbypass_l = clt_on_off %>%
   group_by(on_off) %>%
   filter(CLT_BBYPAS == TRUE) %>%
   summarise(busbypass = sum(length_km)) %>%
-  mutate(busbypass_l_perc = round((busbypass/sum(busbypass)*100), digit = 1))
+  mutate(busbypass_l_perc = drop_units(round((busbypass/sum(busbypass)*100), digit = 1)))
 park_l = clt_on_off %>%
   group_by(on_off) %>%
   filter(CLT_PARKR == TRUE) %>%
   summarise(park = sum(length_km)) %>%
-  mutate(park_l_perc = round((park/sum(park)*100), digit = 1))
+  mutate(park_l_perc = drop_units(round((park/sum(park)*100), digit = 1)))
 water_l = clt_on_off %>%
   group_by(on_off) %>%
   filter(CLT_WATERR == TRUE) %>%
   summarise(water = sum(length_km)) %>%
-  mutate(water_l_perc = round((water/sum(water)*100), digit = 1))
+  mutate(water_l_perc = drop_units(round((water/sum(water)*100), digit = 1)))
 parttime_l = clt_on_off %>%
   group_by(on_off) %>%
   filter(CLT_PTIME == TRUE) %>%
   summarise(parttime = sum(length_km)) %>%
-  mutate(parttime_l_perc = round((parttime/sum(parttime)*100), digit = 1))
+  mutate(parttime_l_perc = drop_units(round((parttime/sum(parttime)*100), digit = 1)))
 colour_l = clt_on_off %>%
   group_by(on_off) %>%
   filter(CLT_COLOUR != "NONE") %>%
   summarise(colour = sum(length_km)) %>%
-  mutate(colour_l_perc = round((colour/sum(colour)*100), digit = 1))
+  mutate(colour_l_perc = drop_units(round((colour/sum(colour)*100), digit = 1)))
+
+
+
 
 # join these datasets together to get summary of on/off road comparison of lengths
 on_off_clt_comparison_lengths = plyr::join_all(
   list(colour_l, parttime_l, water_l, park_l, busbypass_l, bypass_l, bidir_l, contra_l, 
        priority_l, advis_l, mandat_l, shared_l, partseg_l, stepp_l, seg_l),
   by = 'on_off', type = 'left')
-
+  
 rm(colour_l, parttime_l, water_l, park_l, busbypass_l, bypass_l, bidir_l, contra_l, 
    priority_l, advis_l, mandat_l, shared_l, partseg_l, stepp_l, seg_l)
 
@@ -548,31 +552,76 @@ on_off_clt_comparison_lengths$water[is.na(on_off_clt_comparison_lengths$water)] 
 on_off_clt_comparison_lengths$water_l_perc[is.na(on_off_clt_comparison_lengths$water_l_perc)] = 0 
 
 # get in format suitable for ggplot 
-on_off_comparison_lengths4ggplot = on_off_clt_comparison_lengths %>%
+perc = on_off_clt_comparison_lengths %>%
   pivot_longer(cols = c(colour_l_perc, parttime_l_perc, water_l_perc, park_l_perc, busbypass_l_perc, bypass_l_perc, 
                         bidir_l_perc, contra_l_perc, priority_l_perc, advis_l_perc, mandat_l_perc, shared_l_perc, 
-                        partseg_l_perc, stepp_l_perc, seg_l_perc), 
-               names_to = c('variable', '.value'),
-               names_sep = "\\_l_")
+                        partsegreg_l_perc, stepp_l_perc, segreg_l_perc), 
+               names_to = c('characteristic', '.value'),
+               names_sep = "\\_l_") %>%
+  select(c("on_off", "characteristic", "perc"))
+length = on_off_clt_comparison_lengths %>%
+  pivot_longer(cols = c("colour", "parttime", "water", "park", "busbypass", "bypass", 
+                               "bidir", "contra", "priority", "advis", "mandat", "shared", 
+                               "partsegreg", "stepp", "segreg"), 
+               names_to = 'characteristic', 
+               values_to = "length") %>%
+  mutate(round_length = round(length, digit = 1)) %>%
+  select(c("on_off", "characteristic", "length", "round_length"))
+  
 
-# # Below creates new column that we use to order the bars - may need to add rename list too too
-# on_off_comparison_counts4ggplot_order = on_off_comparison_counts4ggplot %>% 
-#   mutate(variable_order = factor(variable, 
-#                                  levels = c("colour", "parttime", "water", "park", 
-#                                             "busbypass", "bypass","bidir", "contra",
-#                                             "priority", "advis","mandat", "shared",
-#                                             "partseg", "stepp", "seg")))
-# ggplot() +
-#   geom_bar(data = on_off_comparison_counts4ggplot_order, 
-#            aes(x = perc, y = variable_order, fill = on_off), stat = "identity") +
-#   scale_fill_manual(values = c("#993404", "#969696")) +
-#   labs(title = "Percentage of counts of assets")# this then plots in a much more sensible order
-# 
-# #potential renames
-# # Coloured", "Part-time", "Water route", "Park route", 
-# # +                                          "busbypass", "Bypass","Bidirectional", "Contraflow",
-# # +                                          "Given Priority", "Advisory cycle lane","Mandatory cycle lane", "Shared cycle lane",
-# # +                                          "Part-segregated", "Stepped", "Fully-segregated"
+test1 = left_join(length, perc)
+test1$length =  round(test1$length)
+ggplot(data = test1) +
+  geom_bar(aes(x = perc, y = characteristic, fill = on_off), stat = "identity") +
+  geom_text(aes(label = length))
+
+ggplot(data = test1, aes(x = perc, y = characteristic, fill = on_off, label = length)) +
+  geom_bar(stat = "identity") +
+  geom_text()
+
+  scale_fill_manual(values = c("#993404", "#969696")) +
+  labs(title = "Comparison of characteristics of on-road cycle lanes and off-road cycle tracks") +
+  xlab(label = " Percentage of length") +
+  theme_minimal() +
+  theme(axis.title.y = element_blank())
+
+write_csv(on_off_clt_comparison_lengths, file = "/home/bananafan/Downloads/on_off_comparison_lengths.csv")
+
+#options(scipen = 999) # this should work automatically now
+testz = on_off_clt_comparison_lengths %>%
+  select(c("on_off", "colour", "parttime", "water", "park",
+           "busbypass", "bypass","bidir", "contra",
+           "priority", "advis","mandat", "shared",
+           "partsegreg", "stepp", "segreg"))
+
+testz = drop_units(testz)
+testz = 
+
+
+
+# Below creates new column that we use to order the bars - may need to add rename list too too
+on_off_comparison_lengths4ggplot_order = on_off_comparison_lengths4ggplot %>%
+  mutate(variable_order = factor(variable,
+                                 levels = c("colour", "parttime", "water", "park",
+                                            "busbypass", "bypass","bidir", "contra",
+                                            "priority", "advis","mandat", "shared",
+                                            "partseg", "stepp", "seg"),
+                                 labels = c("Coloured tarmac", "Part-time", "Water route", "Park route",
+                                            "Continuous facilities through bus stop", "Cycle bypass", "Bidirectional", "Contraflow",
+                                            "Given Priority", "Advisory cycle lane","Mandatory cycle lane", 
+                                            "Shared cycle lane", "Part-segregated", "Stepped", "Fully-segregated")))
+
+ggplot() +
+  geom_bar(data = on_off_comparison_lengths4ggplot_order,
+           aes(x = perc, y = variable_order, fill = on_off), stat = "identity") +
+  geom_text() +
+  scale_fill_manual(values = c("#993404", "#969696")) +
+  labs(title = "Comparison of characteristics of on-road cycle lanes and off-road cycle tracks") +
+  xlab(label = " Percentage of length") +
+  theme_minimal() +
+  theme(axis.title.y = element_blank())
+
+#potential renames
 
 
 #MAY NEED TO REMOVE UNITS FROM %
