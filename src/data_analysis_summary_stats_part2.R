@@ -113,8 +113,8 @@ sum(asl_characteristics$count) # n = 3775
 #  6     1005     1 feeder left and coloured
 #  7    10000     1 feeder present
 #  8    10005     1 feeder present & coloured
-#  9    10010    15 feeder right
-# 10    10015     8 feeder right and coloured
+#  9    10010    15 feeder present & right
+# 10    10015     8 feeder present right & coloured
 # 11    10100    45 feeder present & in centre
 # 12    10105    30 feeder present, in centre and coloured
 # 13    11000  1067 feeder present & on left
@@ -124,9 +124,19 @@ sum(asl_characteristics$count) # n = 3775
 # 17    11100     1 feeder present, on left & centre
 # 18    11105     2 feeder present, on left& centre, and coloured
 
-
-
-
+# # Create new column with count of left, right and centre lanes
+asl_numeric = asl_numeric %>%
+  rowwise() %>%
+  mutate(lane_number = sum(c_across(ASL_FDRLFT_NUMERIC:ASL_FDRIGH_NUMERIC)))
+# number of lanes
+asl_feeder_lanes = asl_numeric %>%
+  st_drop_geometry() %>%
+  group_by(lane_number) %>%
+  summarise(count = n())
+# lane_number count
+# 1           0  1982
+# 2           1  1786
+# 3           2     7
 
 ################################################################################
 #                     
@@ -208,3 +218,7 @@ sum(crossings_characteristics$count) # n = 1690
 # 10    10100     1  Signal controlled with gap
 # 11    11000    93  Signal controlled with segregation
 # 12    11100    41  Signal controlled with segreg and gap
+
+
+#CYCLE LANE AND TRACK _ NEED TO CHECK WHAT I HAVE INCLUDE FOR VISUALISATION - ARE THERE UNLABBLED LANES THAN NEED TO BE CODED AS HAVE NO SEGREGATION?
+
