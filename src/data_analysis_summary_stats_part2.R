@@ -144,6 +144,10 @@ asl_feeder_lanes = asl_numeric %>%
 #
 ################################################################################
 
+c_crossings %>%
+  st_drop_geometry() %>%
+  summarytools::dfSummary()
+
 # CRS_SIGNAL    1. FALSE                        434 (25.7%)                                
 # [factor]      2. TRUE                         1256 (74.3%)            
 # 
@@ -214,11 +218,249 @@ sum(crossings_characteristics$count) # n = 1690
 # 6      1000   116  Just segreg
 # 7      1100    68  Segreg with gap
 # 8     10000  1100  Just signal controlled
-# 9     10010    21  Signal controlled by pedestrial only crossing
+# 9     10010    21  Signal controlled by pedestrian only crossing
 # 10    10100     1  Signal controlled with gap
 # 11    11000    93  Signal controlled with segregation
 # 12    11100    41  Signal controlled with segreg and gap
 
 
-#CYCLE LANE AND TRACK _ NEED TO CHECK WHAT I HAVE INCLUDE FOR VISUALISATION - ARE THERE UNLABBLED LANES THAN NEED TO BE CODED AS HAVE NO SEGREGATION?
+################################################################################
+#                     
+#          Cycle lanes and tracks  (n = 25315, 2903.5 km total length)
+#
+################################################################################
+
+c_cyclelanetrack %>%
+  st_drop_geometry() %>%
+  select(-c("length_m", "length_km")) %>%
+  summarytools::dfSummary()
+
+# CLT_CARR      1. FALSE                        11350 (44.8%)                 
+# [factor]      2. TRUE                         13965 (55.2%)        
+# 
+# CLT_SEGREG    1. FALSE                        23384 (92.4%)      
+# [factor]      2. TRUE                          1931 ( 7.6%)        
+# 
+# CLT_STEPP     1. FALSE                        25211 (99.6%)                
+# [factor]      2. TRUE                           104 ( 0.4%)                             
+# 
+# CLT_PARSEG    1. FALSE                        21732 (85.8%)            
+# [factor]      2. TRUE                          3583 (14.2%)            
+# 
+# CLT_SHARED    1. FALSE                        14924 (59.0%)        
+# [factor]      2. TRUE                         10391 (41.0%)           
+# 
+# CLT_MANDAT    1. FALSE                        23458 (92.7%)             
+# [factor]      2. TRUE                          1857 ( 7.3%)        
+# 
+# CLT_ADVIS     1. FALSE                        18038 (71.3%)              
+# [factor]      2. TRUE                          7277 (28.7%)          
+# 
+# CLT_PRIORI    1. FALSE                        23029 (91.0%)             
+# [factor]      2. TRUE                          2286 ( 9.0%)         
+# 
+# CLT_CONTRA    1. FALSE                        23822 (94.1%)             
+# [factor]      2. TRUE                          1493 ( 5.9%)           
+# 
+# CLT_BIDIRE    1. FALSE                        14883 (58.8%)              
+# [factor]      2. TRUE                         10432 (41.2%)          
+# 
+# CLT_CBYPAS    1. FALSE                        25252 (99.8%)               
+# [factor]      2. TRUE                            63 ( 0.2%)                                   
+# 
+# CLT_BBYPAS    1. FALSE                        25183 (99.5%)           
+# [factor]      2. TRUE                           132 ( 0.5%)                   
+# 
+# CLT_PARKR     1. FALSE                        21121 (83.4%)               
+# [factor]      2. TRUE                          4194 (16.6%)        
+# 
+# CLT_WATERR    1. FALSE                        24704 (97.6%)               
+# [factor]      2. TRUE                           611 ( 2.4%)                             
+# 
+# CLT_PTIME     1. FALSE                        22515 (88.9%)       
+# [factor]      2. TRUE                          2800 (11.1%)         
+
+# CLT_COLOUR    1. BLUE                           951 ( 3.8%)             
+# [factor]      2. BUFF                             1 ( 0.0%)         
+#               3. BUFF/YELLOW                    322 ( 1.3%)                                                    
+#               4. GREEN                         3215 (12.7%)                                             
+#               5. NONE                         19124 (75.5%)                                    
+#               6. OTHER                           20 ( 0.1%)                                                    
+#               7. RED                           1682 ( 6.6%)                                             
+
+
+# Convert Factors to numeric and add variable to distinguish on/off road
+# e.g.  CLT_SEGREG: Factor w/ 2 levels "FALSE","TRUE": 1 1 1 1 1 1 1 1 1 1 ...
+# create new variable which is clearly on/off road
+clt_numeric = c_cyclelanetrack %>%
+  mutate(on_off = case_when(CLT_CARR == 'TRUE' ~ "onroad", TRUE ~ "offroad")) %>%
+  mutate(CLT_SEGREG_NUMERIC = as.numeric(c_cyclelanetrack$CLT_SEGREG)) %>%
+  mutate(CLT_STEPP_NUMERIC = as.numeric(c_cyclelanetrack$CLT_STEPP))  %>%
+  mutate(CLT_PARSEG_NUMERIC = as.numeric(c_cyclelanetrack$CLT_PARSEG))  %>%
+  mutate(CLT_SHARED_NUMERIC = as.numeric(c_cyclelanetrack$CLT_SHARED)) %>%
+  mutate(CLT_MANDAT_NUMERIC = as.numeric(c_cyclelanetrack$CLT_MANDAT))  %>%
+  mutate(CLT_ADVIS_NUMERIC = as.numeric(c_cyclelanetrack$CLT_ADVIS)) %>%
+  mutate(CLT_PRIORI_NUMERIC = as.numeric(c_cyclelanetrack$CLT_PRIORI)) %>%
+  mutate(CLT_CONTRA_NUMERIC = as.numeric(c_cyclelanetrack$CLT_CONTRA)) %>%
+  mutate(CLT_BIDIRE_NUMERIC = as.numeric(c_cyclelanetrack$CLT_BIDIRE)) %>%  
+  mutate(CLT_CBYPAS_NUMERIC = as.numeric(c_cyclelanetrack$CLT_CBYPAS)) %>%  
+  mutate(CLT_BBYPAS_NUMERIC = as.numeric(c_cyclelanetrack$CLT_BBYPAS)) %>%  
+  mutate(CLT_PARKR_NUMERIC = as.numeric(c_cyclelanetrack$CLT_PARKR)) %>%  
+  mutate(CLT_WATERR_NUMERIC = as.numeric(c_cyclelanetrack$CLT_WATERR)) %>%
+  mutate(CLT_PTIME_NUMERIC = as.numeric(c_cyclelanetrack$CLT_PTIME)) %>%  
+  mutate(CLT_COLOUR_NUMERIC = as.numeric(c_cyclelanetrack$CLT_COLOUR))
+# converts all False to 1 and True to 2
+
+# Convert 1(false) to 0 and 2(true) to 1
+clt_numeric$CLT_SEGREG_NUMERIC = ifelse(clt_numeric$CLT_SEGREG_NUMERIC == 1, 0, 1)
+clt_numeric$CLT_STEPP_NUMERIC = ifelse(clt_numeric$CLT_STEPP_NUMERIC == 1, 0, 1)
+clt_numeric$CLT_PARSEG_NUMERIC = ifelse(clt_numeric$CLT_PARSEG_NUMERIC == 1, 0, 1)
+clt_numeric$CLT_SHARED_NUMERIC = ifelse(clt_numeric$CLT_SHARED_NUMERIC == 1, 0, 1)
+clt_numeric$CLT_MANDAT_NUMERIC = ifelse(clt_numeric$CLT_MANDAT_NUMERIC == 1, 0, 1)
+clt_numeric$CLT_ADVIS_NUMERIC = ifelse(clt_numeric$CLT_ADVIS_NUMERIC == 1, 0, 1)
+clt_numeric$CLT_PRIORI_NUMERIC = ifelse(clt_numeric$CLT_PRIORI_NUMERIC == 1, 0, 1)
+clt_numeric$CLT_CONTRA_NUMERIC = ifelse(clt_numeric$CLT_CONTRA_NUMERIC == 1, 0, 1)
+clt_numeric$CLT_BIDIRE_NUMERIC = ifelse(clt_numeric$CLT_BIDIRE_NUMERIC == 1, 0, 1)
+clt_numeric$CLT_CBYPAS_NUMERIC = ifelse(clt_numeric$CLT_CBYPAS_NUMERIC == 1, 0, 1)
+clt_numeric$CLT_BBYPAS_NUMERIC = ifelse(clt_numeric$CLT_BBYPAS_NUMERIC == 1, 0, 1)
+clt_numeric$CLT_PARKR_NUMERIC = ifelse(clt_numeric$CLT_PARKR_NUMERIC == 1, 0, 1)
+clt_numeric$CLT_WATERR_NUMERIC = ifelse(clt_numeric$CLT_WATERR_NUMERIC == 1, 0, 1)
+clt_numeric$CLT_PTIME_NUMERIC = ifelse(clt_numeric$CLT_PTIME_NUMERIC == 1, 0, 1)
+clt_numeric$CLT_COLOUR_NUMERIC = ifelse(clt_numeric$CLT_COLOUR_NUMERIC == 5, 0, 1) # no colour converted to 0, any colour converted to 1
+
+
+# Check now gives the count that I expect (NB these are both on and off road)
+sum(clt_numeric$CLT_SEGREG_NUMERIC) # n = 1931
+sum(clt_numeric$CLT_STEPP_NUMERIC) # n = 104
+sum(clt_numeric$CLT_PARSEG_NUMERIC) # n = 3583
+sum(clt_numeric$CLT_SHARED_NUMERIC) # n = 10391
+sum(clt_numeric$CLT_MANDAT_NUMERIC) # n = 1857
+sum(clt_numeric$CLT_ADVIS_NUMERIC) # n = 7277
+sum(clt_numeric$CLT_PRIORI_NUMERIC) # n = 2286
+sum(clt_numeric$CLT_CONTRA_NUMERIC) # n = 1493
+sum(clt_numeric$CLT_BIDIRE_NUMERIC) # n = 10432
+sum(clt_numeric$CLT_CBYPAS_NUMERIC) # n = 63
+sum(clt_numeric$CLT_BBYPAS_NUMERIC) # n = 132
+sum(clt_numeric$CLT_PARKR_NUMERIC) # n = 4194
+sum(clt_numeric$CLT_WATERR_NUMERIC) # n = 611
+sum(clt_numeric$CLT_PTIME_NUMERIC) # n = 2800
+sum(clt_numeric$CLT_COLOUR_NUMERIC) # n = 6191
+
+
+# Recode to give different values so can identify clt that has multiple characteristics
+clt_numeric$CLT_SEGREG_weight = ifelse(clt_numeric$CLT_SEGREG_NUMERIC == 1, 10000, 0)
+clt_numeric$CLT_STEPP_weight = ifelse(clt_numeric$CLT_STEPP_NUMERIC == 1, 1000, 0)
+clt_numeric$CLT_PARSEG_weight = ifelse(clt_numeric$CLT_PARSEG_NUMERIC == 1, 100, 0)
+clt_numeric$CLT_MANDAT_weight = ifelse(clt_numeric$CLT_MANDAT_NUMERIC == 1, 10, 0)
+clt_numeric$CLT_ADVIS_weight = ifelse(clt_numeric$CLT_ADVIS_NUMERIC == 1, 1, 0)
+
+clt_numeric$CLT_PRIORI_weight = ifelse(clt_numeric$CLT_PRIORI_NUMERIC == 1, 5000, 0)
+clt_numeric$CLT_CONTRA_weight = ifelse(clt_numeric$CLT_CONTRA_NUMERIC == 1, 500, 0)
+clt_numeric$CLT_BIDIRE_weight = ifelse(clt_numeric$CLT_BIDIRE_NUMERIC == 1, 50, 0)
+clt_numeric$CLT_COLOUR_weight = ifelse(clt_numeric$CLT_COLOUR_NUMERIC == 1, 5, 0)
+
+clt_numeric$CLT_CBYPAS_weight = ifelse(clt_numeric$CLT_CBYPAS_NUMERIC == 1, 20000, 0)
+clt_numeric$CLT_BBYPAS_weight = ifelse(clt_numeric$CLT_BBYPAS_NUMERIC == 1, 2000, 0)
+clt_numeric$CLT_PARKR_weight = ifelse(clt_numeric$CLT_PARKR_NUMERIC == 1, 200, 0)
+clt_numeric$CLT_WATERR_weight = ifelse(clt_numeric$CLT_WATERR_NUMERIC == 1, 20, 0)
+clt_numeric$CLT_PTIME_weight = ifelse(clt_numeric$CLT_PTIME_NUMERIC == 1, 2, 0)
+
+# Create new column with the sum of the weights for the 5 classes of separation
+clt_numeric = clt_numeric %>%
+  rowwise() %>%
+  mutate(values = sum(c_across(CLT_SEGREG_weight:CLT_PTIME_weight)))
+
+
+# Examine characteristics by total length  
+# a) Onroad
+clt_values_length_onroad = clt_numeric %>%
+  st_drop_geometry() %>%
+  filter(on_off == "onroad") %>%
+  group_by(values) %>%
+  summarise(length_onroad = sum(length_km))
+clt_values_length_top20_onroad = clt_values_length_onroad %>%
+  arrange(desc(length_onroad)) %>%
+  mutate(rank = 1:nrow(clt_values_length_onroad)) %>%
+  slice_head(n = 20) # take top 20 combined characteristics that have the longest length
+unique(clt_values_length_top20_onroad$values)
+# [1]      1  5001     2   500     7     6  5006    10     0    15
+# [11]     5   501   201 10050   510 10005   250    17   110 10000
+
+clt_values_length_top20_onroad = clt_values_length_top20_onroad %>%
+  mutate(Characteristics_on = case_when(values == 1 ~ "Advisory cycle lane",
+                           values == 5001 ~ "Advisory cycle lane with Cyclists prioritised",
+                           values == 2 ~ "Part-time cycle lane",
+                           values == 500 ~ "Contraflow cycle lane",
+                           values == 7 ~ "Part-time cycle lane with Coloured tarmac",
+                           values == 6 ~ "Advisory cycle lane with Coloured tarmac",
+                           values == 5006 ~ "Advisory cycle lane with Cyclists prioritised and Coloured tarmac",
+                           values == 10 ~ "Mandatory cycle lane", 
+                           values == 0 ~ "No characteristics", 
+                           values == 15 ~ "Mandatory cycle lane with Coloured tarmac", 
+                           values == 5 ~ "Coloured tarmac", 
+                           values == 501 ~ "Contraflow and Advisory cycle lane", 
+                           values == 201 ~ "Park route and Advisory cycle lane",
+                           values == 10050 ~ "Segregated and Bidirectional cycle lane",
+                           values == 510 ~ "Contraflow and Mandatory cycle lane",
+                           values == 10005 ~ "Segregated cycle lane with Coloured tarmac", 
+                           values == 250 ~ "Park route and Bidirectional cycle lane", 
+                           values == 17 ~ "Part-time mandatory cycle lane with Coloured tarmac",
+                           values == 110 ~ "Partially segregated, mandatory cycle lane",
+                           values == 10000 ~ "Segregated cycle lane"
+                             ))
+# add column for proportion of length compared to total onroad length
+sum(clt_values_length_onroad$length_onroad) #944.0157 [km]
+
+clt_values_length_top10_onroad = clt_values_length_top20_onroad %>%
+  mutate(Prop_of_total_onroad_length = drop_units(round(((length_onroad/944.0157)*100), digit = 1))) %>%
+  mutate(rounded_length_onroad = drop_units(round(length_onroad, digit = 1))) %>%
+  select(c("rank", "Characteristics_on", "rounded_length_onroad", "Prop_of_total_onroad_length")) %>%
+  slice_head(n = 11)  # take top 11 as need 11 rows to join to the top 10 + 0 characterstics in the offroad df
+
+# b) Offroad
+clt_values_length_offroad = clt_numeric %>%
+  st_drop_geometry() %>%
+  filter(on_off == "offroad") %>%
+  group_by(values) %>%
+  summarise(length_offroad = sum(length_km))
+clt_values_length_top20_offroad = clt_values_length_offroad %>%
+  arrange(desc(length_offroad)) %>%
+  mutate(rank = 1:nrow(clt_values_length_offroad)) %>%
+  slice_head(n = 20) # take top 20 combined characteristics that have the longest length
+unique(clt_values_length_top20_offroad$values)
+# [1]    250    50   252   270    70   150   155   255   350   100
+# [11] 10050   272   275   105 10055   200 10250    55   355     0
+
+clt_values_length_top20_offroad = clt_values_length_top20_offroad %>%
+  mutate(Characteristics_off = case_when(values == 250 ~ "Park route and Bidirectional", 
+                                     values == 50 ~ "Bidirectional", 
+                                     values == 252 ~ "Park route, Bidirectional and Part-time",
+                                     values == 270 ~ "Park route, Waterside and Bidirectional",
+                                     values == 70 ~ "Waterside route and Bidirectional",
+                                     values == 150 ~ "Partially segregated and Bidirectional",
+                                     values == 155 ~ "Partially segregated, Bidirectional with Coloured tarmac",
+                                     values == 255 ~ "Partially segregated, Park route with Coloured tarmac",
+                                     values == 350 ~ "Partially segregated, Bidirectional, Park route",
+                                     values == 100 ~ "Partially segregated",
+                                     values == 10050 ~ "Segregated and Bidirectional",
+                                     values == 0 ~ "No characteristics"
+  ))
+
+#  add column for proportion of length compared to total offroad length
+sum(clt_values_length_offroad$length_offroad) # 1959.577 [km]
+
+clt_values_length_top10_offroad = clt_values_length_top20_offroad %>%
+  mutate(Prop_of_total_offroad_length = drop_units(round(((length_offroad/1959.577)*100), digit = 1))) %>%
+  mutate(rounded_length_offroad = drop_units(round(length_offroad, digit = 1))) %>%
+  select(c("rank", "Characteristics_off", "rounded_length_offroad", "Prop_of_total_offroad_length")) %>%
+  filter(rank <11 | rank ==20)
+
+# join on and off road comparison together then save
+clt_values_length_top10 = cbind(clt_values_length_top10_onroad, clt_values_length_top10_offroad)
+
+# save output as table for use in paper
+write_csv2(clt_values_length_top10, file = "/home/bananafan/Downloads/clt_values_length_top10.csv", col_names = TRUE)
+
+
+
 
