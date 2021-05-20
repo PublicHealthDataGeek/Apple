@@ -462,5 +462,105 @@ clt_values_length_top10 = cbind(clt_values_length_top10_onroad, clt_values_lengt
 write_csv2(clt_values_length_top10, file = "/home/bananafan/Downloads/clt_values_length_top10.csv", col_names = TRUE)
 
 
+################################################################################
+#                     
+#                             Signals (n = 443)
+#
+################################################################################
+c_signals %>%
+  st_drop_geometry() %>%
+  summarytools::dfSummary()
+
+# SIG_HEAD      1. FALSE                          5 ( 1.1%)            
+# [factor]      2. TRUE                         438 (98.9%)            
+# 
+# SIG_SEPARA    1. FALSE                        187 (42.2%)        
+# [factor]      2. TRUE                         256 (57.8%)        
+# 
+# SIG_EARLY     1. FALSE                        363 (81.9%)             
+# [factor]      2. TRUE                          80 (18.1%)          
+# 
+# SIG_TWOSTG    1. FALSE                        415 (93.7%)             
+# [factor]      2. TRUE                          28 ( 6.3%)          
+# 
+# SIG_GATE      1. FALSE                        415 (93.7%)              
+# [factor]      2. TRUE                          28 ( 6.3%)         
+
+# Convert Factors to numeric (converts all False to 1 and True to 2)
+signals_numeric = c_signals %>%
+  mutate(SIG_HEAD_NUMERIC = as.numeric(c_signals$SIG_HEAD)) %>%
+  mutate(SIG_SEPARA_NUMERIC = as.numeric(c_signals$SIG_SEPARA)) %>%
+  mutate(SIG_EARLY_NUMERIC = as.numeric(c_signals$SIG_EARLY)) %>%
+  mutate(SIG_TWOSTG_NUMERIC = as.numeric(c_signals$SIG_TWOSTG)) %>%
+  mutate(SIG_GATE_NUMERIC = as.numeric(c_signals$SIG_GATE)) 
+
+# Convert 1(false) to 0 and 2(true) to 1
+signals_numeric$SIG_HEAD_NUMERIC = ifelse(signals_numeric$SIG_HEAD_NUMERIC == 1, 0, 1)
+signals_numeric$SIG_SEPARA_NUMERIC = ifelse(signals_numeric$SIG_SEPARA_NUMERIC == 1, 0, 1)
+signals_numeric$SIG_EARLY_NUMERIC = ifelse(signals_numeric$SIG_EARLY_NUMERIC == 1, 0, 1)
+signals_numeric$SIG_TWOSTG_NUMERIC = ifelse(signals_numeric$SIG_TWOSTG_NUMERIC == 1, 0, 1)
+signals_numeric$SIG_GATE_NUMERIC = ifelse(signals_numeric$SIG_GATE_NUMERIC == 1, 0, 1)
 
 
+## Check now gives the count that I expect (sum will count all the ones)  -YES THEY DO
+# sum(signals_numeric$SIG_HEAD_NUMERIC) # n = 483
+# sum(signals_numeric$SIG_SEPARA_NUMERIC) # n = 256
+# sum(signals_numeric$SIG_EARLY_NUMERIC) # n = 80
+# sum(signals_numeric$SIG_TWOSTG_NUMERIC) # n = 28
+# sum(signals_numeric$SIG_GATE_NUMERIC) # n = 28
+
+# Recode to give weighted value with so can distinguish between different characteristics
+signals_numeric$SIG_HEAD_weight = ifelse(signals_numeric$SIG_HEAD_NUMERIC == 1, 10000, 0)
+signals_numeric$SIG_SEPARA_weight = ifelse(signals_numeric$SIG_SEPARA_NUMERIC == 1, 1000, 0)
+signals_numeric$SIG_EARLY_weight = ifelse(signals_numeric$SIG_EARLY_NUMERIC == 1, 100, 0)
+signals_numeric$SIG_TWOSTG_weight = ifelse(signals_numeric$SIG_TWOSTG_NUMERIC == 1, 10, 0)
+signals_numeric$SIG_GATE_weight = ifelse(signals_numeric$SIG_GATE_NUMERIC == 1, 1, 0)
+
+ 
+# # Create new column with the sum of the weights for the 5 classes of separation
+signals_numeric = signals_numeric %>%
+  rowwise() %>%
+  mutate(values = sum(c_across(SIG_HEAD_weight:SIG_GATE_weight)))
+
+signals_characteristics = signals_numeric %>%
+  st_drop_geometry() %>%
+  group_by(values) %>%
+  summarise(count = n())
+sum(signals_characteristics$count) # n = 443
+print(signals_characteristics)
+#      values count
+#  1        0     4 No characteristics
+#  2      100     1 Signal gate
+#  3    10000   132 
+#  4    10001     2
+#  5    10010     8
+#  6    10100    36
+#  7    10101     1
+#  8    10110     3
+#  9    11000   186
+# 10    11001    15
+# 11    11010    16
+# 12    11100    28
+# 13    11101    10
+# 14    11110     1
+
+signals_characteristics = signals_characteristics %>%
+  mutate(Characteristics = case_when(values == 100 ~ "Early cyclist release", 
+                                     values == 10000 ~ "Cycle symbol on signal lights", 
+                                     values == 10001 ~ "Cycle symbol on lights and Cyclist signal gate",
+                                     values == 10010 ~ "Cycle symbol on lights and Two stage right turn",
+                                     values == 10100 ~ "Cycle symbol on lights and Early cyclist release",
+                                     values == 10101 ~ "Cycle symbol on lights, Early cyclist release and Signal gate",
+                                     values == 10110 ~ "Cycle symbol on lights, Early cyclist release and Two stage right turn",
+                                     values == 11000 ~ "Cycle symbol on lights and Separate cyclist stage",
+                                     values == 11001 ~ "Cycle symbol on lights, Separate cyclist stage and Signal gate",
+                                     values == 11010 ~ "Cycle symbol on lights, Separate cyclist stage and Two stage right turn",
+                                     values == 11100 ~ "Cycle symbol on lights, Separate cyclist stage and Early cyclist release",
+                                     values == 11101 ~ "Cycle symbol on lights, Separate cyclist stage, Early cyclist release and Signal gate",
+                                     values == 11110 ~ "Cycle symbol on lights, Separate cyclist stage, Early cyclist release and Two stage right turn",
+                                     values == 0 ~ "No characteristics"
+  )) %>%
+  select(-c(values))
+
+# save output as table for use in paper
+write_csv2(signals_characteristics, file = "/home/bananafan/Downloads/signals_characteristics.csv", col_names = TRUE)
