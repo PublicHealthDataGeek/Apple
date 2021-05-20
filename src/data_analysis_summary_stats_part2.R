@@ -61,7 +61,6 @@ print(ctable(x = c_asl$ASL_FDR, y = c_asl$ASL_FDRLFT))
 # some definately have more than one characteristic so investigate below
 
 # # Convert Factors to numeric (converts all False to 1 and True to 2)
-
 asl_numeric = c_asl %>%
   mutate(ASL_FDR_NUMERIC = as.numeric(c_asl$ASL_FDR)) %>%
   mutate(ASL_FDRLFT_NUMERIC = as.numeric(c_asl$ASL_FDRLFT)) %>%
@@ -94,7 +93,7 @@ asl_numeric$ASL_FDRIGH_weight = ifelse(asl_numeric$ASL_FDRIGH_NUMERIC == 1, 10, 
 asl_numeric$ASL_SHARED_weight = ifelse(asl_numeric$ASL_SHARED_NUMERIC == 1, 1, 0)
 asl_numeric$ASL_COLOUR_weight = ifelse(asl_numeric$ASL_COLOUR_NUMERIC == 1, 5, 0)
 
-# # Create new column with the sum of the weights for the 5 classes of separation
+# # Create new column with the value of characterisation
 asl_numeric = asl_numeric %>%
   rowwise() %>%
   mutate(weight_5 = sum(c_across(ASL_FDR__weight:ASL_COLOUR_weight)))
@@ -191,7 +190,6 @@ crossings_numeric$CRS_LEVEL_NUMERIC = ifelse(crossings_numeric$CRS_LEVEL_NUMERIC
 # sum(crossings_numeric$CRS_PEDEST_NUMERIC) # n = 42
 # sum(crossings_numeric$CRS_LEVEL_NUMERIC) # n = 20
 
-
 # Recode to give weighted value with so can distinguish between different characteristics
 crossings_numeric$CRS_SIGNAL_weight = ifelse(crossings_numeric$CRS_SIGNAL_NUMERIC == 1, 10000, 0)
 crossings_numeric$CRS_SEGREG_weight = ifelse(crossings_numeric$CRS_SEGREG_NUMERIC == 1, 1000, 0)
@@ -199,7 +197,7 @@ crossings_numeric$CRS_CYGAP_weight = ifelse(crossings_numeric$CRS_CYGAP_NUMERIC 
 crossings_numeric$CRS_PEDEST_weight = ifelse(crossings_numeric$CRS_PEDEST_NUMERIC == 1, 10, 0)
 crossings_numeric$CRS_LEVEL_weight = ifelse(crossings_numeric$CRS_LEVEL_NUMERIC == 1, 1, 0)
 
-# Create new column with the sum of the weights for the 5 classes of separation
+# Create new column with the value of characterisation
 crossings_numeric = crossings_numeric %>%
   rowwise() %>%
   mutate(weight_5 = sum(c_across(CRS_SIGNAL_weight:CRS_LEVEL_weight)))
@@ -222,6 +220,8 @@ sum(crossings_characteristics$count) # n = 1690
 # 10    10100     1  Signal controlled with gap
 # 11    11000    93  Signal controlled with segregation
 # 12    11100    41  Signal controlled with segreg and gap
+
+
 
 
 ################################################################################
@@ -328,7 +328,6 @@ clt_numeric$CLT_WATERR_NUMERIC = ifelse(clt_numeric$CLT_WATERR_NUMERIC == 1, 0, 
 clt_numeric$CLT_PTIME_NUMERIC = ifelse(clt_numeric$CLT_PTIME_NUMERIC == 1, 0, 1)
 clt_numeric$CLT_COLOUR_NUMERIC = ifelse(clt_numeric$CLT_COLOUR_NUMERIC == 5, 0, 1) # no colour converted to 0, any colour converted to 1
 
-
 # Check now gives the count that I expect (NB these are both on and off road)
 sum(clt_numeric$CLT_SEGREG_NUMERIC) # n = 1931
 sum(clt_numeric$CLT_STEPP_NUMERIC) # n = 104
@@ -345,7 +344,6 @@ sum(clt_numeric$CLT_PARKR_NUMERIC) # n = 4194
 sum(clt_numeric$CLT_WATERR_NUMERIC) # n = 611
 sum(clt_numeric$CLT_PTIME_NUMERIC) # n = 2800
 sum(clt_numeric$CLT_COLOUR_NUMERIC) # n = 6191
-
 
 # Recode to give different values so can identify clt that has multiple characteristics
 clt_numeric$CLT_SEGREG_weight = ifelse(clt_numeric$CLT_SEGREG_NUMERIC == 1, 10000, 0)
@@ -365,7 +363,7 @@ clt_numeric$CLT_PARKR_weight = ifelse(clt_numeric$CLT_PARKR_NUMERIC == 1, 200, 0
 clt_numeric$CLT_WATERR_weight = ifelse(clt_numeric$CLT_WATERR_NUMERIC == 1, 20, 0)
 clt_numeric$CLT_PTIME_weight = ifelse(clt_numeric$CLT_PTIME_NUMERIC == 1, 2, 0)
 
-# Create new column with the sum of the weights for the 5 classes of separation
+# Create new column with the values of characterisation
 clt_numeric = clt_numeric %>%
   rowwise() %>%
   mutate(values = sum(c_across(CLT_SEGREG_weight:CLT_PTIME_weight)))
@@ -501,7 +499,6 @@ signals_numeric$SIG_EARLY_NUMERIC = ifelse(signals_numeric$SIG_EARLY_NUMERIC == 
 signals_numeric$SIG_TWOSTG_NUMERIC = ifelse(signals_numeric$SIG_TWOSTG_NUMERIC == 1, 0, 1)
 signals_numeric$SIG_GATE_NUMERIC = ifelse(signals_numeric$SIG_GATE_NUMERIC == 1, 0, 1)
 
-
 ## Check now gives the count that I expect (sum will count all the ones)  -YES THEY DO
 # sum(signals_numeric$SIG_HEAD_NUMERIC) # n = 483
 # sum(signals_numeric$SIG_SEPARA_NUMERIC) # n = 256
@@ -516,8 +513,7 @@ signals_numeric$SIG_EARLY_weight = ifelse(signals_numeric$SIG_EARLY_NUMERIC == 1
 signals_numeric$SIG_TWOSTG_weight = ifelse(signals_numeric$SIG_TWOSTG_NUMERIC == 1, 10, 0)
 signals_numeric$SIG_GATE_weight = ifelse(signals_numeric$SIG_GATE_NUMERIC == 1, 1, 0)
 
- 
-# # Create new column with the sum of the weights for the 5 classes of separation
+# # Create new column with the values of characterisation
 signals_numeric = signals_numeric %>%
   rowwise() %>%
   mutate(values = sum(c_across(SIG_HEAD_weight:SIG_GATE_weight)))
@@ -558,9 +554,116 @@ signals_characteristics = signals_characteristics %>%
                                      values == 11100 ~ "Cycle symbol on lights, Separate cyclist stage and Early cyclist release",
                                      values == 11101 ~ "Cycle symbol on lights, Separate cyclist stage, Early cyclist release and Signal gate",
                                      values == 11110 ~ "Cycle symbol on lights, Separate cyclist stage, Early cyclist release and Two stage right turn",
-                                     values == 0 ~ "No characteristics"
-  )) %>%
+                                     values == 0 ~ "No characteristics")) %>%
   select(-c(values))
 
 # save output as table for use in paper
 write_csv2(signals_characteristics, file = "/home/bananafan/Downloads/signals_characteristics.csv", col_names = TRUE)
+
+
+
+################################################################################
+#                     
+#                             Traffic calming (n = 58565)
+#
+################################################################################
+c_trafficcalming %>%
+  st_drop_geometry() %>%
+  summarytools::dfSummary()
+
+# TRF_RAISED    1. FALSE                        55793 (95.3%)               
+# [factor]      2. TRUE                          2772 ( 4.7%)                       
+# 
+# TRF_ENTRY     1. FALSE                        50984 (87.1%)            
+# [factor]      2. TRUE                          7581 (12.9%)         
+# 
+# TRF_CUSHI     1. FALSE                        45939 (78.4%)             
+# [factor]      2. TRUE                         12626 (21.6%)          
+# 
+# TRF_HUMP      1. FALSE                        25294 (43.2%)             
+# [factor]      2. TRUE                         33271 (56.8%)         
+# 
+# TRF_SINUSO    1. FALSE                        51845 (88.5%)            
+# [factor]      2. TRUE                          6720 (11.5%)           
+# 
+# TRF_BARIER    1. FALSE                        57630 (98.4%)              
+# [factor]      2. TRUE                           935 ( 1.6%)                              
+# 
+# TRF_NAROW     1. FALSE                        57903 (98.9%)             
+# [factor]      2. TRUE                           662 ( 1.1%)                                
+# 
+# TRF_CALM      1. FALSE                        57844 (98.8%)               
+# [factor]      2. TRUE                           721 ( 1.2%)                           
+
+# # Convert Factors to numeric (converts all False to 1 and True to 2)
+calming_numeric = c_trafficcalming %>%
+  mutate(TRF_RAISED_NUMERIC = as.numeric(c_trafficcalming$TRF_RAISED)) %>%
+  mutate(TRF_ENTRY_NUMERIC = as.numeric(c_trafficcalming$TRF_ENTRY)) %>%
+  mutate(TRF_CUSHI_NUMERIC = as.numeric(c_trafficcalming$TRF_CUSHI)) %>%
+  mutate(TRF_HUMP_NUMERIC = as.numeric(c_trafficcalming$TRF_HUMP)) %>%
+  mutate(TRF_SINUSO_NUMERIC = as.numeric(c_trafficcalming$TRF_SINUSO)) %>%
+  mutate(TRF_BARIER_NUMERIC = as.numeric(c_trafficcalming$TRF_BARIER)) %>%
+  mutate(TRF_NAROW_NUMERIC = as.numeric(c_trafficcalming$TRF_NAROW)) %>%
+  mutate(TRF_CALM_NUMERIC = as.numeric(c_trafficcalming$TRF_CALM))
+  
+# Convert 1(false) to 0 and 2(true) to 1
+calming_numeric$TRF_RAISED_NUMERIC = ifelse(calming_numeric$TRF_RAISED_NUMERIC == 1, 0, 1)
+calming_numeric$TRF_ENTRY_NUMERIC= ifelse(calming_numeric$TRF_ENTRY_NUMERIC == 1, 0, 1)
+calming_numeric$TRF_CUSHI_NUMERIC = ifelse(calming_numeric$TRF_CUSHI_NUMERIC == 1, 0, 1)
+calming_numeric$TRF_HUMP_NUMERIC = ifelse(calming_numeric$TRF_HUMP_NUMERIC == 1, 0, 1)
+calming_numeric$TRF_SINUSO_NUMERIC = ifelse(calming_numeric$TRF_SINUSO_NUMERIC == 1, 0, 1)
+calming_numeric$TRF_BARIER_NUMERIC = ifelse(calming_numeric$TRF_BARIER_NUMERIC == 1, 0, 1)
+calming_numeric$TRF_NAROW_NUMERIC = ifelse(calming_numeric$TRF_NAROW_NUMERIC == 1, 0, 1)
+calming_numeric$TRF_CALM_NUMERIC = ifelse(calming_numeric$TRF_CALM_NUMERIC == 1, 0, 1)
+
+# ## Check now gives the count that I expect (sum will count all the ones)  -YES THEY DO
+# sum(calming_numeric$TRF_RAISED_NUMERIC) # n = 2772
+# sum(calming_numeric$TRF_ENTRY_NUMERIC) # n = 7581
+# sum(calming_numeric$TRF_CUSHI_NUMERIC) # n = 12626
+# sum(calming_numeric$TRF_HUMP_NUMERIC) # n = 33271
+# sum(calming_numeric$TRF_SINUSO_NUMERIC) # n = 6720
+# sum(calming_numeric$TRF_BARIER_NUMERIC) # n = 935
+# sum(calming_numeric$TRF_NAROW_NUMERIC) # n = 662
+# sum(calming_numeric$TRF_CALM_NUMERIC) # n = 721
+
+# Recode to give weighted value with so can distinguish between different characteristics
+calming_numeric$TRF_RAISED_weight = ifelse(calming_numeric$TRF_RAISED_NUMERIC == 1, 10000, 0)
+calming_numeric$TRF_ENTRY_weight = ifelse(calming_numeric$TRF_ENTRY_NUMERIC == 1, 5000, 0)
+calming_numeric$TRF_CUSHI_weight = ifelse(calming_numeric$TRF_CUSHI_NUMERIC == 1, 1000, 0)
+calming_numeric$TRF_HUMP_weight = ifelse(calming_numeric$TRF_HUMP_NUMERIC == 1, 500, 0)
+calming_numeric$TRF_SINUSO_weight = ifelse(calming_numeric$TRF_SINUSO_NUMERIC == 1, 100, 0)
+calming_numeric$TRF_BARIER_weight = ifelse(calming_numeric$TRF_BARIER_NUMERIC == 1, 50, 0)
+calming_numeric$TRF_NAROW_weight = ifelse(calming_numeric$TRF_NAROW_NUMERIC == 1, 10, 0)
+calming_numeric$TRF_CALM_weight = ifelse(calming_numeric$TRF_CALM_NUMERIC == 1, 1, 0)
+
+# # Create new column with the values of characterization
+calming_numeric = calming_numeric %>%
+  rowwise() %>%
+  mutate(values = sum(c_across(TRF_RAISED_weight:TRF_CALM_weight)))
+
+calming_characteristics = calming_numeric %>%
+  st_drop_geometry() %>%
+  group_by(values) %>%
+  summarise(count = n())
+sum(calming_characteristics$count) # n = 443
+print(calming_characteristics)
+# #  values count
+# 1       0    12
+# 2       1   721
+# 3      10   652
+# 4      50   935
+# 5     500 26948
+# 6     510     1
+# 7     600  6319
+# 8    1000 12217
+# 9    1010     8
+# 10   1100   400
+# 11   1110     1
+# 12   5000  7576
+# 13   5500     3
+# 14  10000  2770
+# 15  15000     2
+
+
+# save output as table for use in paper
+write_csv2(calming_characteristics, file = "/home/bananafan/Downloads/calming_characteristics.csv", col_names = TRUE)
