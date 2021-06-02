@@ -204,21 +204,22 @@ multi_crossings_check_df = left_join(multi_crossings_check, crossings_ls_correct
 #RWG273925
 
 # Check the location of these multicrossing original observations
-RWG273925_check = crossings_ls_corrected %>%
-  filter(FEATURE_ID =="RWG273925")
-mapview(test, zcol = "FEATURE_ID_crossings") + mapview(lon_lad_2020, alpha.regions = 0)
-# RWG273925_4 defo in H&F
-
 RWG108304_check = crossings_ls_corrected %>%
   filter(FEATURE_ID =="RWG108304")
 mapview(RWG108304_check, zcol = "FEATURE_ID_crossings") + mapview(lon_lad_2020, alpha.regions = 0)
-# ?RWG108304_1 city
-#  ?RWG108304_2 TH
+# RWG108304_1 city
+# RWG108304_2 Tower Hamlets
+
+RWG273925_check = crossings_ls_corrected %>%
+  filter(FEATURE_ID =="RWG273925")
+mapview(RWG273925_check, zcol = "FEATURE_ID_crossings") + mapview(lon_lad_2020, alpha.regions = 0)
+# RWG273925_1  Ealing
+# RWG273925_2  H&F
+# RWG273925_3  EAling
+# RWG273925_4 defo in H&F
 
 
 
-
-                                      
 # create list of FEATURE_IDs that have 2 segments
 multi_feature_id_list = pull(multi_feature_id, FEATURE_ID_crossings)
 
@@ -227,86 +228,51 @@ new_segments = crossings_borough_split %>%
   filter(FEATURE_ID_crossings %in% multi_feature_id_list) # n = 18, the 9 original ones 
 # plus the additional 9 created when they were split
 
-mapview(new_segments, zcol = "BOROUGH") + 
-  mapview(lon_lad_2020, alpha.regions = 0.1, legend = FALSE, lwd = 1)
-
 new_segment_match_pre = new_segments %>%
   st_drop_geometry() %>%
   select(c("FEATURE_ID_crossings", "BOROUGH", "BOROUGH.1")) %>%
   mutate(match = ifelse(BOROUGH == BOROUGH.1, TRUE, FALSE)) %>%
   rename(c("ONS" = "BOROUGH", "CID" = "BOROUGH.1"))  # Yes - this what we see
 
-# Detailed inspection using maps ( see commented out code below)
+# Detailed inspection using mapview - comparing ESRI World Imagery as to where 
+# the crossings are compared to the road (see commented out code below)
 # Only FEATURE_IDs where the Boroughs needs changing are:
-# 1) RWG108304 - this is in Tower Hamlets 
+# 1) RWG108304 
+# currently both segments coded as City of London in crossings_ls_corrected
+# so need to recode RWG108304_2
+# RWG108304_1 city
+# RWG108304_2 Tower Hamlets
 crossings_ls_corrected$BOROUGH = replace(crossings_ls_corrected$BOROUGH, 
-                                 which(crossings_ls_corrected$FEATURE_ID == "RWG108304"), 
+                                 which(crossings_ls_corrected$FEATURE_ID_crossings == "RWG108304_2"), 
                                  values = "Tower Hamlets")
+# RWG108304_check = crossings_ls_corrected %>%
+#   filter(FEATURE_ID =="RWG108304") # check correctly recoded
 
-# 2) RWG273925_2  - this is in 
+# 2) RWG273925_2 
+# currently all 4 segments coded as Ealing.  Two need changing to H&F # RWG273925_2 and RWG273925_4
 crossings_ls_corrected$BOROUGH = replace(crossings_ls_corrected$BOROUGH, 
                                          which(crossings_ls_corrected$FEATURE_ID_crossings == "RWG273925_2"), 
                                          values = "Hammersmith & Fulham")
+crossings_ls_corrected$BOROUGH = replace(crossings_ls_corrected$BOROUGH, 
+                                         which(crossings_ls_corrected$FEATURE_ID_crossings == "RWG273925_4"), 
+                                         values = "Hammersmith & Fulham")
+# RWG273925_check = crossings_ls_corrected %>%
+#   filter(FEATURE_ID =="RWG273925") # check recoded correctly
 
-
-
-
-# 2) RWG273925 - there are 4 crossings in this observation, 3 are in Ealing and 1 
-# is in Hammersmith and Fullham.  SPlit into two observation
-## select RWG273925 degments
-RWG273925 = new_segments %>%
-  filter(FEATURE_ID == "RWG273925")
-## Factor the BOROUGH.1 variable
-borough_levels = c("Barking & Dagenham", "Barnet", "Bexley", "Brent",  
-                   "Bromley", "Camden", "City of London", "Croydon", 
-                   "Ealing", "Enfield", "Greenwich", "Hackney",  
-                   "Hammersmith & Fulham", "Haringey", "Harrow", 
-                   "Havering", "Hillingdon", "Hounslow", "Islington", 
-                   "Kensington & Chelsea", "Kingston upon Thames",  
-                   "Lambeth", "Lewisham", "Merton", "Newham", 
-                   "Redbridge", "Richmond upon Thames", "Southwark",  
-                   "Sutton", "Tower Hamlets", "Waltham Forest",   
-                   "Wandsworth", "Westminster") 
-RWG273925$BOROUGH.1 = factor(RWG273925$BOROUGH.1, levels = borough_levels)
-
-## Run loop to run through and recode BOROUGH.1 (CID) with BOROUGH (ONS)
-for (i in seq_along(RWG273925$BOROUGH)) {
-  RWG273925$BOROUGH.1[[i]] = RWG273925$BOROUGH[[i]]
-}
-
-# Create unique FEATURE_IDs
-RWG273925$FEATURE_ID = replace(RWG273925$FEATURE_ID, which(RWG273925$FEATURE_ID == "RWG273925"), 
-                               values = c("RWG273925_1", "RWG273925_2"))
-
-# # Create df RWG273925 correct Boroughs that can be joined
-RWG273925_corrected = RWG273925 %>%
-  select(c("FEATURE_ID", "SVDATE", "CRS_SIGNAL", "CRS_SEGREG", "CRS_CYGAP", 
-           "CRS_PEDEST", "CRS_LEVEL", "BOROUGH", 
-           "PHOTO1_URL", "PHOTO2_URL", "geometry")) %>%
-  mutate(BOROUGH = as.character(BOROUGH)) # change borough to character so can match back to f_crossings
-
-# Remove and then add the observations
-f_crossings = f_crossings %>%
-  filter(!FEATURE_ID == "RWG273925") # n = 1686 ie 1 removed from the 1687 
-# Join RWG273925_corrected to f_crossings - will then have 1688 ie 2 more
-f_crossings = rbind(f_crossings, RWG273925_corrected) # n= 1688
 
 
 ### CODE for checking each crossing segment 
 # new_segment_1 = new_segments %>%
 #   filter(FEATURE_ID_crossings == multi_feature_id_list[1])
 # mapview(new_segment_1, zcol = "BOROUGH") + mapview(lon_lad_2020, alpha.regions = 0.1, legend = FALSE, lwd = 1)
-# new_segment_1, RWG055875 = K&C
+# #new_segment_1, RWG055875 = K&C
 # 
 # new_segment_2 = new_segments %>%
 #   filter(FEATURE_ID_crossings == multi_feature_id_list[2])
 # mapview(new_segment_2, zcol = "BOROUGH") + mapview(lon_lad_2020, alpha.regions = 0.1, legend = FALSE, lwd = 1)
 # # new_segment_2, RWG107384 = Southwark
 # 
-# new_segment_3 = new_segments %>%
-#   filter(FEATURE_ID_crossings == multi_feature_id_list[3])
-# mapview(new_segment_3, zcol = "BOROUGH") + mapview(lon_lad_2020, alpha.regions = 0.1, legend = FALSE, lwd = 1)
-# new_segment_3, RWG108304 = Tower Hamlets
+# # multi_feature_id_list[3]) = RWG108304  SO ALREADY ANALYSED
 # 
 # new_segment_4 = new_segments %>%
 #   filter(FEATURE_ID_crossings == multi_feature_id_list[4])
@@ -331,38 +297,48 @@ f_crossings = rbind(f_crossings, RWG273925_corrected) # n= 1688
 # new_segment_8 = new_segments %>%
 #   filter(FEATURE_ID_crossings == multi_feature_id_list[8])
 # mapview(new_segment_8, zcol = "BOROUGH") + mapview(lon_lad_2020, alpha.regions = 0.1, legend = FALSE, lwd = 1)
-# new_segment_8, RWG154502 = Newham
+# #new_segment_8, RWG154502 = Newham
 # 
-# new_segment_9 = new_segments %>%
-#   filter(FEATURE_ID_crossings == multi_feature_id_list[9])
-# mapview(new_segment_9, zcol = "BOROUGH") + mapview(lon_lad_2020, alpha.regions = 0.1, legend = FALSE, lwd = 1)
-# new_segment_9,m
-# RWG273925_2 = Hammersmith and Fullham
+# # multi_feature_id_list[9]) = RWG273925_2  SO ALREADY ANALYSED
+
+
 
 #######################
 # Correct Borough NAs #
 #######################
-# # Correct NAs as per correct_borough_NAs working
-# #  1) Create dataset of 28 crossings that have no Borough
-# crossings_borough_NA = f_crossings %>%
-#   filter(is.na(BOROUGH)) 
-# 
-# #  2) Use st_intersection to produce two observations for the crossings
-# crossings_borough_NA_i = st_intersection(lon_lad_2020, crossings_borough_NA) 
-# # 49 observations, geometry column is from the crossings dataset but split by ONS borough boundaries
-# # BOROUGH is the column from the lon_lad_2020 dataset and represents the Borough that the crossing is in, 
-# # whereas BOROUGH.1 is the BOROUGH from the crossing dataset (all NAs)
-# 
-# mapview(crossings_borough_NA_i, zcol = "BOROUGH") + mapview(lon_lad_2020, alpha.regions = 0.05, zcol = "BOROUGH")
+# Correct NAs as per correct_borough_NAs working
+#  1) Create dataset of 29 crossings that have no Borough
+crossings_borough_NA = crossings_ls_corrected %>%
+  filter(is.na(BOROUGH)) 
+# all are single crossings but two were originally a multicrossing observation RWG199197_1 & RWG199197_2
+ 
+#  2) Use st_intersection to produce two observations for the crossings
+crossings_borough_NA_i = st_intersection(lon_lad_2020, crossings_borough_NA)
+# 49 observations, geometry column is from the crossings dataset but split by ONS borough boundaries
+# BOROUGH is the column from the lon_lad_2020 dataset and represents the Borough that the crossing is in,
+# whereas BOROUGH.1 is the BOROUGH from the crossing dataset (all NAs)
+ 
+mapview(crossings_borough_NA_i, zcol = "BOROUGH") + mapview(lon_lad_2020, alpha.regions = 0.05, zcol = "BOROUGH")
 # #this map shows the crossings coloured by the BOROUGH they are in
-# 
+ 
 # # 3) Add column for length of each observation (using crossing geometry)by BOROUGH and keep obs with longest length
-# crossings_borough_NA_i$borough_length = st_length(crossings_borough_NA_i) 
-# 
+crossings_borough_NA_i$borough_length = st_length(crossings_borough_NA_i) 
+
 # # 4) Create final dataset that gives the proposed Borough for each observation
-# # 4a) create congruent dataset where visual check and st_length check matches (n = 26)
-# congruent = crossings_borough_NA_i %>%
-#   filter(!FEATURE_ID %in% c("RWG153061", "RWG049417")) #n = 45 (4 obs with these FEATURE_IDs removed)
+# 4a) create dataset so can export to csv to support review of length and visual inspection
+crossings_borough_NA_i_csv = crossings_borough_NA_i %>%
+  st_drop_geometry() %>%
+  rename(c("ONS" = "BOROUGH", "CID" = "BOROUGH.1")) %>%
+  select(c("FEATURE_ID", "FEATURE_ID_crossings", "ONS", "CID", "borough_length"))
+write_csv2(x = crossings_borough_NA_i_csv, file = "/home/bananafan/Documents/PhD/Paper1/data/crossings_borough_NA.csv")
+
+# visually inspect crossings
+mapview(crossings_borough_NA_i, zcol = "BOROUGH") + mapview(lon_lad_2020, alpha.regions = 0.05, zcol = "BOROUGH")
+
+
+# 4b) create congruent dataset where visual check and st_length check matches (n = 26)
+congruent = crossings_borough_NA_i %>%
+  filter(!FEATURE_ID %in% c("RWG153061", "RWG049417")) #n = 45 (4 obs with these FEATURE_IDs removed)
 # 
 # congruent = congruent %>% 
 #   group_by(FEATURE_ID) %>%
