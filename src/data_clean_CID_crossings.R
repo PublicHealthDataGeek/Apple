@@ -321,104 +321,93 @@ crossings_borough_NA_i = st_intersection(lon_lad_2020, crossings_borough_NA)
 mapview(crossings_borough_NA_i, zcol = "BOROUGH") + mapview(lon_lad_2020, alpha.regions = 0.05, zcol = "BOROUGH")
 # #this map shows the crossings coloured by the BOROUGH they are in
  
-# # 3) Add column for length of each observation (using crossing geometry)by BOROUGH and keep obs with longest length
-crossings_borough_NA_i$borough_length = st_length(crossings_borough_NA_i) 
-
-# # 4) Create final dataset that gives the proposed Borough for each observation
-# 4a) create dataset so can export to csv to support review of length and visual inspection
-crossings_borough_NA_i_csv = crossings_borough_NA_i %>%
-  st_drop_geometry() %>%
+# # 3) Add columns for length of each observation and proportion of total length
+crossings_borough_NA_i_length = crossings_borough_NA_i %>%
+  mutate(length = st_length(geometry)) %>%
+  group_by(FEATURE_ID_crossings) %>%
+  mutate(total_length = sum(length)) %>%
+  ungroup() %>%
+  mutate(proportion = drop_units(length/total_length*100)) %>%
   rename(c("ONS" = "BOROUGH", "CID" = "BOROUGH.1")) %>%
-  select(c("FEATURE_ID", "FEATURE_ID_crossings", "ONS", "CID", "borough_length"))
-write_csv2(x = crossings_borough_NA_i_csv, file = "/home/bananafan/Documents/PhD/Paper1/data/crossings_borough_NA.csv")
+  select(c("FEATURE_ID", "FEATURE_ID_crossings", "ONS", "CID", "length", "total_length", "proportion"))
 
-# visually inspect crossings
-mapview(crossings_borough_NA_i, zcol = "BOROUGH") + mapview(lon_lad_2020, alpha.regions = 0.05, zcol = "BOROUGH")
+# # 4) Identify those observations with >= 60 or 40-60 proportion of length in Borough 
+crossings_borough_NA_i_60 = crossings_borough_NA_i_length %>%
+  filter(proportion >= 60) # obtain those where prop >60 n= 26
+crossings_borough_NA_i_4060 = crossings_borough_NA_i_length %>%
+  filter(proportion < 60 & proportion >= 40) # obtain those where prop is 40-60, n= 6
+crossings_borough_NA_i_4060_list = unique(pull(crossings_borough_NA_i_4060, FEATURE_ID_crossings)) # get list of these 40-60
+
+# 5) Create new dataset where I want to add the Borough based on them having >=60% of the crossing in that borough
+# (borough column now is the ONS one ie the correct one)
+crossings_borough_NA_changed = crossings_borough_NA_i %>%
+  filter(!FEATURE_ID_crossings %in% crossings_borough_NA_i_4060_list) %>%  # drop observations with less than 
+  mutate(length = st_length(geometry)) %>%
+  group_by(FEATURE_ID_crossings) %>%
+  mutate(total_length = sum(length)) %>%
+  ungroup() %>%
+  mutate(proportion = drop_units(length/total_length*100)) %>%
+  group_by(FEATURE_ID_crossings) %>%
+  filter(proportion >= 60) %>%
+  select(-BOROUGH.1) # n = 26
+
+# Amend df so can join 
+crossings_borough_NA_changed = crossings_borough_NA_changed %>%
+  select(c("FEATURE_ID","SVDATE","CRS_SIGNAL", "CRS_SEGREG", "CRS_CYGAP", "CRS_PEDEST", 
+           "CRS_LEVEL", "BOROUGH", "PHOTO1_URL", "PHOTO2_URL", "geometry", "count", 
+           "FEATURE_ID_crossings")) 
 
 
-# 4b) create congruent dataset where visual check and st_length check matches (n = 26)
-congruent = crossings_borough_NA_i %>%
-  filter(!FEATURE_ID %in% c("RWG153061", "RWG049417")) #n = 45 (4 obs with these FEATURE_IDs removed)
-# 
-# congruent = congruent %>% 
-#   group_by(FEATURE_ID) %>%
-#   slice(which.max(borough_length)) # keep the observation which has the longest length - n = 26
-# 
-# # 4b) create incongruent dataset where visual check and st_length check does not match and relabel FEATURE_IDs
-# # ie for observations "RWG153061", "RWG049417" 
-# # recode Feature_ID with 'a' and 'b'
-# # crosschecked that a/b corresponds with the right borough
-# incongruent = crossings_borough_NA_i %>%
-#   filter(FEATURE_ID %in% c("RWG153061", "RWG049417")) %>%
-#   group_by(FEATURE_ID) %>%
-#   arrange(desc(borough_length)) %>%
-#   ungroup() #arrange order of data by grouping by FEATURE_ID then descending length before relabelling FEATURE_ID in subsequent lines
-# incongruent$FEATURE_ID = replace(incongruent$FEATURE_ID, which(incongruent$FEATURE_ID == "RWG153061"), 
-#                                  values = c("RWG153061_1", "RWG153061_2"))
-# incongruent$FEATURE_ID = replace(incongruent$FEATURE_ID, which(incongruent$FEATURE_ID == "RWG049417"), 
-#                                  values = c("RWG049417_1", "RWG049417_2"))
-# 
-# # 5) Create df of all the observations that were Borough NA with correct Boroughs
-# # and convert to MLS so has same geometry type as crossings
-# # 5a) create df of corrected Boroughs with columns that match Crossings dataset
-# crossings_borough_NA_corrected = rbind(congruent, incongruent) %>%
-#   select(c("FEATURE_ID","SVDATE","CRS_SIGNAL", "CRS_SEGREG", "CRS_CYGAP", 
-#            "CRS_PEDEST", "CRS_LEVEL", "BOROUGH", "PHOTO1_URL", "PHOTO2_URL",
-#            "geometry")) 
-# 
-# 
-# # 5b) To validate that have corrected NAs, create df of counted Boroughs before transformation
-# count_crossings_borough = f_crossings %>%
-#   st_drop_geometry() %>%
-#   group_by(BOROUGH) %>%
-#   summarise(Count = n()) 
-# 
-# # 5c) change geometry to multilinestring
-# # cast geometry
-# unique(st_geometry_type(crossings_borough_NA_corrected)) # Linestring
-# crossings_borough_NA_corrected = crossings_borough_NA_corrected %>%
-#   st_cast("MULTILINESTRING") %>%
-#   mutate(BOROUGH = as.character(BOROUGH)) # and unfactor BOROUGH for step 6
-# 
-# # 6) Add observations with correct Boroughs to main Crossing dataset
-# # 6a) Drop 28 observations with no boroughs from f_crossings dataset
-# f_crossings = f_crossings %>%
-#   filter(!is.na(BOROUGH)) # 1660 observations ie  the 1688 - 28 NAs
-# anyNA(f_crossings$BOROUGH) # = FALSE ie all dropped
-# 
-# # 6b) join corrected observations to the f_crossings
-# f_crossings = rbind(f_crossings, crossings_borough_NA_corrected) 
-# anyNA(f_crossings$BOROUGH) # = FALSE
-# 
-# # 7) Validate have correctly 
-# # 7a) Recount Boroughs after transformation
-# recount_crossings_borough = f_crossings %>%  
-#   st_drop_geometry() %>%
-#   group_by(BOROUGH) %>%
-#   summarise(Recount = n()) # 
-# 
-# number_recoded = crossings_borough_NA_corrected %>%  
-#   st_drop_geometry() %>%
-#   group_by(BOROUGH) %>%
-#   summarise(No_recoded = n())
-# 
-# # join borough counts together to check done correctly
-# crossing_boroughs = left_join(count_crossings_borough, number_recoded) %>%
-#   left_join(recount_crossings_borough) # This looks to be correct
-# x = crossing_boroughs %>%
-#   replace_na(list(Count = 0, No_recoded = 0, Recount = 0))
-# total <- sapply(x[,2:4], sum) # this gives figures of:
-# # 1688 total count
-# # 30 observation recoded (26 plus the 2+2 observations that had the same FEATURE_ID)
-# 
-# # new total number of observations in the crossings dataset of 1690 - 
-# ## ie the original 1688 that now have the correct Borough (1 extra because RWG273925 
-# # was split) plus the extra 2 observations that have the FEATURE_ID_2 codes
+# 6) Create new dataset where the 3 Crossings that have between 40 and 60% in each borough 
+# are each created as their own crossing
+crossings_borough_NA_split = crossings_borough_NA_i %>%
+  filter(FEATURE_ID_crossings %in% crossings_borough_NA_i_4060_list) %>%
+  mutate(n = 1) %>%
+  group_by(FEATURE_ID_crossings) %>%
+  mutate(count2 = cumsum(n)) %>%
+  select(-n) %>%
+  select(-BOROUGH.1)
+
+## Create new FEATURE_ID with the cumulative number so each observation has a unique ID
+crossings_borough_NA_split$FEATURE_ID_crossings =
+  paste0(crossings_borough_NA_split$FEATURE_ID, "_", crossings_borough_NA_split$count2)
+  
+# Amend df so can join 
+crossings_borough_NA_split = crossings_borough_NA_split %>%
+  select(c("FEATURE_ID","SVDATE","CRS_SIGNAL", "CRS_SEGREG", "CRS_CYGAP", "CRS_PEDEST", 
+         "CRS_LEVEL", "BOROUGH", "PHOTO1_URL", "PHOTO2_URL", "geometry", "count", 
+         "FEATURE_ID_crossings")) 
+
+# 7) Join datasets of corrected NAs
+crossings_borough_NA_corrected = rbind(crossings_borough_NA_changed, crossings_borough_NA_split)
+# n = 32 the 26 corrected plus the 3+3 split ones
+
+# 8) Add observations with correct Borough to main crossing dataset (crossing_ls_corrected)
+# 8a) Drop 29 observations with no Boroughs frist
+crossings_ls_corrected = crossings_ls_corrected %>%
+  filter(!is.na(BOROUGH)) # 1958 observations ie  the 1987 - 29 NAs
+anyNA(crossings_ls_corrected$BOROUGH) # = FALSE ie all dropped
+
+
+# 8b) join corrected observations to the f_crossings
+crossings_ls_corrected = rbind(crossings_ls_corrected, crossings_borough_NA_corrected)
+anyNA(crossings_ls_corrected$BOROUGH) # = FALSE
+# n = 1990 ie 1958 + 32
+
+# Tidy up dataframe before saving
+crossings_ls_corrected = crossings_ls_corrected %>%
+  select(-count) %>%
+  rename(old_FEATURE_ID = FEATURE_ID) %>%  # archive original FEATURE_ID
+  rename(FEATURE_ID = FEATURE_ID_crossings) %>% # use new FEATURE_ID
+  select(FEATURE_ID, everything()) %>%  # move column to beginning
+  select(-old_FEATURE_ID, everything()) # move column to end
+
+
 
 ######################
 # SAVE CLEAN DATASET #
 ######################
-saveRDS(f_crossings, file = "/home/bananafan/Documents/PhD/Paper1/data/cleansed_crossings")
+saveRDS(crossings_ls_corrected, file = "/home/bananafan/Documents/PhD/Paper1/data/cleansed_crossings")
 
 
 
@@ -663,18 +652,6 @@ saveRDS(f_crossings, file = "/home/bananafan/Documents/PhD/Paper1/data/cleansed_
 #   group_by(BOROUGH) %>%
 #   summarise(No_recoded = n())
 # 
-# # join borough counts together to check done correctly
-# crossing_boroughs = left_join(count_crossings_borough, number_recoded) %>%
-#   left_join(recount_crossings_borough) # This looks to be correct
-# x = crossing_boroughs %>%
-#   replace_na(list(Count = 0, No_recoded = 0, Recount = 0))
-# total <- sapply(x[,2:4], sum) # this gives figures of:
-# # 1688 total count
-# # 30 observation recoded (26 plus the 2+2 observations that had the same FEATURE_ID)
-# 
-# # new total number of observations in the crossings dataset of 1690 - 
-# ## ie the original 1688 that now have the correct Borough (1 extra because RWG273925 
-# # was split) plus the extra 2 observations that have the FEATURE_ID_2 codes
 
 
 
