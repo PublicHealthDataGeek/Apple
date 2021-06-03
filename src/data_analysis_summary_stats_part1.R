@@ -45,6 +45,20 @@ totals_lengths = CID_borough_length %>%
   select(-c("BOROUGH"))
 colSums(totals_lengths)
 
+# get average crossing width
+total_crossing_width = sum(st_length(c_crossings)) 
+total_crossings = nrow(c_crossings)
+total_crossing_width/total_crossings 
+#10.00341 [m]
+
+# get average asl length
+total_asl_length = sum(st_length(c_asl)) 
+total_asl = nrow(c_asl)
+total_asl_length/total_asl
+# 4.596594 [m]
+
+
+
 ################################################################################
 # 2) Calculate dates/years of surveying
 
