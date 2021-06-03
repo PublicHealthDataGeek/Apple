@@ -368,11 +368,10 @@ anyNA(crossings_ls_corrected$BOROUGH) # = FALSE
 
 # Tidy up dataframe before saving
 crossings_ls_corrected = crossings_ls_corrected %>%
-  select(-count) %>%
-  rename(old_FEATURE_ID = FEATURE_ID) %>%  # archive original FEATURE_ID
+  select(-c("count", "FEATURE_ID")) %>%
   rename(FEATURE_ID = FEATURE_ID_crossings) %>% # use new FEATURE_ID
-  select(FEATURE_ID, everything()) %>%  # move column to beginning
-  select(-old_FEATURE_ID, everything()) # move column to end
+  select(FEATURE_ID, everything())  # move column to beginning
+  
 
 sum(st_length(crossings_ls_corrected)) # check have the correct length(width) YES
 
