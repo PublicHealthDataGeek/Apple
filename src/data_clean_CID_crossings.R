@@ -214,8 +214,6 @@ new_segments_length = new_segments %>%
   group_by(FEATURE_ID) %>%
   slice(which.max(proportion))  # Yes they match in all 7
 
-
-
 # Examine the two previous multicrossing observations where 
 # Detailed inspection using mapview - comparing ESRI World Imagery as to where 
 # the crossings are compared to the road (see commented out code below)
@@ -291,13 +289,46 @@ crossings_borough_NA_changed = crossings_borough_NA_i %>%
   filter(proportion >= 60) %>%
   select(-BOROUGH.1) # n = 26
 
-# Amend df so can join 
-crossings_borough_NA_changed = crossings_borough_NA_changed %>%
+# need to pull in original geometry for the 17 observations that have proportion <100% 
+# as otherwise length and geometry will only be for the split section
+crossings_borough_NA_changed_need_geom = crossings_borough_NA_changed %>%
+  filter(proportion <100) # get df of the 17
+print(crossings_borough_NA_changed_need_geom$FEATURE_ID_crossings)
+# [1] "RWG199184_1" "RWG150947_1" "RWG025510_1" "RWG055869_1"
+# [5] "RWG184365_1" "RWG293100_1" "RWG025515_1" "RWG108004_1"
+# [9] "RWG108005_1" "RWG003325_1" "RWG244675_1" "RWG049417_1"
+# [13] "RWG273946_1" "RWG065992_1" "RWG003326_1" "RWG187249_1"
+# [17] "RWG042145_1"  n = 17
+sum(st_length(crossings_borough_NA_changed_need_geom)) # 194.2266 [m]
+sum(crossings_borough_NA_changed_need_geom$length) # 194.2266 [m]
+sum(crossings_borough_NA_changed_need_geom$total_length) #257.4651 [m]
+# 257.4651 - 194.2266 # 63.2385  ie the 63m that is missing when compare original 
+# total width of crossings 19907 with the new total width if I dont pull in the original
+# geometry for these 17 observations (19844)
+
+crossings_borough_NA_changed_need_geom = st_drop_geometry(crossings_borough_NA_changed_need_geom) # drop geometry so can join
+crossings_borough_NA_changed_need_geom = inner_join(crossings_ls_corrected 
+                                                    %>% select(geometry, FEATURE_ID_crossings), 
+                                                    crossings_borough_NA_changed_need_geom, 
+                                                    by = "FEATURE_ID_crossings") # join to original geometry 
+sum(st_length(crossings_borough_NA_changed_need_geom)) # 257.4651 [m]  now have correct length
+
+# Amend dfs so can join 
+crossings_borough_NA_changed_need_geom = crossings_borough_NA_changed_need_geom %>%
   select(c("FEATURE_ID","SVDATE","CRS_SIGNAL", "CRS_SEGREG", "CRS_CYGAP", "CRS_PEDEST", 
            "CRS_LEVEL", "BOROUGH", "PHOTO1_URL", "PHOTO2_URL", "geometry", "count", 
            "FEATURE_ID_crossings")) 
 
+crossings_borough_NA_changed_dontneed_geom = crossings_borough_NA_changed %>%
+  filter(proportion == 100) %>%
+  select(c("FEATURE_ID","SVDATE","CRS_SIGNAL", "CRS_SEGREG", "CRS_CYGAP", "CRS_PEDEST", 
+           "CRS_LEVEL", "BOROUGH", "PHOTO1_URL", "PHOTO2_URL", "geometry", "count", 
+           "FEATURE_ID_crossings")) # get the 9 that had the correct geometry
 
+# join these dataframes together  
+crossings_borough_NA_changed_correct_geom = rbind(crossings_borough_NA_changed_dontneed_geom,
+                                                  crossings_borough_NA_changed_need_geom)
+ 
 # 6) Create new dataset where the 3 Crossings that have between 40 and 60% in each borough 
 # are each created as their own crossing
 crossings_borough_NA_split = crossings_borough_NA_i %>%
@@ -319,7 +350,8 @@ crossings_borough_NA_split = crossings_borough_NA_split %>%
          "FEATURE_ID_crossings")) 
 
 # 7) Join datasets of corrected NAs
-crossings_borough_NA_corrected = rbind(crossings_borough_NA_changed, crossings_borough_NA_split)
+crossings_borough_NA_corrected = rbind(crossings_borough_NA_changed_correct_geom, 
+                                       crossings_borough_NA_split)
 # n = 32 the 26 corrected plus the 3+3 split ones
 
 # 8) Add observations with correct Borough to main crossing dataset (crossing_ls_corrected)
@@ -342,7 +374,7 @@ crossings_ls_corrected = crossings_ls_corrected %>%
   select(FEATURE_ID, everything()) %>%  # move column to beginning
   select(-old_FEATURE_ID, everything()) # move column to end
 
-
+sum(st_length(crossings_ls_corrected)) # check have the correct length(width) YES
 
 ######################
 # SAVE CLEAN DATASET #
