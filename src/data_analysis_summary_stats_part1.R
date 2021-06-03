@@ -57,6 +57,11 @@ total_asl = nrow(c_asl)
 total_asl_length/total_asl
 # 4.596594 [m]
 
+# total number of assets
+nrow(c_asl) + nrow(c_crossings) + nrow(c_cyclelanetrack) + nrow(c_parking) +
+  nrow(c_restrictedpoints) + nrow(c_restrictedroutes) + nrow(c_signage) +
+  nrow(c_signals) + nrow(c_trafficcalming)
+# n = 234251
 
 
 ################################################################################
@@ -80,29 +85,31 @@ survey_dates = c_asl %>% st_drop_geometry() %>%
           select(c("FEATURE_ID", "SVDATE"))) %>%
   rbind(c_trafficcalming %>% st_drop_geometry() %>%
           select(c("FEATURE_ID", "SVDATE")))
-dim(survey_dates)  # [1] 233951      2
+dim(survey_dates)  # [1] 234251      2
 
 # min/max survey date
-min(survey_dates$SVDATE)
-max(survey_dates$SVDATE)
+min(survey_dates$SVDATE) #[1] "2017-01-06"
+max(survey_dates$SVDATE) # [1] "6482-04-01"
+
+new_survey_dates = survey_dates %>%
+  filter(SVDATE != "6482-04-01")
+max(new_survey_dates$SVDATE) #[1] "2019-09-02"
+
 
 # obtain year of survey
-survey_dates = survey_dates %>%
+new_survey_dates = new_survey_dates %>%
   mutate(year = lubridate::year(SVDATE))
 
-# remove observation with inappropriate year
-survey_dates = survey_dates[survey_dates$FEATURE_ID != "RWG999394",]  # n = 233951
-
 #summarise
-survey_years = survey_dates %>%
+survey_years = new_survey_dates %>%
   group_by(year) %>%
   summarise(count = n()) %>%
-  mutate(percentage = round((count/233950*100), digits = 2))
+  mutate(percentage = round((count/nrow(new_survey_dates)*100), digits = 2))
 # year  count percentage
 # <dbl>  <int>      <dbl>
-# 1  2017 177593      75.9 
-# 2  2018  56340      24.1 
-# 3  2019     17       0.01
+# 2017 177692      75.9 
+# 2018  56541      24.1 
+# 2019     17       0.01
 
 
 ################################################################################
@@ -135,11 +142,11 @@ URL_NAs = c_asl %>% st_drop_geometry() %>%
   rbind(c_trafficcalming %>% st_drop_geometry() %>%
           select(c("FEATURE_ID","PHOTO1_URL", "PHOTO2_URL")) %>%
           mutate(type = "trafficcalming"))
-dim(URL_NAs)  # [1] 233951      4
+dim(URL_NAs)  # [1] 234251     4
 
 # drop observations that have same original FEATURE_ID (ie drop the ones I created by spatial splitting on boundaries)
 original_URL_NAs = URL_NAs %>%
-  filter(!str_detect(FEATURE_ID, "_ 2|_ 3|_2")) # n = 233588 observations
+  filter(!str_detect(FEATURE_ID, "_ 2|_ 3|_2|_3|_4")) # n = 233588 observations
 # ie the 233951 - the extra 3 crossings, 339 clt and 21 restricted routes
 
 # Checking total of clt, rr and crossings created 
@@ -222,6 +229,66 @@ c_signals %>%
 c_trafficcalming %>%
   st_drop_geometry() %>%
   summarytools::dfSummary()
+
+##### By width for Crossings
+crossings_width = sum(st_length(c_crossings))
+
+width_signalled_crossings = c_crossings %>%
+  group_by(CRS_SIGNAL) %>%
+  mutate(width = st_length(geometry)) %>%
+  summarise(total_width = round(sum(width), digit = 1)) %>%
+  mutate(percentage = round((total_width/crossings_width*100), digit = 1)) %>%
+  filter(CRS_SIGNAL == TRUE)
+width_signalled_crossings$total_width/
+  nrow(c_crossings %>%
+         filter(CRS_SIGNAL == TRUE))
+# 10.14757 [m]
+
+width_seg_crossings = c_crossings %>%
+  group_by(CRS_SEGREG) %>%
+  mutate(width = st_length(geometry)) %>%
+  summarise(total_width = round(sum(width), digit = 1)) %>%
+  mutate(percentage = round((total_width/crossings_width*100), digit = 1)) %>%
+  filter(CRS_SEGREG == TRUE)
+width_seg_crossings$total_width/
+  nrow(c_crossings %>%
+         filter(CRS_SEGREG == TRUE))
+# 11.38314 [m]
+
+width_cycgap_crossings = c_crossings %>%
+  group_by(CRS_CYGAP) %>%
+  mutate(width = st_length(geometry)) %>%
+  summarise(total_width = round(sum(width), digit = 1)) %>%
+  mutate(percentage = round((total_width/crossings_width*100), digit = 1)) %>%
+  filter(CRS_CYGAP == TRUE)
+width_cycgap_crossings$total_width/
+  nrow(c_crossings %>%
+         filter(CRS_CYGAP == TRUE))
+# 12.16866 [m]
+
+width_pedonly_crossings = c_crossings %>%
+  group_by(CRS_PEDEST) %>%
+  mutate(width = st_length(geometry)) %>%
+  summarise(total_width = round(sum(width), digit = 1)) %>%
+  mutate(percentage = round((total_width/crossings_width*100), digit = 1)) %>%
+  filter(CRS_PEDEST == TRUE)
+width_pedonly_crossings$total_width/
+  nrow(c_crossings %>%
+         filter(CRS_PEDEST == TRUE))
+# 8.516667 [m]
+
+width_level_crossings = c_crossings %>%
+  group_by(CRS_LEVEL) %>%
+  mutate(width = st_length(geometry)) %>%
+  summarise(total_width = round(sum(width), digit = 1)) %>%
+  mutate(percentage = round((total_width/crossings_width*100), digit = 1)) %>%
+  filter(CRS_LEVEL == TRUE)
+width_pedonly_crossings$total_width/
+  nrow(c_crossings %>%
+         filter(CRS_LEVEL == TRUE))
+#19.46667 [m]
+
+
 
 ##### By length for CLT
 c_cyclelanetrack %>%
