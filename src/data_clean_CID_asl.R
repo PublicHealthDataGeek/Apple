@@ -67,6 +67,15 @@ f_variables = c("ASL_FDR", "ASL_FDRLFT", "ASL_FDCENT", "ASL_FDRIGH",
 f_advanced_stop_line = advanced_stop_line %>%
   mutate_at(f_variables, as.factor)
 
+######################################################
+# Check to make sure all line strings ie single ASLs #
+######################################################
+
+# Examine original 1687 obs
+unique(st_geometry_type(f_advanced_stop_line)) # linestring
+sum(st_length(f_advanced_stop_line)) # = 17352.14 [m]
+
+
 ###################
 # Tidy up BOROUGH #
 ###################
