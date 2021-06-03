@@ -17,6 +17,8 @@ library(tidyverse)
 library(sf)
 library(summarytools)
 library(units)
+library(ggpmisc) # adding tables to ggplot
+
 
 # load datasets
 # These datasets were downloaded from TFL 25th February 2021 and data cleansed
@@ -45,17 +47,29 @@ totals_lengths = CID_borough_length %>%
   select(-c("BOROUGH"))
 colSums(totals_lengths)
 
-# get average crossing width
+# get mean asl length
+total_asl_length = sum(st_length(c_asl)) 
+total_asl = nrow(c_asl)
+total_asl_length/total_asl
+# 4.596594 [m]
+
+# get mean crossing width
 total_crossing_width = sum(st_length(c_crossings)) 
 total_crossings = nrow(c_crossings)
 total_crossing_width/total_crossings 
 #10.00341 [m]
 
-# get average asl length
-total_asl_length = sum(st_length(c_asl)) 
-total_asl = nrow(c_asl)
-total_asl_length/total_asl
-# 4.596594 [m]
+# get mean clt length
+total_clt_length = sum(st_length(c_cyclelanetrack)) 
+total_clt = nrow(c_cyclelanetrack)
+total_clt_length/total_clt
+# 114.6985 [m]
+
+# get mean rr length
+total_rr_length = sum(st_length(c_restrictedroutes)) 
+total_rr = nrow(c_restrictedroutes)
+total_rr_length/total_rr
+# 219.491 [m]
 
 # total number of assets
 nrow(c_asl) + nrow(c_crossings) + nrow(c_cyclelanetrack) + nrow(c_parking) +
@@ -230,6 +244,151 @@ c_trafficcalming %>%
   st_drop_geometry() %>%
   summarytools::dfSummary()
 
+##### create summary histograms
+# write function to create summary
+my.summary <- function(x,...){
+  c(Mean = round(mean(x, ...), digits = 1),
+    SD = sd(x, ...),
+    Median = median(x, ...),
+    Min = min(x, ...),
+    Max = max(x,...))
+}
+# sets units so that [] are removed around m units for ggplots
+units_options(group = c("", "")) 
+
+# 1) ASL
+asl_hist_df = c_asl %>%
+  mutate(length = drop_units(st_length(geometry))) %>%
+  st_drop_geometry()
+
+asl_summ = data.frame(
+  Measure = c("Mean", "SD", "Median", "Min", "Max"),
+  Values = set_units(round(my.summary(asl_hist_df$length), digits = 1), m)
+)
+df <- tibble(x = 15, y = 1000, tb = list(asl_summ))
+
+ggplot(asl_hist_df) + 
+  geom_histogram(aes(x = length), fill = "grey", color = "black") + 
+  theme_classic() +
+  labs(y = "Count", x = "Length (m)") +
+  scale_x_continuous(expand = c(0,0)) +
+  scale_y_continuous(expand = c(0,0)) +
+  geom_table(data = df, aes(x = x, y = y, label = tb), 
+             table.colnames = FALSE, table.theme = ttheme_gtminimal)
+
+# 2) Crossings
+crossing_hist_df = c_crossings %>%
+  mutate(length = drop_units(st_length(geometry))) %>%
+  st_drop_geometry()
+
+cross_summ = data.frame(
+  Measure = c("Mean", "SD", "Median", "Min", "Max"),
+  Values = set_units(round(my.summary(crossing_hist_df$length), digits = 1), m)
+)
+cross_df <- tibble(x = 60, y = 600, tb = list(cross_summ))
+
+ggplot(crossing_hist_df) + 
+  geom_histogram(aes(x = length), fill = "grey", color = "black") + 
+  theme_classic() +
+  labs(y = "Count", x = "Length (m)") +
+  scale_x_continuous(expand = c(0,0)) +
+  scale_y_continuous(expand = c(0,0)) +
+  geom_table(data = cross_df, aes(x = x, y = y, label = tb), 
+             table.colnames = FALSE, table.theme = ttheme_gtminimal)
+
+
+# 3) Cycle lanes and tracks
+clt_hist_df = c_cyclelanetrack %>%
+  mutate(length = drop_units(st_length(geometry))) %>%
+  st_drop_geometry()
+
+clt_summ = data.frame(
+  Measure = c("Mean", "SD", "Median", "Min", "Max"),
+  Values = set_units(round(my.summary(clt_hist_df$length), digits = 1), m)
+)
+clt_df <- tibble(x = 15000, y = 16000, tb = list(clt_summ))
+
+ggplot(clt_hist_df) + 
+  geom_histogram(aes(x = length), fill = "grey", color = "black", binwidth = 250) + 
+  theme_classic() +
+  labs(y = "Count", x = "Length (m)") +
+  scale_x_continuous(expand = c(0,0)) +
+  scale_y_continuous(expand = c(0,0)) +
+  geom_table(data = clt_df, aes(x = x, y = y, label = tb), 
+             table.colnames = FALSE, table.theme = ttheme_gtminimal)
+
+###### by length for asl
+#  calculate total length
+asl_length = sum(st_length(c_asl))
+
+length_feed_asl = c_asl %>%
+  group_by(ASL_FDR) %>%
+  mutate(length = st_length(geometry)) %>%
+  summarise(total_length = round(sum(length), digit = 1)) %>%
+  mutate(percentage = round((total_length/asl_length*100), digit = 1)) %>%
+  filter(ASL_FDR == TRUE)
+length_feed_asl$total_length/
+  nrow(c_asl %>%
+         filter(ASL_FDR == TRUE))
+# 4.497813 [m]
+
+length_left_asl = c_asl %>%
+  group_by(ASL_FDRLFT) %>%
+  mutate(length = st_length(geometry)) %>%
+  summarise(total_length = round(sum(length), digit = 1)) %>%
+  mutate(percentage = round((total_length/asl_length*100), digit = 1)) %>%
+  filter(ASL_FDRLFT == TRUE)
+length_feed_asl$total_length/
+  nrow(c_asl %>%
+         filter(ASL_FDRLFT == TRUE))
+# 4.731327 [m]
+
+length_centre_asl = c_asl %>%
+  group_by(ASL_FDCENT) %>%
+  mutate(length = st_length(geometry)) %>%
+  summarise(total_length = round(sum(length), digit = 1)) %>%
+  mutate(percentage = round((total_length/asl_length*100), digit = 1)) %>%
+  filter(ASL_FDCENT == TRUE)
+length_centre_asl$total_length/
+  nrow(c_asl %>%
+         filter(ASL_FDCENT == TRUE))
+# 4.367949 [m]
+
+length_right_asl = c_asl %>%
+  group_by(ASL_FDRIGH) %>%
+  mutate(length = st_length(geometry)) %>%
+  summarise(total_length = round(sum(length), digit = 1)) %>%
+  mutate(percentage = round((total_length/asl_length*100), digit = 1)) %>%
+  filter(ASL_FDRIGH == TRUE)
+length_right_asl$total_length/
+  nrow(c_asl %>%
+         filter(ASL_FDRIGH == TRUE))
+# 4.744444 [m]
+
+length_shared_asl = c_asl %>%
+  group_by(ASL_SHARED) %>%
+  mutate(length = st_length(geometry)) %>%
+  summarise(total_length = round(sum(length), digit = 1)) %>%
+  mutate(percentage = round((total_length/asl_length*100), digit = 1)) %>%
+  filter(ASL_SHARED == TRUE)
+length_shared_asl$total_length/
+  nrow(c_asl %>%
+         filter(ASL_SHARED == TRUE))
+# 4.9 [m]
+
+length_coloured_asl = c_asl %>%
+  filter(ASL_COLOUR != "NONE") %>%
+  mutate(length = st_length(geometry)) %>%
+  summarise(total_length = round(sum(length), digit = 1)) %>%
+  mutate(percentage = round((total_length/asl_length*100), digit = 1))
+length_coloured_asl$total_length/
+  nrow(c_asl %>%
+         filter(ASL_COLOUR != "NONE"))
+# 4.531168 [m]
+
+
+
+
 ##### By width for Crossings
 crossings_width = sum(st_length(c_crossings))
 
@@ -287,7 +446,6 @@ width_pedonly_crossings$total_width/
   nrow(c_crossings %>%
          filter(CRS_LEVEL == TRUE))
 #19.46667 [m]
-
 
 
 ##### By length for CLT
@@ -385,7 +543,6 @@ c_cyclelanetrack %>%
 
 
 ##### CLT counts for on and off road
-
 c_cyclelanetrack %>%
   st_drop_geometry() %>%
   select(-c("length_m", "length_km")) %>%
