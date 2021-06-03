@@ -265,7 +265,7 @@ asl_summ = data.frame(
   Measure = c("Mean", "SD", "Median", "Min", "Max"),
   Values = set_units(round(my.summary(asl_hist_df$length), digits = 1), m)
 )
-df <- tibble(x = 15, y = 1000, tb = list(asl_summ))
+asl_df <- tibble(x = 15, y = 1000, tb = list(asl_summ))
 
 ggplot(asl_hist_df) + 
   geom_histogram(aes(x = length), fill = "grey", color = "black") + 
@@ -273,7 +273,7 @@ ggplot(asl_hist_df) +
   labs(y = "Count", x = "Length (m)") +
   scale_x_continuous(expand = c(0,0)) +
   scale_y_continuous(expand = c(0,0)) +
-  geom_table(data = df, aes(x = x, y = y, label = tb), 
+  geom_table(data = asl_df, aes(x = x, y = y, label = tb), 
              table.colnames = FALSE, table.theme = ttheme_gtminimal)
 
 # 2) Crossings
@@ -290,7 +290,7 @@ cross_df <- tibble(x = 60, y = 600, tb = list(cross_summ))
 ggplot(crossing_hist_df) + 
   geom_histogram(aes(x = length), fill = "grey", color = "black") + 
   theme_classic() +
-  labs(y = "Count", x = "Length (m)") +
+  labs(y = "Count", x = "Width (m)") +
   scale_x_continuous(expand = c(0,0)) +
   scale_y_continuous(expand = c(0,0)) +
   geom_table(data = cross_df, aes(x = x, y = y, label = tb), 
