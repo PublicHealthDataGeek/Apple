@@ -474,16 +474,20 @@ width_pedonly_crossings$total_width/
 
 
 ##### By length for CLT
-length_no_characteristics = c_cyclelanetrack %>%
-  filter(CLT_CARR == FALSE & ASL_FDRLFT == FALSE & ASL_FDCENT == FALSE & ASL_FDRIGH == FALSE &
-           ASL_SHARED == FALSE & ASL_COLOUR == "NONE") %>%
-  mutate(length = st_length(geometry)) %>%
-  summarise(total_length = round(sum(length), digit = 1)) %>%
-  mutate(percentage = round((total_length/asl_length*100), digit = 1))
-length_no_characteristics$total_length/
-  nrow(c_asl %>%
-         filter(ASL_FDR == FALSE & ASL_FDRLFT == FALSE & ASL_FDCENT == FALSE & ASL_FDRIGH == FALSE &
-                  ASL_SHARED == FALSE & ASL_COLOUR == "NONE"))
+# length_no_characteristics = c_cyclelanetrack %>%
+#   filter(CLT_CARR == FALSE & CLT_SEGREG == FALSE & CLT_STEPP == FALSE & 
+#            CLT_PARSEG == FALSE & CLT_SHARED == FALSE & CLT_MANDAT == FALSE &
+#            CLT_ADVIS == FALSE & CLT_PRIORI == FALSE & CLT_CONTRA == FALSE &
+#            CLT_BIDIRE == FALSE & CLT_CBYPAS == FALSE & CLT_BBYPAS == FALSE &
+#            CLT_PARKR == FALSE & CLT_WATERR == FALSE & CLT_PTIME == FALSE &
+#            CLT_COLOUR == "NONE") %>%
+#   mutate(length = st_length(geometry)) %>%
+#   summarise(total_length = round(sum(length), digit = 1)) %>%
+#   mutate(percentage = round((total_length/asl_length*100), digit = 1))
+# length_no_characteristics$total_length/
+#   nrow(c_asl %>%
+#          filter(ASL_FDR == FALSE & ASL_FDRLFT == FALSE & ASL_FDCENT == FALSE & ASL_FDRIGH == FALSE &
+#                   ASL_SHARED == FALSE & ASL_COLOUR == "NONE"))
 
 
 c_cyclelanetrack %>%
