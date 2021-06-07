@@ -139,7 +139,7 @@ asl_feeder_lanes = asl_numeric %>%
 
 ################################################################################
 #                     
-#                             Crossings (n = 1690)
+#                             Crossings (n = 1990)
 #
 ################################################################################
 
@@ -147,20 +147,20 @@ c_crossings %>%
   st_drop_geometry() %>%
   summarytools::dfSummary()
 
-# CRS_SIGNAL    1. FALSE                        434 (25.7%)                                
-# [factor]      2. TRUE                         1256 (74.3%)            
+# CRS_SIGNAL    1. FALSE                        470 (23.6%)                                
+# [factor]      2. TRUE                        1520 (76.4%)            
 # 
-# CRS_SEGREG    1. FALSE                        1372 (81.2%)          
-# [factor]      2. TRUE                          318 (18.8%)          
+# CRS_SEGREG    1. FALSE                       1652 (83.0%)           
+# [factor]      2. TRUE                          338 (17.0%)          
 # 
-# CRS_CYGAP     1. FALSE                        1566 (92.7%)          
-# [factor]      2. TRUE                          124 ( 7.3%)          
+# CRS_CYGAP     1. FALSE                        1856 (93.3%)         
+# [factor]      2. TRUE                          134 ( 6.7%)        
 
-# CRS_PEDEST    1. FALSE                        1648 (97.5%)        
-# [factor]      2. TRUE                           42 ( 2.5%)          
+# CRS_PEDEST    1. FALSE                        1942 (97.6%)        
+# [factor]      2. TRUE                           48 ( 2.4%)           
 # 
-# CRS_LEVEL     1. FALSE                        1670 (98.8%)        
-# [factor]      2. TRUE                           20 ( 1.2%)       
+# CRS_LEVEL     1. FALSE                          1969 (98.9%)    
+# [factor]      2. TRUE                           21 ( 1.1%)       
 
 # Are these unique signals or do some signals have more than one characteristic? 
 print(ctable(x = c_crossings$CRS_SIGNAL, y = c_crossings$CRS_SEGREG))
@@ -184,11 +184,11 @@ crossings_numeric$CRS_PEDEST_NUMERIC = ifelse(crossings_numeric$CRS_PEDEST_NUMER
 crossings_numeric$CRS_LEVEL_NUMERIC = ifelse(crossings_numeric$CRS_LEVEL_NUMERIC == 1, 0, 1)
 
 # # Check now gives the count that I expect  -YES THEY DO
-# sum(crossings_numeric$CRS_SIGNAL_NUMERIC) # n = 1256
-# sum(crossings_numeric$CRS_SEGREG_NUMERIC) # n = 318
-# sum(crossings_numeric$CRS_CYGAP_NUMERIC) # n = 124
-# sum(crossings_numeric$CRS_PEDEST_NUMERIC) # n = 42
-# sum(crossings_numeric$CRS_LEVEL_NUMERIC) # n = 20
+# sum(crossings_numeric$CRS_SIGNAL_NUMERIC) # n = 1520
+# sum(crossings_numeric$CRS_SEGREG_NUMERIC) # n = 338
+# sum(crossings_numeric$CRS_CYGAP_NUMERIC) # n = 134
+# sum(crossings_numeric$CRS_PEDEST_NUMERIC) # n = 48
+# sum(crossings_numeric$CRS_LEVEL_NUMERIC) # n = 21
 
 # Recode to give weighted value with so can distinguish between different characteristics
 crossings_numeric$CRS_SIGNAL_weight = ifelse(crossings_numeric$CRS_SIGNAL_NUMERIC == 1, 10000, 0)
@@ -206,20 +206,20 @@ crossings_characteristics = crossings_numeric %>%
   st_drop_geometry() %>%
   group_by(weight_5) %>%
   summarise(count = n())
-sum(crossings_characteristics$count) # n = 1690
+sum(crossings_characteristics$count) # n = 1990
 #     weight_5 count
-# 1         0   200  Not signal controlled, not segre, no gap, not ped only, no level crossing
+# 1         0   224  Not signal controlled, not segre, no gap, not ped only, no level crossing
 # 2         1    15 Just level cross
-# 3        10    16 Just pedestrian only
-# 4        11     5  Level crossing and pedestrian only
-# 5       100    14  Just cycle gao
-# 6      1000   116  Just segreg
-# 7      1100    68  Segreg with gap
-# 8     10000  1100  Just signal controlled
-# 9     10010    21  Signal controlled by pedestrian only crossing
-# 10    10100     1  Signal controlled with gap
-# 11    11000    93  Signal controlled with segregation
-# 12    11100    41  Signal controlled with segreg and gap
+# 3        10    17 Just pedestrian only
+# 4        11     6  Level crossing and pedestrian only
+# 5       100    15  Just cycle gao
+# 6      1000   121  Just segreg
+# 7      1100    72  Segreg with gap
+# 8     10000  1348  Just signal controlled
+# 9     10010    25  Signal controlled by pedestrian only crossing
+# 10    10100     2  Signal controlled with gap
+# 11    11000    100  Signal controlled with segregation
+# 12    11100    45  Signal controlled with segreg and gap
 
 
 
