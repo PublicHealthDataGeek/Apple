@@ -321,6 +321,18 @@ ggplot(clt_hist_df) +
 #  calculate total length
 asl_length = sum(st_length(c_asl))
 
+length_no_characteristics = c_asl %>%
+  filter(ASL_FDR == FALSE & ASL_FDRLFT == FALSE & ASL_FDCENT == FALSE & ASL_FDRIGH == FALSE &
+           ASL_SHARED == FALSE & ASL_COLOUR == "NONE") %>%
+  mutate(length = st_length(geometry)) %>%
+  summarise(total_length = round(sum(length), digit = 1)) %>%
+  mutate(percentage = round((total_length/asl_length*100), digit = 1))
+length_no_characteristics$total_length/
+  nrow(c_asl %>%
+         filter(ASL_FDR == FALSE & ASL_FDRLFT == FALSE & ASL_FDCENT == FALSE & ASL_FDRIGH == FALSE &
+                  ASL_SHARED == FALSE & ASL_COLOUR == "NONE"))
+# 4.703635 [m]
+
 length_feed_asl = c_asl %>%
   group_by(ASL_FDR) %>%
   mutate(length = st_length(geometry)) %>%
@@ -392,6 +404,19 @@ length_coloured_asl$total_length/
 ##### By width for Crossings
 crossings_width = sum(st_length(c_crossings))
 
+width_no_characteristics = c_crossings %>%
+  filter(CRS_SIGNAL == FALSE & CRS_SEGREG == FALSE & CRS_CYGAP == FALSE & CRS_PEDEST == FALSE &
+           CRS_LEVEL == FALSE) %>%
+  mutate(width = st_length(geometry)) %>%
+  summarise(total_width = round(sum(width), digit = 1)) %>%
+  mutate(percentage = round((total_width/crossings_width*100), digit = 1))
+width_no_characteristics$total_width/
+  nrow(c_crossings %>%
+         filter(CRS_SIGNAL == FALSE & CRS_SEGREG == FALSE & CRS_CYGAP == FALSE & CRS_PEDEST == FALSE &
+                  CRS_LEVEL == FALSE))
+# 9.313839 [m]
+
+
 width_signalled_crossings = c_crossings %>%
   group_by(CRS_SIGNAL) %>%
   mutate(width = st_length(geometry)) %>%
@@ -449,6 +474,18 @@ width_pedonly_crossings$total_width/
 
 
 ##### By length for CLT
+length_no_characteristics = c_cyclelanetrack %>%
+  filter(CLT_CARR == FALSE & ASL_FDRLFT == FALSE & ASL_FDCENT == FALSE & ASL_FDRIGH == FALSE &
+           ASL_SHARED == FALSE & ASL_COLOUR == "NONE") %>%
+  mutate(length = st_length(geometry)) %>%
+  summarise(total_length = round(sum(length), digit = 1)) %>%
+  mutate(percentage = round((total_length/asl_length*100), digit = 1))
+length_no_characteristics$total_length/
+  nrow(c_asl %>%
+         filter(ASL_FDR == FALSE & ASL_FDRLFT == FALSE & ASL_FDCENT == FALSE & ASL_FDRIGH == FALSE &
+                  ASL_SHARED == FALSE & ASL_COLOUR == "NONE"))
+
+
 c_cyclelanetrack %>%
   st_drop_geometry() %>%
   group_by(CLT_CARR) %>%
