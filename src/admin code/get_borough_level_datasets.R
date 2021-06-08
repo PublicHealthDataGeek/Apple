@@ -4,6 +4,9 @@
 # This script using the cleansed CID data where the Boroughs have been corrected #  
 # to develop datasets for Borough level analysis                                 #
 #                                                                                #
+# This code was rerun on 8th June because the number of Crossings was altered    #
+# as the multicrossing observations all became single crossing observations      #
+# (see data_clean_CID_crossings.R)                                               #
 ##################################################################################
 
 # install packages
@@ -49,65 +52,64 @@ crossings_borough_count = c_crossings %>%
   group_by(BOROUGH) %>%
   summarise(Crossings = n()) # 33 boroughs no NAs
 
-# ## c) Cycle lanes and tracks
-cycle_lane_track_borough_count = c_cyclelanetrack %>%
-  st_drop_geometry() %>%
-  group_by(BOROUGH) %>%
-  summarise(CycleLanesAndTracks = n()) # 33 boroughs no NAs
-
-# ## d) Restricted routes
-restricted_route_borough_count = c_Rroutes %>%
-  st_drop_geometry() %>%
-  group_by(BOROUGH) %>%
-  summarise(RestrictedRoutes = n()) # 33 boroughs no NAs
-
-# ## e) Cycle Parking sites
-cycle_parking_sites_borough_count = c_parking %>%
-  st_drop_geometry() %>%
-  group_by(BOROUGH) %>%
-  summarise(CycleParkingSites = n()) # 33 boroughs no NAs
-
-# ## f) Cycle Parking spaces
-cycle_parking_space_borough_count = c_parking %>%
-  st_drop_geometry() %>%
-  group_by(BOROUGH) %>%
-  summarise(CycleParkingSpaces = sum(PRK_CPT))
-
-# ## g) Signals
+# ##  c) Signals
 signal_borough_count = c_signals %>%
   st_drop_geometry() %>%
   group_by(BOROUGH) %>%
   summarise(Signals = n()) # 23 boroughs no NAs
 
-# ## h) Signage
-signage_borough_count = c_signage %>%
-  st_drop_geometry() %>%
-  group_by(BOROUGH) %>%
-  summarise(Signage = n()) # 33 boroughs no NAs
-
-# ## i) Restricted points
-restricted_points_borough_count = c_Rpoints %>%
-  st_drop_geometry() %>%
-  group_by(BOROUGH) %>%
-  summarise(Restricted_Points = n()) # 27 boroughs no NAs
-
-# ## j) Traffic calming
+# ## d) Traffic calming
 traffic_calming_borough_count= c_trafficcalming %>%
   st_drop_geometry() %>%
   group_by(BOROUGH) %>%
   summarise(TrafficCalming = n()) # 27 boroughs no NAs
 
+# ## e) Cycle lanes and tracks
+cycle_lane_track_borough_count = c_cyclelanetrack %>%
+  st_drop_geometry() %>%
+  group_by(BOROUGH) %>%
+  summarise(CycleLanesAndTracks = n()) # 33 boroughs no NAs
+
+# ## f) Restricted routes
+restricted_route_borough_count = c_Rroutes %>%
+  st_drop_geometry() %>%
+  group_by(BOROUGH) %>%
+  summarise(RestrictedRoutes = n()) # 33 boroughs no NAs
+
+# ## g) Cycle Parking sites
+cycle_parking_sites_borough_count = c_parking %>%
+  st_drop_geometry() %>%
+  group_by(BOROUGH) %>%
+  summarise(CycleParkingSites = n()) # 33 boroughs no NAs
+
+# ## h) Cycle Parking spaces
+cycle_parking_space_borough_count = c_parking %>%
+  st_drop_geometry() %>%
+  group_by(BOROUGH) %>%
+  summarise(CycleParkingSpaces = sum(PRK_CPT))
+
+# ## i) Signage
+signage_borough_count = c_signage %>%
+  st_drop_geometry() %>%
+  group_by(BOROUGH) %>%
+  summarise(Signage = n()) # 33 boroughs no NAs
+
+# ## j) Restricted points
+restricted_points_borough_count = c_Rpoints %>%
+  st_drop_geometry() %>%
+  group_by(BOROUGH) %>%
+  summarise(Restricted_Points = n()) # 27 boroughs no NAs
 
 # 2) Create count dataset
 CID_count_borough = list(asl_borough_count, crossings_borough_count, 
-                      cycle_lane_track_borough_count, 
-                      restricted_route_borough_count,
-                      cycle_parking_sites_borough_count,
-                      cycle_parking_space_borough_count,
-                      signal_borough_count,
-                      traffic_calming_borough_count,
-                      signage_borough_count,
-                      restricted_points_borough_count) %>%
+                         signal_borough_count,
+                         traffic_calming_borough_count,
+                         cycle_lane_track_borough_count, 
+                         restricted_route_borough_count,
+                         cycle_parking_sites_borough_count,
+                         cycle_parking_space_borough_count,
+                         signage_borough_count,
+                         restricted_points_borough_count) %>%
   reduce(left_join, by = "BOROUGH")
 
 # 3) Replace NA in count with 0
