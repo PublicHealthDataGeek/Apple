@@ -247,14 +247,53 @@ c_trafficcalming %>%
 ##### create summary histograms
 # write function to create summary
 my.summary <- function(x,...){
-  c(Mean = round(mean(x, ...), digits = 1),
+  c(Mean = mean(x, ...),
     SD = sd(x, ...),
     Median = median(x, ...),
     Min = min(x, ...),
     Max = max(x,...))
 }
+
+my.summary2 <- function(x,...){
+  c(Mean = paste0(round(mean(x, ...), digits = 1), " m"),
+    SD = paste0(round(sd(x, ...), digits = 1), " m"),
+    Median = paste0(round(median(x, ...), digits = 1), " m"),
+    IQR = paste0(round((quantile(x, 0.25)), digits = 1), " - ", 
+                 round((quantile(x, 0.75)), digits = 1), " m"),
+    Min = paste0(round(min(x, ...), digits = 1), " m"),
+    Max = paste0(round(max(x,...), digits = 1), " m"))
+}
+
+my.summary_clt <- function(x,...){
+  c(Mean = paste0(round(mean(x, ...), digits = 1), " m"),
+    SD = paste0(round(sd(x, ...), digits = 1), " m"),
+    Median = paste0(round(median(x, ...), digits = 1), " m"),
+    IQR = paste0(round((quantile(x, 0.25)), digits = 1), " - ", 
+                 round((quantile(x, 0.75)), digits = 1), " m"),
+    Min = paste0(round(min(x, ...), digits = 2), " m"),
+    Max = paste0(round(max(x,...), digits = 1), " m"))
+}
+
 # sets units so that [] are removed around m units for ggplots
 units_options(group = c("", "")) 
+
+#### code to obtain original usmmary statistics 
+# library(CycleInfraLnd)
+# asl = st_transform(get_cid_lines(type = "advanced_stop_line"), crs = 27700)
+# crossings = st_transform(get_cid_lines(type = "crossing"), crs = 27700)
+# cycle_lane_track = st_transform(get_cid_lines(type = "cycle_lane_track"), crs = 27700)
+# summary(st_length(asl))
+# # Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+# # 1.222   3.897   4.503   4.597   5.082  20.633 
+# summary(st_length(crossings))
+# # Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+# # 0.7531  7.3700  9.8495 11.8003 14.0031 76.8535 
+# summary(st_length(cycle_lane_track))
+# # Min.  1st Qu.   Median     Mean  3rd Qu.     Max. 
+# # 0.28    16.05    44.08   116.35   108.71 19814.96 
+
+
+
 
 # 1) ASL
 asl_hist_df = c_asl %>%
@@ -265,7 +304,13 @@ asl_summ = data.frame(
   Measure = c("Mean", "SD", "Median", "Min", "Max"),
   Values = set_units(round(my.summary(asl_hist_df$length), digits = 1), m)
 )
+
+asl_summ2 = data.frame(
+  Measure = c("Mean", "SD", "Median","IQR", "Min", "Max"),
+  Values = my.summary2(asl_hist_df$length))
+
 asl_df <- tibble(x = 15, y = 1000, tb = list(asl_summ))
+asl_df2 <- tibble(x = 15, y = 1000, tb = list(asl_summ2))
 
 ggplot(asl_hist_df) + 
   geom_histogram(aes(x = length), fill = "grey", color = "black") + 
@@ -275,6 +320,16 @@ ggplot(asl_hist_df) +
   scale_y_continuous(expand = c(0,0)) +
   geom_table(data = asl_df, aes(x = x, y = y, label = tb), 
              table.colnames = FALSE, table.theme = ttheme_gtminimal)
+# using my.summary2 function
+ggplot(asl_hist_df) + 
+  geom_histogram(aes(x = length), fill = "grey", color = "black") + 
+  theme_classic() +
+  labs(y = "Count", x = "Length (m)") +
+  scale_x_continuous(expand = c(0,0)) +
+  scale_y_continuous(expand = c(0,0)) +
+  geom_table(data = asl_df2, aes(x = x, y = y, label = tb), 
+             table.colnames = FALSE, table.theme = ttheme_gtminimal)
+
 
 # or boxplot
 asl_box_df <- tibble(x = 15, y = 0.4, tb = list(asl_summ))
@@ -297,7 +352,12 @@ cross_summ = data.frame(
   Measure = c("Mean", "SD", "Median", "Min", "Max"),
   Values = set_units(round(my.summary(crossing_hist_df$length), digits = 1), m)
 )
+cross_summ2 = data.frame(
+  Measure = c("Mean", "SD", "Median","IQR", "Min", "Max"),
+  Values = my.summary2(crossing_hist_df$length))
+
 cross_df <- tibble(x = 60, y = 600, tb = list(cross_summ))
+cross_df2 <- tibble(x = 60, y = 600, tb = list(cross_summ2))
 
 ggplot(crossing_hist_df) + 
   geom_histogram(aes(x = length), fill = "grey", color = "black") + 
@@ -307,7 +367,15 @@ ggplot(crossing_hist_df) +
   scale_y_continuous(expand = c(0,0)) +
   geom_table(data = cross_df, aes(x = x, y = y, label = tb), 
              table.colnames = FALSE, table.theme = ttheme_gtminimal)
-
+# using my.summary2: 
+ggplot(crossing_hist_df) + 
+  geom_histogram(aes(x = length), fill = "grey", color = "black") + 
+  theme_classic() +
+  labs(y = "Count", x = "Width (m)") +
+  scale_x_continuous(expand = c(0,0)) +
+  scale_y_continuous(expand = c(0,0)) +
+  geom_table(data = cross_df2, aes(x = x, y = y, label = tb), 
+             table.colnames = FALSE, table.theme = ttheme_gtminimal)
 
 # 3) Cycle lanes and tracks
 clt_hist_df = c_cyclelanetrack %>%
@@ -318,7 +386,13 @@ clt_summ = data.frame(
   Measure = c("Mean", "SD", "Median", "Min", "Max"),
   Values = set_units(round(my.summary(clt_hist_df$length), digits = 1), m)
 )
+
+clt_summ2 = data.frame(
+  Measure = c("Mean", "SD", "Median","IQR", "Min", "Max"),
+  Values = my.summary_clt(clt_hist_df$length))
+
 clt_df <- tibble(x = 15000, y = 16000, tb = list(clt_summ))
+clt_df2 <- tibble(x = 15000, y = 16000, tb = list(clt_summ2))
 
 ggplot(clt_hist_df) + 
   geom_histogram(aes(x = length), fill = "grey", color = "black", binwidth = 250) + 
@@ -328,6 +402,18 @@ ggplot(clt_hist_df) +
   scale_y_continuous(expand = c(0,0)) +
   geom_table(data = clt_df, aes(x = x, y = y, label = tb), 
              table.colnames = FALSE, table.theme = ttheme_gtminimal)
+
+# using my.summary_clt
+ggplot(clt_hist_df) + 
+  geom_histogram(aes(x = length), fill = "grey", color = "black", binwidth = 250) + 
+  theme_classic() +
+  labs(y = "Count", x = "Length (m)") +
+  scale_x_continuous(expand = c(0,0)) +
+  scale_y_continuous(expand = c(0,0)) +
+  geom_table(data = clt_df2, aes(x = x, y = y, label = tb), 
+             table.colnames = FALSE, table.theme = ttheme_gtminimal)
+
+
 
 ###### by length for asl
 #  calculate total length
