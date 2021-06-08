@@ -276,6 +276,18 @@ ggplot(asl_hist_df) +
   geom_table(data = asl_df, aes(x = x, y = y, label = tb), 
              table.colnames = FALSE, table.theme = ttheme_gtminimal)
 
+# or boxplot
+asl_box_df <- tibble(x = 15, y = 0.4, tb = list(asl_summ))
+ggplot(asl_hist_df) + 
+  geom_boxplot(aes(x = length), fill = "grey", color = "black") + 
+  theme_classic() +
+  labs(x = "Length (m)") +
+  theme(axis.title.y = element_blank(),
+        axis.text.y = element_blank(),
+        axis.ticks.y = element_blank()) +
+  geom_table(data = asl_box_df, aes(x = x, y = y, label = tb), 
+             table.colnames = FALSE, table.theme = ttheme_gtminimal)
+
 # 2) Crossings
 crossing_hist_df = c_crossings %>%
   mutate(length = drop_units(st_length(geometry))) %>%
