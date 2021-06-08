@@ -72,7 +72,10 @@ CID_count_rank = CID_count_rank %>%
 df = CID_count %>%
   select(-c(BOROUGH, London))
 summ = df %>%
-  summarise(across(everything(), list(min = min, max = max, mean = mean, sd = sd)))
+  summarise(across(everything(), list(min = min, max = max, median = median, 
+                                      Q1 = ~quantile(., probs = 0.25), 
+                                      Q3 = ~quantile(., probs = 0.75),
+                                      mean = mean, sd = sd)))
 
 # b) Pivot and manipulate to get data into asset, min, max, mean, sd column format
 summ2 = summ %>% pivot_longer(
@@ -82,12 +85,15 @@ summ2 = summ %>% pivot_longer(
 
 summ2 = summ2 %>%
   mutate_if(is.numeric, round) # round to whole numbers
+summ2 = summ2 %>%
+  mutate(across(.cols = c("mean", "sd"), round, 1))
 
 # c) Create new columns for range plus mean(sd) then drop single columns (min, max, mean, sd)
 summ2$Range = paste(summ2$min, "-", summ2$max)
 summ2$Mean = paste(summ2$mean, "(", summ2$sd, ")")
+summ2$MedianIQR = paste(summ2$median, "(", summ2$Q1, " - ", summ2$Q3, ")")
 summ2 = summ2 %>%
-  select(c(Asset, Range, Mean))
+  select(c(Asset, Range, Mean, MedianIQR))
 
 # d) Rotate dataframe and change columns names so that it is in original table format 
 summ3 = as.data.frame(t(summ2))  
@@ -96,8 +102,8 @@ names(summ3) <- summ3 %>% slice(1) %>% unlist() # change column labels to the on
 summ3 <- summ3 %>% slice(-1) # and drop the first row that had the column names in
 
 # e) Add columns in order to match the original table plus use labels that will make sense with gt                 
-summ3$BOROUGH = c("Range", "Mean(SD)") 
-summ3$London = c("Summary statistics", "Summary statistics")               
+summ3$BOROUGH = c("Range", "Mean(SD)", "Median(IQR)") 
+summ3$London = c("Summary statistics", "Summary statistics", "Summary statistics")               
 final_count_summ = summ3 %>%
   select(c("BOROUGH", "ASL", "Crossings", 
            "CycleLanesAndTracks", "RestrictedRoutes", 
@@ -107,7 +113,7 @@ final_count_summ = summ3 %>%
 
 # f) Bind summary statistics to original table and ensure factor order will make summary statistics at top
 count_df = rbind(CID_count_rank, final_count_summ)
-count_df$London = factor(new_df$London, levels = c("Summary statistics", "Inner London", "Outer London")) 
+count_df$London = factor(count_df$London, levels = c("Summary statistics", "Inner London", "Outer London")) 
 
 
 ###############################################################################
@@ -178,20 +184,23 @@ CID_length_rank = CID_length_rank %>%
 df = CID_length %>%
   select(c("CycleLaneTrack_km", "RestrictedRoute_km"))
 summ = df %>%
-  summarise(across(everything(), list(min = min, max = max, mean = mean, sd = sd)))
-
+  summarise(across(everything(), list(min = min, max = max, median = median, 
+                                      Q1 = ~quantile(., probs = 0.25), 
+                                      Q3 = ~quantile(., probs = 0.75),
+                                      mean = mean, sd = sd)))
 summ2 = summ %>% pivot_longer(
   everything(),
   names_to = c("Asset", ".value"),
   names_pattern = "(.*)_(.*)") 
 summ2 = summ2 %>%
-  mutate_if(is.numeric, round, 2)
+  mutate_if(is.numeric, round, 1)
 
 # Create new columns for range plus mean(sd) then drop single columns (min, max, mean, sd)
 summ2$Range = paste(summ2$min, "-", summ2$max, "km")
 summ2$Mean = paste(summ2$mean, "km (", summ2$sd, "km)")
+summ2$MedianIQR = paste(summ2$median, "km (", summ2$Q1, " - ", summ2$Q3, "km)")
 summ2 = summ2 %>%
-  select(c(Asset, Range, Mean))
+  select(c(Asset, Range, Mean, MedianIQR))
 
 summ3 = as.data.frame(t(summ2))  # rotate dataframe to get back into same shape as table
 
@@ -199,12 +208,12 @@ names(summ3) <- summ3 %>% slice(1) %>% unlist() # change column labels to the on
 summ3 <- summ3 %>% slice(-1) # and drop the first row that had the column names in
 
 # add columns in order to match the table plus use labels that will make sense with gt                 
-summ3$BOROUGH = c("Range", "Mean(SD)") 
-summ3$London = c("Summary statistics", "Summary statistics")               
+summ3$BOROUGH = c("Range", "Mean(SD)", "Median(IQR)") 
+summ3$London = c("Summary statistics", "Summary statistics", "Summary statistics")               
 final_len_summ = summ3 
 
 len_df = rbind(CID_length_rank, final_len_summ)
-len_df$London = factor(new_df$London, levels = c("Summary statistics", "Inner London", "Outer London")) 
+len_df$London = factor(len_df$London, levels = c("Summary statistics", "Inner London", "Outer London")) 
 
 #####
 # column bind count_df with length_df
@@ -275,7 +284,7 @@ saveRDS(clt_rr_ranks, file = "/home/bananafan/Documents/PhD/Paper1/data/clt_rr_r
 
 safety_df = count_len_summary_df %>%
   select(c("BOROUGH", "ASL", "Crossings", "Signals", "TrafficCalming",
-           "London", "CycleLaneTrack_km", "RestrictedRoute_km"))
+           "London", "CycleLaneTrack_km"))
 
 # Create table
 safety_summary_table = safety_df %>%
@@ -292,10 +301,10 @@ safety_summary_table = safety_df %>%
     subtitle = md("*Number or length with Borough rank in brackets except for Summary statistics section*")) %>%
   cols_label(
     BOROUGH = "Borough", CycleLaneTrack_km = "Lanes and tracks",
-    RestrictedRoute_km = "Restricted routes", TrafficCalming = "Traffic calming") %>%
+    TrafficCalming = "Traffic calming") %>%
   tab_style(
     style = cell_text(weight = "bold"),
-    locations = cells_column_labels(columns = TRUE)) %>%
+    locations = cells_column_labels(columns = everything())) %>%
   tab_style(
     style = cell_text(weight = "bold"),
     locations = cells_row_groups())

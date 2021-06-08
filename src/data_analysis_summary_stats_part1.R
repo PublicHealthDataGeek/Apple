@@ -710,7 +710,12 @@ clt_on_off = c_cyclelanetrack %>%
   mutate(on_off = case_when(CLT_CARR == 'TRUE' ~ "onroad", 
                             TRUE ~ "offroad")) 
 
-# create multiple datasets that measure length pf variables by on/off road status
+# create multiple datasets that measure length of variables by on/off road status
+on_off_l = clt_on_off %>%
+  group_by(on_off) %>%
+  summarise(sum = sum(length_km)) %>%
+  mutate(perc = drop_units(round((sum/sum(sum)*100), digit = 1)))
+
 seg_l = clt_on_off %>%
   group_by(on_off) %>%
   filter(CLT_SEGREG == TRUE) %>%
@@ -867,7 +872,136 @@ ggplot() +
   scale_x_continuous(expand = c(0,0), breaks = c(0, 1000, 2000), limits = c(0, 2050))   
 # save with width at 439
 
+#######
+# Rejig table so that it is useful for results section
+#######
+t_on_off_clt_comparison_lengths = setNames(data.frame(t(on_off_clt_comparison_lengths[,-1])), on_off_clt_comparison_lengths[,1])
+t_on_off_clt_comparison_lengths= round(t_on_off_clt_comparison_lengths, digits = 1)
 
+# do above for clt counts data
+on_off_c = clt_on_off %>%
+  group_by(on_off) %>%
+  summarise(n = n()) %>%
+  mutate(n_perc = round((n/sum(n)*100), digit = 1))
+
+seg_c = clt_on_off %>%
+  group_by(on_off) %>%
+  filter(CLT_SEGREG == TRUE) %>%
+  summarise(segreg = n()) %>%
+  mutate(seg_perc = round((segreg/sum(segreg)*100), digit = 1))
+stepp_c = clt_on_off %>%
+  group_by(on_off) %>%
+  filter(CLT_STEPP == TRUE) %>%
+  summarise(stepp = n()) %>%
+  mutate(stepp_perc = round((stepp/sum(stepp)*100), digit = 1))
+partseg_c = clt_on_off %>%
+  group_by(on_off) %>%
+  filter(CLT_PARSEG == TRUE) %>%
+  summarise(partsegreg = n()) %>%
+  mutate(partseg_perc = round((partsegreg/sum(partsegreg)*100), digit = 1))
+shared_c = clt_on_off %>%
+  group_by(on_off) %>%
+  filter(CLT_SHARED == TRUE) %>%
+  summarise(shared = n()) %>%
+  mutate(shared_perc = round((shared/sum(shared)*100), digit = 1))
+mandat_c = clt_on_off %>%
+  group_by(on_off) %>%
+  filter(CLT_MANDAT == TRUE) %>%
+  summarise(mandat = n()) %>%
+  mutate(mandat_perc = round((mandat/sum(mandat)*100), digit = 1))
+advis_c = clt_on_off %>%
+  group_by(on_off) %>%
+  filter(CLT_ADVIS == TRUE) %>%
+  summarise(advis = n()) %>%
+  mutate(advis_perc = round((advis/sum(advis)*100), digit = 1))
+priority_c = clt_on_off %>%
+  group_by(on_off) %>%
+  filter(CLT_PRIORI == TRUE) %>%
+  summarise(priority = n()) %>%
+  mutate(priority_perc = round((priority/sum(priority)*100), digit = 1))
+contra_c = clt_on_off %>%
+  group_by(on_off) %>%
+  filter(CLT_CONTRA == TRUE) %>%
+  summarise(contra = n()) %>%
+  mutate(contra_perc = round((contra/sum(contra)*100), digit = 1))
+bidir_c = clt_on_off %>%
+  group_by(on_off) %>%
+  filter(CLT_BIDIRE == TRUE) %>%
+  summarise(bidir = n()) %>%
+  mutate(bidir_perc = round((bidir/sum(bidir)*100), digit = 1))
+bypass_c = clt_on_off %>%
+  group_by(on_off) %>%
+  filter(CLT_CBYPAS == TRUE) %>%
+  summarise(bypass = n()) %>%
+  mutate(bypass_perc = round((bypass/sum(bypass)*100), digit = 1))
+busbypass_c = clt_on_off %>%
+  group_by(on_off) %>%
+  filter(CLT_BBYPAS == TRUE) %>%
+  summarise(busbypass = n()) %>%
+  mutate(busbypass_perc = round((busbypass/sum(busbypass)*100), digit = 1))
+park_c = clt_on_off %>%
+  group_by(on_off) %>%
+  filter(CLT_PARKR == TRUE) %>%
+  summarise(park = n()) %>%
+  mutate(park_perc = round((park/sum(park)*100), digit = 1))
+water_c = clt_on_off %>%
+  group_by(on_off) %>%
+  filter(CLT_WATERR == TRUE) %>%
+  summarise(water = n()) %>%
+  mutate(water_perc = round((water/sum(water)*100), digit = 1))
+parttime_c = clt_on_off %>%
+  group_by(on_off) %>%
+  filter(CLT_PTIME == TRUE) %>%
+  summarise(parttime = n()) %>%
+  mutate(parttime_perc = round((parttime/sum(parttime)*100), digit = 1))
+colour_c = clt_on_off %>%
+  group_by(on_off) %>%
+  filter(CLT_COLOUR != "NONE") %>%
+  summarise(colour = n()) %>%
+  mutate(colour_perc = round((colour/sum(colour)*100), digit = 1))
+
+# join these datasets together to get summary of on/off road comparison of counts
+on_off_clt_comparison_counts = plyr::join_all(
+  list(colour_c, parttime_c, water_c, park_c, busbypass_c, bypass_c, bidir_c, contra_c,
+       priority_c, advis_c, mandat_c, shared_c, partseg_c, stepp_c, seg_c),
+  by = 'on_off', type = 'left')
+
+rm(colour_c, parttime_c, water_c, park_c, busbypass_c, bypass_c, bidir_c, contra_c,
+   priority_c, advis_c, mandat_c, shared_c, partseg_c, stepp_c, seg_c)
+
+
+# convert NAs to 0 (there are no onroad lanes that are by water)
+on_off_clt_comparison_counts$water[is.na(on_off_clt_comparison_counts$water)] = 0
+on_off_clt_comparison_counts$water_perc[is.na(on_off_clt_comparison_counts$water_perc)] = 0
+
+# transpose counts 
+t_on_off_clt_comparison_counts = setNames(data.frame(t(on_off_clt_comparison_counts[,-1])), on_off_clt_comparison_counts[,1])
+
+# join into one tables
+t_on_off_clt_comparison_counts = t_on_off_clt_comparison_counts %>%
+  rename(on_road_counts = onroad) %>%
+  rename(off_road_counts = offroad)
+t_on_off_clt_comparison_lengths = t_on_off_clt_comparison_lengths %>%
+  rename(on_road_lengths = onroad) %>%
+  rename(off_road_lengths = offroad)
+
+on_off_clt_comparison_length_counts = cbind(t_on_off_clt_comparison_counts, t_on_off_clt_comparison_lengths) %>%
+  rownames_to_column("Characteristic") %>%
+  subset(select = c(1, 3, 5, 2, 4)) %>%
+  mutate(variable_order = factor(Characteristic,
+                                 levels = c("colour", "parttime", "water", "park",
+                                            "busbypass", "bypass","bidir", "contra",
+                                            "priority", "advis","mandat", "shared",
+                                            "partsegreg", "stepp", "segreg"),
+                                 labels = c("Coloured tarmac", "Part-time", "Water route", "Park route",
+                                            "Continuous facilities through bus stop", "Cycle bypass", "Bidirectional", "Contraflow",
+                                            "Given Priority", "Advisory cycle lane","Mandatory cycle lane", 
+                                            "Shared cycle lane", "Part-segregated", "Stepped", "Fully-segregated")))
+
+
+
+
+data3 <- rownames_to_column(on_off_clt_comparison_length_counts, "Characteristic")
 
 
 # ggplot(chloropleth_dataset, aes(x = reorder(Borough_number, -Borough_Area_km2_no_units), 
