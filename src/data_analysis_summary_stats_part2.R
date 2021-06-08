@@ -527,18 +527,18 @@ print(signals_characteristics)
 #      values count
 #  1        0     4 No characteristics
 #  2      100     1 Signal gate
-#  3    10000   132 
-#  4    10001     2
-#  5    10010     8
-#  6    10100    36
-#  7    10101     1
-#  8    10110     3
-#  9    11000   186
-# 10    11001    15
-# 11    11010    16
-# 12    11100    28
-# 13    11101    10
-# 14    11110     1
+#  3    10000   132 cycle symbol on lights
+#  4    10001     2 cycle symbol on lights and signal gate
+#  5    10010     8 cycle symbol on lights and 2 stage
+#  6    10100    36 cycle symbol on lights and early release
+#  7    10101     1 cycle symbol on lights, early release and signal gate
+#  8    10110     3 cycle symbol on lights early release and 2 stage
+#  9    11000   186 cycle symbol on lights and separate stage
+# 10    11001    15 cycle symbol on lights, separate stage and signal gate
+# 11    11010    16 cycle symbol on lights, separate stage and 2 stage
+# 12    11100    28 cycle symbol on lights, separate stage and early release
+# 13    11101    10 cycle symbol on lights, separate stage, early release and signal gate
+# 14    11110     1 cycle symbol on lights, separate stage, early release and 2 stage
 
 signals_characteristics = signals_characteristics %>%
   mutate(Characteristics = case_when(values == 100 ~ "Early cyclist release", 
@@ -648,21 +648,21 @@ calming_characteristics = calming_numeric %>%
 sum(calming_characteristics$count) # n = 443
 print(calming_characteristics)
 # #  values count
-# 1       0    12
-# 2       1   721
-# 3      10   652
-# 4      50   935
-# 5     500 26948
-# 6     510     1
-# 7     600  6319
-# 8    1000 12217
-# 9    1010     8
-# 10   1100   400
-# 11   1110     1
-# 12   5000  7576
-# 13   5500     3
-# 14  10000  2770
-# 15  15000     2
+# 1       0    12 no characteristics
+# 2       1   721 other traffic calming measure
+# 3      10   652 road narrowing
+# 4      50   935 barrier
+# 5     500 26948 hump
+# 6     510     1 hump and road narrowing
+# 7     600  6319 hump and sinusoidal
+# 8    1000 12217 cushion
+# 9    1010     8 cushion and road narrowing
+# 10   1100   400 cushion and sinusoidal
+# 11   1110     1 cushion and sinusoidal and narrowing
+# 12   5000  7576 side entry treatment
+# 13   5500     3 side entry treatment and hump
+# 14  10000  2770 raised table at junction
+# 15  15000     2 raised table at junction and side entry treatment
 
 
 # save output as table for use in paper
