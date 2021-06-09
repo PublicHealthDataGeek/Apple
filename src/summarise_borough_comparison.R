@@ -15,7 +15,7 @@ library(tidyverse)
 library(gt)
 
 
-# Load datasets - these datasets were created 2_3_2021 from TFL datasets downloaded 25/2/21
+# Load datasets - these datasets were created 2_3_2021 (length) and 8/6 (crossings) from TFL datasets downloaded 25/2/21
 CID_count = readRDS(file = "/home/bananafan/Documents/PhD/Paper1/data/CID_count_by_borough")
 CID_length = readRDS(file = "/home/bananafan/Documents/PhD/Paper1/data/CID_length_by_borough")
 
