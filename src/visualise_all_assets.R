@@ -22,24 +22,10 @@
 # install packages
 library(tidyverse)
 library(sf)
-library(mapview)
 library(ggspatial) # get north arrow and bar
-library(patchwork) # arrange ggplots
-library(ggpubr) # for text grobs
-#library(ggsflabel) # makes sure ggplot geom_sf labels dont overlap using label_repel function
-#library(leafsync)
-# library(leaflet)
-# library(leafem)
-# library(forcats)
-# library(units)
-#library(sp)
-#library(rmapshaper)
-#library(ggforce)
-#library(gridExtra)
-#library(geojsonsf)
 
 # set mapview options so that matches crs
-mapviewOptions(native.crs = TRUE, legend = FALSE)
+# mapviewOptions(native.crs = TRUE, legend = FALSE)
 
 # color options
 # https://www.pagetutor.com/common/bgcolors1536.png
@@ -165,7 +151,7 @@ p0 = ggplot()+
   theme_bw() +
   theme(plot.margin = unit(c(0.1, 0.1, 0.1, 0.1), "cm")) + 
   coord_sf(crs=st_crs(riverthames_simplify), datum=NA) +
-  ggtitle("a) Geographical features of London") +
+  ggtitle("a) Geographical features of London *") +
   xlab(label = NULL) +
   ylab(label = NULL) +
   annotation_scale(location = "br", width_hint = 0.3, bar_cols = c("Gray83", "white"),
