@@ -1,4 +1,4 @@
-#############################
+################################################################################
 # Create maps of Safety assets
 #
 # This script creates maps for the paper
@@ -121,47 +121,59 @@ box_new = c(xmin = 498745.5, ymin = 149044.6, xmax = 564000.0, ymax = 205391.0)
 motorways = st_crop(motorways, box_new)
 #box_orig = c(xmin = 498745.5, ymin = 149044.6, xmax = 569602.4, ymax = 205391.0)
 
-# 4) Create map legend
-# create legend text
-legend_text =  data.frame(
-  lineend = c("River", "Inner London", "Outer London", "Motorway"),
-  linejoin = c("Thames", "Boundary", "Boundary", "Network"))
-
-# create legend dataframe
-df = data.frame(legend_text, y = 1:4)
-
-# create ggplot for map legend
-legend = ggplot(df, aes(x = 1, y = y, xend = 1.5, yend = y, label = paste(lineend, linejoin))) +
-  geom_segment(size = 3, colour = c("#99CCEE", "#991100", "black", "#b77107")) +
-  geom_text(hjust = 'outside', nudge_x = -0.25) +
-  xlim(0.5, 1.5) +
-  theme_void() +
-  theme(plot.margin = unit(c(0.25, 0.25, 0.25, -7.5), "cm"))
-
-
-
-# Create base map
-p0 = ggplot()+
-  geom_sf(data = out_lon_union, fill="white", colour = "black") +
-  geom_sf(data=motorways, colour = "#b77107", size = 0.14)+
-  geom_sf(data = inn_lon_union, colour = "#991100") +
-  geom_sf(data=borough_areas, fill="#d4d4d4",  colour="black", alpha=0.3, size=0.15)+
-  geom_sf(data=riverthames_simplify, fill="#99CCEE",  colour="#99CCEE")+
+# 4) Create map so can copy and paste legend
+legend_plot = 
+  ggplot()+
+  geom_sf(data = out_lon_union, aes(colour = "myline1"), fill="white", show.legend = "line") +
+  geom_sf(data = motorways, aes(colour = "myline3"), size = 0.14, show.legend = "line") +
+  geom_sf(data = inn_lon_union, aes(colour = "myline2"), show.legend = "line") +
+  geom_sf(data = borough_areas, fill="#d4d4d4",  colour="black", alpha=0.3, size=0.15)+
+  geom_sf(data = riverthames_simplify, aes(colour = "myline4"), fill="#99CCEE",  show.legend = "line")+
   geom_sf_label(data = borough_areas, aes(label = B_numbered)) +
   theme_bw() +
-  theme(plot.margin = unit(c(0.1, 0.1, 0.1, 0.1), "cm")) + 
+  theme(plot.margin = unit(c(0.1, 0.1, 0.1, 0.1), "cm"),
+        text = element_text(family = "Arial")) + 
   coord_sf(crs=st_crs(riverthames_simplify), datum=NA) +
   ggtitle("a) Geographical features of London *") +
   xlab(label = NULL) +
   ylab(label = NULL) +
+  scale_colour_manual(name = "Legend", 
+                      values = c(myline3 = "#b77107", myline1 = "black", myline2 = "#991100", myline4 = "#99CCEE"),
+                      labels = c("Motorways", "Outer London boundary", "Inner London boundary", "River Thames")) +
   annotation_scale(location = "br", width_hint = 0.3, bar_cols = c("Gray83", "white"),
-                   text_cex = 0.5, line_width = 0.5, line_col = "#222222") +
+                   text_cex = 0.65, line_width = 0.5, line_col = "#222222",
+                   text_family = "Arial") +
   annotation_north_arrow(location = "tr", which_north = "true", 
                          height = unit(1.3, "cm"), width = unit(1.3, "cm"),
                          style = north_arrow_fancy_orienteering(line_width = 0.5, 
                                                                 line_col = "#222222",
                                                                 fill = c("white", "Gray83"),
-                                                                text_size = 8))
+                                                                text_size = 8, text_family = "Arial"))
+
+# Create basemap
+p0 = ggplot()+
+  geom_sf(data = out_lon_union, colour = "black", fill="white") +
+  geom_sf(data = motorways, colour = "#b77107", size = 0.14) +
+  geom_sf(data = inn_lon_union, colour = "#991100") +
+  geom_sf(data = borough_areas, fill="#d4d4d4",  colour="black", alpha=0.3, size=0.15) +
+  geom_sf(data = riverthames_simplify, colour = "#99CCEE", fill="#99CCEE") +
+  geom_sf_label(data = borough_areas, aes(label = B_numbered)) +
+  theme_bw() +
+  theme(plot.margin = unit(c(0.1, 0.1, 0.1, 0.1), "cm"),
+        text = element_text(family = "Arial")) + 
+  coord_sf(crs=st_crs(riverthames_simplify), datum=NA) +
+  ggtitle("a) Geographical features of London *") +
+  xlab(label = NULL) +
+  ylab(label = NULL) +
+  annotation_scale(location = "br", width_hint = 0.3, bar_cols = c("Gray83", "white"),
+                   text_cex = 0.65, line_width = 0.5, line_col = "#222222",
+                   text_family = "Arial") +
+  annotation_north_arrow(location = "tr", which_north = "true", 
+                         height = unit(1.3, "cm"), width = unit(1.3, "cm"),
+                         style = north_arrow_fancy_orienteering(line_width = 0.5, 
+                                                                line_col = "#222222",
+                                                                fill = c("white", "Gray83"),
+                                                                text_size = 8, text_family = "Arial"))
 
 # Create all 5 plots
 # transparency = 0
@@ -171,7 +183,8 @@ p1 = ggplot()+
   geom_sf(data = riverthames_simplify, fill = "#99CCEE",  colour = "#99CCEE") +
   geom_sf(data = c_asl_point, colour = "red", size = 0.1) +
   theme_bw() +
-  theme(plot.margin = unit(c(0.1, 0.1, 0.1, 0.1), "cm")) +
+  theme(plot.margin = unit(c(0.1, 0.1, 0.1, 0.1), "cm"), 
+        text = element_text(family = "Arial")) +
   ggtitle("b) ASL") +
   coord_sf(crs = st_crs(riverthames_simplify), datum = NA) 
 
@@ -191,7 +204,8 @@ p3 = ggplot()+
   geom_sf(data = riverthames_simplify, fill = "#99CCEE",  colour = "#99CCEE") +
   geom_sf(data = c_signals_point, colour = "red", size = 0.1) +
   theme_bw() +
-  theme(plot.margin = unit(c(0.1, 0.1, 0.1, 0.1), "cm")) + 
+  theme(plot.margin = unit(c(0.1, 0.1, 0.1, 0.1), "cm"), 
+        text = element_text(family = "Arial")) + 
   ggtitle("d) Cycle signals") +
   coord_sf(crs = st_crs(riverthames_simplify), datum = NA) 
 
@@ -201,7 +215,8 @@ p4 = ggplot()+
   geom_sf(data=riverthames_simplify, fill="#99CCEE",  colour="#99CCEE") +
   geom_sf(data = c_trafficcalming, colour = "red", size = 0.1) +
   theme_bw() +
-  theme(plot.margin = unit(c(0.1, 0.1, 0.1, 0.1), "cm")) +
+  theme(plot.margin = unit(c(0.1, 0.1, 0.1, 0.1), "cm"), 
+        text = element_text(family = "Arial")) +
   ggtitle("e) Traffic calming measures") +
   coord_sf(crs=st_crs(riverthames_simplify), datum=NA) 
 
@@ -211,7 +226,8 @@ p5 = ggplot()+
   geom_sf(data = riverthames_simplify, fill = "#99CCEE",  colour = "#99CCEE") +
   geom_sf(data = c_cyclelanetrack, colour = "red") +
   theme_bw() +
-  theme(plot.margin = unit(c(0.1, 0.1, 0.1, 0.1), "cm")) + 
+  theme(plot.margin = unit(c(0.1, 0.1, 0.1, 0.1), "cm"),
+        text = element_text(family = "Arial")) + 
   ggtitle("f) Cycle lanes and tracks") +
   coord_sf(crs = st_crs(riverthames_simplify), datum = NA) 
 
@@ -237,7 +253,8 @@ t1 = ggplot()+
   geom_sf(data = riverthames_simplify, fill = "#99CCEE",  colour = "#99CCEE") +
   geom_sf(data = c_asl_point, colour = alpha("red", 0.2), size = 0.1) +
   theme_bw() +
-  theme(plot.margin = unit(c(0.1, 0.1, 0.1, 0.1), "cm")) +
+  theme(plot.margin = unit(c(0.1, 0.1, 0.1, 0.1), "cm"), 
+        text = element_text(family = "Arial")) +
   ggtitle("b) ASL") +
   coord_sf(crs = st_crs(riverthames_simplify), datum = NA) 
 
@@ -247,7 +264,8 @@ t2 = ggplot()+
   geom_sf(data = riverthames_simplify, fill = "#99CCEE",  colour = "#99CCEE") +
   geom_sf(data = c_crossings_point, colour = alpha("red", 0.2), size = 0.1) +
   theme_bw() +
-  theme(plot.margin = unit(c(0.1, 0.1, 0.1, 0.1), "cm")) + 
+  theme(plot.margin = unit(c(0.1, 0.1, 0.1, 0.1), "cm"), 
+        text = element_text(family = "Arial")) + 
   ggtitle("c) Cycle crossings") +
   coord_sf(crs = st_crs(riverthames_simplify), datum = NA) 
 
@@ -257,7 +275,8 @@ t3 = ggplot()+
   geom_sf(data = riverthames_simplify, fill = "#99CCEE",  colour = "#99CCEE") +
   geom_sf(data = c_signals_point, colour = alpha("red", 0.2), size = 0.1) +
   theme_bw() +
-  theme(plot.margin = unit(c(0.1, 0.1, 0.1, 0.1), "cm")) + 
+  theme(plot.margin = unit(c(0.1, 0.1, 0.1, 0.1), "cm"),
+        text = element_text(family = "Arial")) + 
   ggtitle("d) Cycle signals") +
   coord_sf(crs = st_crs(riverthames_simplify), datum = NA) 
 
@@ -267,7 +286,8 @@ t4 = ggplot()+
   geom_sf(data=riverthames_simplify, fill="#99CCEE",  colour="#99CCEE") +
   geom_sf(data = c_trafficcalming, colour = alpha("red", 0.2), size = 0.1) +
   theme_bw() +
-  theme(plot.margin = unit(c(0.1, 0.1, 0.1, 0.1), "cm")) +
+  theme(plot.margin = unit(c(0.1, 0.1, 0.1, 0.1), "cm"), 
+        text = element_text(family = "Arial")) +
   ggtitle("e) Traffic calming measures") +
   coord_sf(crs=st_crs(riverthames_simplify), datum=NA) 
 
@@ -277,7 +297,8 @@ t5 = ggplot()+
   geom_sf(data = riverthames_simplify, fill = "#99CCEE",  colour = "#99CCEE") +
   geom_sf(data = c_cyclelanetrack, colour = alpha("red", 0.2)) +
   theme_bw() +
-  theme(plot.margin = unit(c(0.1, 0.1, 0.1, 0.1), "cm")) + 
+  theme(plot.margin = unit(c(0.1, 0.1, 0.1, 0.1), "cm"), 
+        text = element_text(family = "Arial")) + 
   ggtitle("f) Cycle lanes and tracks") +
   coord_sf(crs = st_crs(riverthames_simplify), datum = NA) 
 
@@ -293,7 +314,8 @@ q1 = ggplot()+
   geom_sf(data = riverthames_simplify, fill = "#99CCEE",  colour = "#99CCEE") +
   geom_sf(data = c_asl_point, colour = alpha("red", 0.5), size = 0.1) +
   theme_bw() +
-  theme(plot.margin = unit(c(0.1, 0.1, 0.1, 0.1), "cm")) +
+  theme(plot.margin = unit(c(0.1, 0.1, 0.1, 0.1), "cm"), 
+        text = element_text(family = "Arial")) +
   ggtitle("b) ASL") +
   coord_sf(crs = st_crs(riverthames_simplify), datum = NA) 
 
@@ -303,7 +325,8 @@ q2 = ggplot()+
   geom_sf(data = riverthames_simplify, fill = "#99CCEE",  colour = "#99CCEE") +
   geom_sf(data = c_crossings_point, colour = alpha("red", 0.5), size = 0.1) +
   theme_bw() +
-  theme(plot.margin = unit(c(0.1, 0.1, 0.1, 0.1), "cm")) + 
+  theme(plot.margin = unit(c(0.1, 0.1, 0.1, 0.1), "cm"), 
+        text = element_text(family = "Arial")) + 
   ggtitle("c) Cycle crossings") +
   coord_sf(crs = st_crs(riverthames_simplify), datum = NA) 
 
@@ -313,7 +336,8 @@ q3 = ggplot()+
   geom_sf(data = riverthames_simplify, fill = "#99CCEE",  colour = "#99CCEE") +
   geom_sf(data = c_signals_point, colour = alpha("red", 0.5), size = 0.1) +
   theme_bw() +
-  theme(plot.margin = unit(c(0.1, 0.1, 0.1, 0.1), "cm")) + 
+  theme(plot.margin = unit(c(0.1, 0.1, 0.1, 0.1), "cm"), 
+        text = element_text(family = "Arial")) + 
   ggtitle("d) Cycle signals") +
   coord_sf(crs = st_crs(riverthames_simplify), datum = NA) 
 
@@ -323,7 +347,8 @@ q4 = ggplot()+
   geom_sf(data=riverthames_simplify, fill="#99CCEE",  colour="#99CCEE") +
   geom_sf(data = c_trafficcalming, colour = alpha("red", 0.05), size = 0.1) +
   theme_bw() +
-  theme(plot.margin = unit(c(0.1, 0.1, 0.1, 0.1), "cm")) +
+  theme(plot.margin = unit(c(0.1, 0.1, 0.1, 0.1), "cm"), 
+        text = element_text(family = "Arial")) +
   ggtitle("e) Traffic calming measures") +
   coord_sf(crs=st_crs(riverthames_simplify), datum=NA) 
 
@@ -333,7 +358,8 @@ q5 = ggplot()+
   geom_sf(data = riverthames_simplify, fill = "#99CCEE",  colour = "#99CCEE") +
   geom_sf(data = c_cyclelanetrack, colour = alpha("red", 0.2)) +
   theme_bw() +
-  theme(plot.margin = unit(c(0.1, 0.1, 0.1, 0.1), "cm")) + 
+  theme(plot.margin = unit(c(0.1, 0.1, 0.1, 0.1), "cm"), 
+        text = element_text(family = "Arial")) + 
   ggtitle("f) Cycle lanes and tracks") +
   coord_sf(crs = st_crs(riverthames_simplify), datum = NA) 
   
@@ -345,7 +371,9 @@ plot_grid(p5, t5, q5, ncol = 3) # q5 but chekc how it looks with the others
   
 # traffic calming 0.05, everything else 0.2
 
-  
+
+original_trans = gridExtra::grid.arrange(p0, p1, p2, p3, p4, p5, ncol = 3)
+proposed_trans = gridExtra::grid.arrange(p0, t1, t2, t3, q4, q5, ncol = 3)
 
 
 
@@ -477,3 +505,28 @@ st_bbox(out_lon_union)
 
 
 
+# # 4) Create map legend
+# # create legend text
+# legend_text =  data.frame(
+#   lineend = c("River", "Inner London", "Outer London", "Motorway"),
+#   linejoin = c("Thames", "Boundary", "Boundary", "Network"))
+# 
+# # create legend dataframe
+# df = data.frame(legend_text, y = c(1, 1.5, 2, 2.5))
+# 
+# # create ggplot for map legend
+# legend = ggplot(df, aes(x = 1, y = y, xend = 1.5, yend = y, label = paste(lineend, linejoin))) +
+#   geom_segment(size = 3, colour = c("#99CCEE", "#991100", "black", "#b77107")) +
+#   geom_text(hjust = 'outside', nudge_x = -0.25) +
+#   xlim(0.5, 1.5) +
+#   theme_void() +
+#   theme(plot.margin = unit(c(0.25, 0.25, 0.25, -7.5), "cm"),
+#         text = element_text(family = "Arial"))
+# # fiddling with legend
+# ggplot(df, aes(x = 1, y = y, xend = 1.5, yend = y, label = paste(lineend, linejoin))) +
+#   geom_segment(size = 5, colour = c("#99CCEE", "#991100", "black", "#b77107")) +
+#   geom_text(hjust = 'outside', nudge_x = - 0.25) +
+#   xlim(0.61, 1.5) +
+#   theme_void() +
+#   theme(plot.margin = unit(c(-0.1, -0.2, 0, -0.60), "cm"),
+#         text = element_text(family = "Arial"))
