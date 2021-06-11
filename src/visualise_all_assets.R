@@ -122,7 +122,7 @@ motorways = st_crop(motorways, box_new)
 #box_orig = c(xmin = 498745.5, ymin = 149044.6, xmax = 569602.4, ymax = 205391.0)
 
 # 4) Create map so can copy and paste legend
-legend_plot = 
+legend_plot_vert = 
   ggplot()+
   geom_sf(data = out_lon_union, aes(colour = "myline1"), fill="white", show.legend = "line") +
   geom_sf(data = motorways, aes(colour = "myline3"), size = 0.14, show.legend = "line") +
@@ -132,13 +132,47 @@ legend_plot =
   geom_sf_label(data = borough_areas, aes(label = B_numbered)) +
   theme_bw() +
   theme(plot.margin = unit(c(0.1, 0.1, 0.1, 0.1), "cm"),
-        text = element_text(family = "Arial")) + 
+        text = element_text(family = "Arial"),
+        legend.title = element_blank()) + 
   coord_sf(crs=st_crs(riverthames_simplify), datum=NA) +
   ggtitle("a) Geographical features of London *") +
   xlab(label = NULL) +
   ylab(label = NULL) +
-  scale_colour_manual(name = "Legend", 
-                      values = c(myline3 = "#b77107", myline1 = "black", myline2 = "#991100", myline4 = "#99CCEE"),
+  scale_colour_manual(values = c(myline3 = "#b77107", myline1 = "black", myline2 = "#991100", myline4 = "#99CCEE"),
+                      labels = c("Motorways", "Outer London boundary", "Inner London boundary", "River Thames")) +
+  annotation_scale(location = "br", width_hint = 0.3, bar_cols = c("Gray83", "white"),
+                   text_cex = 0.65, line_width = 0.5, line_col = "#222222",
+                   text_family = "Arial") +
+  annotation_north_arrow(location = "tr", which_north = "true", 
+                         height = unit(1.3, "cm"), width = unit(1.3, "cm"),
+                         style = north_arrow_fancy_orienteering(line_width = 0.5, 
+                                                                line_col = "#222222",
+                                                                fill = c("white", "Gray83"),
+                                                                text_size = 8, text_family = "Arial"))
+# extract and convert to ggplot (so can save as jpeg)
+legend = ggpubr::get_legend(legend_plot)
+legend = ggpubr::as_ggplot(legend)
+#OR can use cowplot and then add to plot
+#legend_cow = cowplot::get_legend(legend_plot)
+
+legend_plot_horiz = 
+  ggplot()+
+  geom_sf(data = out_lon_union, aes(colour = "myline1"), fill="white", show.legend = "line") +
+  geom_sf(data = motorways, aes(colour = "myline3"), size = 0.14, show.legend = "line") +
+  geom_sf(data = inn_lon_union, aes(colour = "myline2"), show.legend = "line") +
+  geom_sf(data = borough_areas, fill="#d4d4d4",  colour="black", alpha=0.3, size=0.15)+
+  geom_sf(data = riverthames_simplify, aes(colour = "myline4"), fill="#99CCEE",  show.legend = "line")+
+  geom_sf_label(data = borough_areas, aes(label = B_numbered)) +
+  theme_bw() +
+  theme(plot.margin = unit(c(0.1, 0.1, 0.1, 0.1), "cm"),
+        text = element_text(family = "Arial"),
+        legend.title = element_blank(),
+        legend.position = "bottom") + 
+  coord_sf(crs=st_crs(riverthames_simplify), datum=NA) +
+  ggtitle("a) Geographical features of London *") +
+  xlab(label = NULL) +
+  ylab(label = NULL) +
+  scale_colour_manual(values = c(myline3 = "#b77107", myline1 = "black", myline2 = "#991100", myline4 = "#99CCEE"),
                       labels = c("Motorways", "Outer London boundary", "Inner London boundary", "River Thames")) +
   annotation_scale(location = "br", width_hint = 0.3, bar_cols = c("Gray83", "white"),
                    text_cex = 0.65, line_width = 0.5, line_col = "#222222",
@@ -150,7 +184,10 @@ legend_plot =
                                                                 fill = c("white", "Gray83"),
                                                                 text_size = 8, text_family = "Arial"))
 
-# Create basemap
+
+
+# 6) Create 6 panel maps
+# Create Orientation map
 p0 = ggplot()+
   geom_sf(data = out_lon_union, colour = "black", fill="white") +
   geom_sf(data = motorways, colour = "#b77107", size = 0.14) +
@@ -243,7 +280,7 @@ pl = replicate(6, ggplot(), FALSE)
 grid.arrange(grobs = pl)  # default settings
 
 library(cowplot)
-plot_grid(p0, p1, p2, p3, p4, p5, ncol = 3)
+plot_grid(p0, p1, p2, p3, p4, p5, legend, ncol = 3)
 
 #### CREATE NEW EAXMPLE WITH TRANSPARENCY _ below code alters transpoarent
 #colour = alpha("red", 0.2)  Transparency changed to 0.2
@@ -375,7 +412,7 @@ plot_grid(p5, t5, q5, ncol = 3) # q5 but chekc how it looks with the others
 original_trans = gridExtra::grid.arrange(p0, p1, p2, p3, p4, p5, ncol = 3)
 proposed_trans = gridExtra::grid.arrange(p0, t1, t2, t3, q4, q5, ncol = 3)
 
-
+gridExtra::grid.arrange(legend_plot_horiz, t1, t2, t3, q4, q5, ncol = 3)
 
 
 
