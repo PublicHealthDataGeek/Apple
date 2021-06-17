@@ -706,8 +706,13 @@ summary = summary %>% pivot_longer(
   mutate(across(.cols = c("mean", "sd"), round, 1))
 
 summary$Range = paste(summary$min, "-", summary$max)
-summary$Mean = paste(summary2$mean, "(", summary$sd, ")")
+summary$MeanSD = paste(summary$mean, "(", summary$sd, ")")
 summary$MedianIQR = paste(summary$median, "(", summary$Q1, " - ", summary$Q3, ")")
+
+# create table of summary statistics
+borough_summary_table = data.table::transpose(summary, keep.names = "Summary_statistic", make.names = "Asset") %>%
+  filter(Summary_statistic == "Range" | Summary_statistic == "MeanSD" | Summary_statistic == "MedianIQR")
+
 
 
 ### boxplot
