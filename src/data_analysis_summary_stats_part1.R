@@ -244,6 +244,13 @@ c_trafficcalming %>%
   st_drop_geometry() %>%
   summarytools::dfSummary()
 
+
+
+
+
+
+
+
 ##### create summary histograms
 # write function to create summary
 my.summary <- function(x,...){
@@ -694,13 +701,143 @@ c_cyclelanetrack %>%
   filter(CLT_CARR == FALSE) %>%
   summarytools::dfSummary()  # works out counts
 
+################################################################################
+#
+# 5) Create visualisations of the characteristics - bar charts for count/% and 
+# density plots for length - this is to replace a table with the actual figures
 
+
+# create dataframes for count % comparison (insread of table)
+# 1) ASL
+asl_charac = c_asl %>%
+  st_drop_geometry() %>%
+  select(contains("ASL")) %>%
+  mutate(ASL_COLOUR_F = case_when(ASL_COLOUR == "NONE" ~ "FALSE", 
+                                  TRUE ~ "TRUE")) %>%
+  select(-c(ASL_COLOUR))
+
+ASL_FDR = asl_charac$ASL_FDR %>%freq(cumul = FALSE, report.nas = FALSE) %>% tb() %>%
+  filter(ASL_FDR == "TRUE") %>%
+  rename(charac = ASL_FDR)
+ASL_FDR[1] <- "ASL_FDR"
+
+ASL_FDRLFT = asl_charac$ASL_FDRLFT %>%freq(cumul = FALSE, report.nas = FALSE) %>% tb() %>%
+  filter(ASL_FDRLFT == "TRUE") %>%
+  rename(charac = ASL_FDRLFT)
+ASL_FDRLFT[1] <- "ASL_FDRLFT"
+
+ASL_FDCENT = asl_charac$ASL_FDCENT %>%freq(cumul = FALSE, report.nas = FALSE) %>% tb() %>%
+  filter(ASL_FDCENT == "TRUE") %>%
+  rename(charac = ASL_FDCENT)
+ASL_FDCENT[1] <- "ASL_FDCENT"
+
+ASL_FDRIGH = asl_charac$ASL_FDRIGH %>%freq(cumul = FALSE, report.nas = FALSE) %>% tb() %>%
+  filter(ASL_FDRIGH == "TRUE") %>%
+  rename(charac = ASL_FDRIGH)
+ASL_FDRIGH[1] <- "ASL_FDRIGH"
+
+ASL_SHARED = asl_charac$ASL_SHARED %>%freq(cumul = FALSE, report.nas = FALSE) %>% tb() %>%
+  filter(ASL_SHARED == "TRUE") %>%
+  rename(charac = ASL_SHARED)
+ASL_SHARED[1] <- "ASL_SHARED"
+
+ASL_COLOUR_F = asl_charac$ASL_COLOUR_F %>%freq(cumul = FALSE, report.nas = FALSE) %>% tb() %>%
+  filter(ASL_COLOUR_F == "TRUE") %>%
+  rename(charac = ASL_COLOUR_F)
+ASL_COLOUR_F[1] <- "ASL_COLOUR_F"
+
+ASL_NIL = c("ASL_NIL", 1568, 41.5)
+
+ASL = rbind(ASL_FDR, ASL_NIL,ASL_FDRLFT, ASL_COLOUR_F, ASL_FDCENT, ASL_FDRIGH, ASL_SHARED) %>%
+  mutate(Percentage = round(as.numeric(pct), digits = 1)) %>%
+  mutate(Count = as.numeric(freq)) %>%
+  mutate(charac = factor(charac,
+                         levels = c("ASL_SHARED", "ASL_FDRIGH","ASL_FDCENT", "ASL_COLOUR_F", 
+                                    "ASL_NIL", "ASL_FDRLFT", "ASL_FDR"),
+                         labels = c("Shared e.g. with buses", "Right feeder lane", 
+                                    "Centre feeder lane", "Coloured tarmac", 
+                                    "No characteristics", "Left feeder lane",  
+                                    "Feeder lane present")))
+
+# # create stacked bar chart of ASL count
+ggplot() +
+  geom_bar(data = ASL,
+           aes(x = Count, y = charac), stat = "identity") +
+  theme_minimal() +
+  theme(panel.grid = element_blank(),  # removes all grid lines
+        axis.line.x = element_line(size=0.1, color="black"), # adds axis line back in
+        axis.title.y = element_blank()) +
+  scale_x_continuous(expand = c(0,0), breaks = c(0, 1000, 2000), limits = c(0, 2050))
+
+# # create stacked bar chart of %
+ggplot() +
+  geom_bar(data = ASL,
+           aes(x = Percentage, y = charac), stat = "identity") +
+  theme_minimal() +
+  theme(panel.grid = element_blank(),  # removes all grid lines
+        axis.line.x = element_line(size=0.1, color="black"), # adds axis line back in
+        axis.title.y = element_blank(), 
+        axis.text.y = element_blank()) +
+  scale_x_continuous(expand = c(0,0), breaks = c(0, 40))
+
+# create density plot df
+asl_df = c_asl %>%
+  mutate(length = st_length(geometry)) # gives me the length of all ASL
+
+asl_nil = asl_df %>%
+  filter(ASL_FDR == FALSE & ASL_FDRLFT == FALSE & ASL_FDCENT == FALSE & ASL_FDRIGH == FALSE &
+           ASL_SHARED == FALSE & ASL_COLOUR == "NONE") %>%
+  mutate(charac = "ASL_NIL")
+asl_feeder = asl_df %>%
+  filter(ASL_FDR == TRUE) %>%
+  mutate(charac = "ASL_FDR")
+asl_left = asl_df %>%
+  filter(ASL_FDRLFT == TRUE) %>%
+  mutate(charac = "ASL_FDRLFT")
+asl_centre = asl_df %>%
+  filter(ASL_FDCENT == TRUE) %>%
+  mutate(charac = "ASL_FDCENT")
+asl_right = asl_df %>%
+  filter(ASL_FDRIGH == TRUE) %>%
+  mutate(charac = "ASL_FDRIGH")
+asl_shared = asl_df %>%
+  filter(ASL_SHARED == TRUE) %>%
+  mutate(charac = "ASL_SHARED")
+asl_colour = asl_df %>%
+  filter(ASL_COLOUR != "NONE") %>%
+  mutate(charac = "ASL_COLOUR_F")
+asl_density_df = rbind(asl_feeder, asl_nil, asl_left, asl_colour, asl_centre, asl_right, asl_shared) %>%
+  st_drop_geometry() %>%
+  mutate(charac = factor(charac,
+                         levels = c("ASL_SHARED", "ASL_FDRIGH","ASL_FDCENT", "ASL_COLOUR_F", 
+                                    "ASL_NIL", "ASL_FDRLFT", "ASL_FDR"),
+                         labels = c("Shared e.g. with buses", "Right feeder lane", 
+                                    "Centre feeder lane", "Coloured tarmac", 
+                                    "No characteristics", "Left feeder lane",  
+                                    "Feeder lane present"))) %>%
+  select(c(length, charac)) %>%
+  units::drop_units()
+asl_gp_mean = asl_density_df %>%
+  group_by(charac) %>%
+  summarise(grp_mean = mean(length))
+
+# Create ggplot of count of length
+ggplot(asl_density_df) +
+  geom_density(aes(x = length, fill = "grey"), fill = "grey") +
+  facet_wrap(~charac, ncol = 1) +
+  geom_vline(data = asl_gp_mean, aes(xintercept = grp_mean),
+             linetype = "dashed") +
+  theme_minimal() +
+  theme(panel.grid = element_blank(),  # removes all grid lines
+        axis.line.x = element_line(size=0.1, color="black"), # adds axis line back in
+        axis.title.y = element_blank(), 
+        axis.text.y = element_blank())
 
 
 
 
 ################################################################################
-#5) Comparison of variables of on v off road infrastructure
+#6) Comparison of variables of on v off road infrastructure
 # including drawing bar charts
 
 
