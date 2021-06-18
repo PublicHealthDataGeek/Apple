@@ -7,7 +7,8 @@
 # This code generates the summary statistics used in Paper 1                   #
 # 1) Detailed examination of variables for each of the 5 safety datasets with 
 #     cross tabs
-# 2) Summary statistics and box plots for Borough level safety infratstructure 
+# 2) Summary statistics and box plots for Borough level safety infrastructure
+# 3) Borough level data for safety infrastructure
 
 
 
@@ -768,5 +769,59 @@ ggplot(data, aes(x=wt, y=mpg)) +
     data=data %>% filter(mpg>20 & wt>3), # Filter data first
     aes(label=carName)
   )
+
+
+###############################################################################
+#                       Borough level data and ranking                        #
+#                                                                             #
+# - safety infrastructure at Borough level                                    #
+
+
+# Load datasets - these datasets were created 2_3_2021 from TFL datasets downloaded 25/2/21
+CID_count = readRDS(file = "/home/bananafan/Documents/PhD/Paper1/data/CID_count_by_borough")
+CID_length = readRDS(file = "/home/bananafan/Documents/PhD/Paper1/data/CID_length_by_borough")
+
+# Get safety infrastructure in one dataset 
+safe_cnt = CID_count %>%
+  select(c(BOROUGH, ASL, Crossings, Signals, TrafficCalming))
+safe_ln = CID_length %>%
+  select(BOROUGH, CycleLaneTrack_km) %>%
+  drop_units()
+safe_df2 = left_join(safe_cnt, safe_ln, by = "BOROUGH")
+
+# Add column for inner/outer london
+Inner = c("City of London", "Camden", "Greenwich", "Hackney", "Hammersmith & Fulham", 
+          "Islington", "Kensington & Chelsea", "Lambeth", "Lewisham", "Southwark",  
+          "Tower Hamlets", "Wandsworth", "Westminster") 
+
+safe_df2 = safe_df2 %>%
+  mutate(London = ifelse(BOROUGH %in% Inner, "Inner London", "Outer London")) # 7 variables
+
+# Create ranking for Count dataset
+# rank each borough
+# use rank(-.x) to get ranking so that borough with most assets has highest ranking
+safe_df2_rank = safe_df2 %>%
+  mutate(across(.cols = c("ASL", "Crossings", "Signals", "TrafficCalming", 
+                          "CycleLaneTrack_km"),
+                .fns = ~round(rank(-.x)), 
+                .names = "{.col}_count_rank")) # now 12 variables
+
+# mutate to get rank in with number ie n(rank)
+safe_df2_rank$ASL = paste(safe_df2_rank$ASL, "(", safe_df2_rank$ASL_count_rank, ")")
+safe_df2_rank$Crossings = paste(safe_df2_rank$Crossings, "(", safe_df2_rank$Crossings_count_rank, ")")
+safe_df2_rank$Signals = paste(safe_df2_rank$Signals, "(", safe_df2_rank$Signals_count_rank, ")")
+safe_df2_rank$TrafficCalming = paste(safe_df2_rank$TrafficCalming, "(", safe_df2_rank$TrafficCalming_count_rank, ")")
+safe_df2_rank$CycleLaneTrack_km = paste(safe_df2_rank$CycleLaneTrack_km, "km (", safe_df2_rank$CycleLaneTrack_km_count_rank, ")")
+
+# Select columns I want to keep
+safe_borough_rank = safe_df2_rank %>%
+  select(c("London", "BOROUGH", "ASL", "Crossings", "Signals", "TrafficCalming", 
+           "CycleLaneTrack_km")) %>%
+  arrange(London, by_group = TRUE)
+
+# Save dataset so can send to journal/have it in editable format
+write_csv2(safe_borough_rank, 
+           file = "/home/bananafan/Documents/PhD/Paper1/output/summary_stats/borough_safety_table.csv")
+
 
 
