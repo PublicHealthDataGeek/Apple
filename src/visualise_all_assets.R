@@ -157,7 +157,7 @@ legend_plot =
   geom_sf(data = borough_areas, fill="#d4d4d4",  colour="black", alpha=0.3, size=0.15)+
   geom_sf(data = riverthames_simplify, aes(colour = "myline4"), fill="#99CCEE",  show.legend = "line")+
   geom_sf_label(data = borough_areas, aes(label = b_acronym), label.padding = unit(0.15, "lines")) +
-  theme_bw() +
+  theme_classic() +
   theme(plot.margin = unit(c(0.1, 0.1, 0.1, 0.1), "cm"),
         text = element_text(family = "Arial"),
         legend.title = element_blank()) + 
@@ -191,8 +191,8 @@ p0 = ggplot()+
   geom_sf(data = borough_areas, fill="#d4d4d4",  colour="black", alpha=0.3, size=0.15) +
   geom_sf(data = riverthames_simplify, colour = "#99CCEE", fill="#99CCEE") +
   geom_sf_label(data = borough_areas, aes(label = b_acronym), label.padding = unit(0.15, "lines"), 
-                size = 2.8) +
-  theme_bw() +
+                label.size = 0.1, size = 2.8) +
+  theme_classic() +
   theme(plot.margin = unit(c(0.1, 0.1, 0.1, 0.1), "cm"),
         text = element_text(family = "Arial")) + 
   coord_sf(crs=st_crs(riverthames_simplify), datum=NA) +
@@ -215,7 +215,7 @@ p1 = ggplot()+
   geom_sf(data = borough_areas, fill = "#d4d4d4",  colour = "#444444", alpha = 0.3, size = 0.05) +
   geom_sf(data = riverthames_simplify, fill = "#99CCEE",  colour = "#99CCEE") +
   geom_sf(data = c_asl_point, colour = alpha("blue", 0.2), size = 0.1) +
-  theme_bw() +
+  theme_classic() +
   theme(plot.margin = unit(c(0.1, 0.1, 0.1, 0.1), "cm"), 
         text = element_text(family = "Arial")) +
   ggtitle("b) ASL") +
@@ -226,7 +226,7 @@ p2 = ggplot()+
   geom_sf(data = borough_areas, fill = "#d4d4d4",  colour = "#444444", alpha = 0.3, size = 0.05) +
   geom_sf(data = riverthames_simplify, fill = "#99CCEE",  colour = "#99CCEE") +
   geom_sf(data = c_crossings_point, colour = alpha("blue", 0.2), size = 0.1) +
-  theme_bw() +
+  theme_classic() +
   theme(plot.margin = unit(c(0.1, 0.1, 0.1, 0.1), "cm"), 
         text = element_text(family = "Arial")) + 
   ggtitle("c) Cycle crossings") +
@@ -237,7 +237,7 @@ p3 = ggplot()+
   geom_sf(data = borough_areas, fill = "#d4d4d4",  colour = "#444444", alpha = 0.3, size = 0.05) +
   geom_sf(data = riverthames_simplify, fill = "#99CCEE",  colour = "#99CCEE") +
   geom_sf(data = c_signals_point, colour = alpha("blue", 0.2), size = 0.1) +
-  theme_bw() +
+  theme_classic() +
   theme(plot.margin = unit(c(0.1, 0.1, 0.1, 0.1), "cm"),
         text = element_text(family = "Arial")) + 
   ggtitle("d) Cycle signals") +
@@ -248,7 +248,7 @@ p4 = ggplot()+
   geom_sf(data=borough_areas, fill="#d4d4d4",  colour="#444444", alpha=0.3, size=0.05)+
   geom_sf(data=riverthames_simplify, fill="#99CCEE",  colour="#99CCEE") +
   geom_sf(data = c_trafficcalming, colour = alpha("blue", 0.05), size = 0.1) +
-  theme_bw() +
+  theme_classic() +
   theme(plot.margin = unit(c(0.1, 0.1, 0.1, 0.1), "cm"), 
         text = element_text(family = "Arial")) +
   ggtitle("e) Traffic calming measures") +
@@ -259,7 +259,7 @@ p5 = ggplot()+
   geom_sf(data = borough_areas, fill = "#d4d4d4",  colour = "#444444", alpha = 0.3, size = 0.05) +
   geom_sf(data = riverthames_simplify, fill = "#99CCEE",  colour = "#99CCEE") +
   geom_sf(data = c_cyclelanetrack, colour = alpha("blue", 0.2)) +
-  theme_bw() +
+  theme_classic() +
   theme(plot.margin = unit(c(0.1, 0.1, 0.1, 0.1), "cm"), 
         text = element_text(family = "Arial")) + 
   ggtitle("f) Cycle lanes and tracks") +
