@@ -749,7 +749,8 @@ ASL_COLOUR_F[1] <- "ASL_COLOUR_F"
 ASL_NIL = c("ASL_NIL", 1568, 41.5)
 
 ASL = rbind(ASL_FDR, ASL_NIL,ASL_FDRLFT, ASL_COLOUR_F, ASL_FDCENT, ASL_FDRIGH, ASL_SHARED) %>%
-  mutate(Percentage = round(as.numeric(pct), digits = 1)) %>%
+  mutate(pct = round(as.numeric(pct), digits = 1)) %>%
+  mutate(Percentage = paste0(pct, "%")) %>%
   mutate(Count = as.numeric(freq)) %>%
   mutate(charac = factor(charac,
                          levels = c("ASL_SHARED", "ASL_FDRIGH","ASL_FDCENT", "ASL_COLOUR_F", 
@@ -759,26 +760,30 @@ ASL = rbind(ASL_FDR, ASL_NIL,ASL_FDRLFT, ASL_COLOUR_F, ASL_FDCENT, ASL_FDRIGH, A
                                     "No characteristics", "Left feeder lane",  
                                     "Feeder lane present")))
 
-# # create stacked bar chart of ASL count
+# # create stacked bar chart of ASL count with % in text
 ggplot() +
   geom_bar(data = ASL,
            aes(x = Count, y = charac), stat = "identity") +
   theme_minimal() +
   theme(panel.grid = element_blank(),  # removes all grid lines
         axis.line.x = element_line(size=0.1, color="black"), # adds axis line back in
-        axis.title.y = element_blank()) +
-  scale_x_continuous(expand = c(0,0), breaks = c(0, 1000, 2000), limits = c(0, 2050))
+        axis.title.y = element_blank(),
+        axis.text = element_text(size = 16),
+        axis.title.x = element_text(size = 20)) +
+  scale_x_continuous(expand = c(0,0), breaks = c(0, 800, 1600), limits = c(0, 2100)) +
+  geom_text(data = ASL, aes(x = Count, label = Percentage, y = charac),
+            hjust = -0.3, size = 5)
 
 # # create stacked bar chart of %
-ggplot() +
-  geom_bar(data = ASL,
-           aes(x = Percentage, y = charac), stat = "identity") +
-  theme_minimal() +
-  theme(panel.grid = element_blank(),  # removes all grid lines
-        axis.line.x = element_line(size=0.1, color="black"), # adds axis line back in
-        axis.title.y = element_blank(), 
-        axis.text.y = element_blank()) +
-  scale_x_continuous(expand = c(0,0), breaks = c(0, 40))
+# ggplot() +
+#   geom_bar(data = ASL,
+#            aes(x = Percentage, y = charac), stat = "identity") +
+#   theme_minimal() +
+#   theme(panel.grid = element_blank(),  # removes all grid lines
+#         axis.line.x = element_line(size=0.1, color="black"), # adds axis line back in
+#         axis.title.y = element_blank(), 
+#         axis.text.y = element_blank()) +
+#   scale_x_continuous(expand = c(0,0), breaks = c(0, 40))
 
 # create density plot df
 asl_df = c_asl %>%
@@ -809,31 +814,70 @@ asl_colour = asl_df %>%
 asl_density_df = rbind(asl_feeder, asl_nil, asl_left, asl_colour, asl_centre, asl_right, asl_shared) %>%
   st_drop_geometry() %>%
   mutate(charac = factor(charac,
-                         levels = c("ASL_SHARED", "ASL_FDRIGH","ASL_FDCENT", "ASL_COLOUR_F", 
-                                    "ASL_NIL", "ASL_FDRLFT", "ASL_FDR"),
-                         labels = c("Shared e.g. with buses", "Right feeder lane", 
-                                    "Centre feeder lane", "Coloured tarmac", 
-                                    "No characteristics", "Left feeder lane",  
-                                    "Feeder lane present"))) %>%
+                         levels = c("ASL_FDR", "ASL_FDRLFT", "ASL_NIL", "ASL_COLOUR_F", "ASL_FDCENT",
+                                    "ASL_FDRIGH", "ASL_SHARED"),
+                         labels = c("Feeder lane present", "Left feeder lane", "No characteristics", 
+                                    "Coloured tarmac", "Centre feeder lane", "Right feeder lane", 
+                                    "Shared e.g. with buses"))) %>%
   select(c(length, charac)) %>%
   units::drop_units()
-asl_gp_mean = asl_density_df %>%
+
+# asl_gp_mean = asl_density_df %>%
+#   group_by(charac) %>%
+#   summarise(grp_mean = mean(length))
+asl_gp_med = asl_density_df %>%
   group_by(charac) %>%
-  summarise(grp_mean = mean(length))
+  summarise(grp_median = median(length))
+
 
 # Create ggplot of count of length
 ggplot(asl_density_df) +
   geom_density(aes(x = length, fill = "grey"), fill = "grey") +
   facet_wrap(~charac, ncol = 1) +
-  geom_vline(data = asl_gp_mean, aes(xintercept = grp_mean),
-             linetype = "dashed") +
+  scale_x_continuous(expand = c(0,0), breaks = c(0, 5, 10), limits = c(0, 10.4)) +
+ # geom_vline(data = asl_gp_mean, aes(xintercept = grp_mean),
+#             linetype = "solid") +
+  geom_vline(data = asl_gp_med, aes(xintercept = grp_median),
+             linetype = "longdash") +
+  xlab(label = "Length (m)") +
   theme_minimal() +
   theme(panel.grid = element_blank(),  # removes all grid lines
-        axis.line.x = element_line(size=0.1, color="black"), # adds axis line back in
+        axis.title.y = element_blank(), 
+        axis.text.y = element_blank(),
+        strip.text = element_blank(),
+        axis.text = element_text(size = 16),
+        axis.title.x = element_text(size = 20))
+
+
+
+
+ggplot(asl_density_df) +
+  geom_density(aes(x = length, fill = "grey"), fill = "grey") +
+  facet_wrap(~charac, ncol = 1) +
+  scale_x_continuous(expand = c(0,0), breaks = c(0, 5, 10), limits = c(0, 10.5)) +
+  geom_vline(data = asl_gp_mean, aes(xintercept = grp_mean),
+             linetype = "solid") +
+  geom_vline(data = asl_gp_med, aes(xintercept = grp_median),
+             linetype = "longdash") +
+  theme_minimal() +
+  geom_rug(aes(x = length, y = 0), position = position_jitter(height = 0)) +
+  theme(panel.grid = element_blank(),  # removes all grid lines
         axis.title.y = element_blank(), 
         axis.text.y = element_blank())
 
 
+
+
+asl_shared %>%
+  units::drop_units() %>%
+  ggplot()+
+  geom_density(aes(x = length, fill = "grey"), fill = "grey") +
+  #facet_wrap(~charac, ncol = 1) +
+  scale_x_continuous(expand = c(0,0), breaks = c(0, 5, 10), limits = c(0, 10.5)) +
+  theme_minimal() 
+  #theme(panel.grid = element_blank(),  # removes all grid lines
+  #      axis.title.y = element_blank(), 
+  #      axis.text.y = element_blank())
 
 
 ################################################################################
