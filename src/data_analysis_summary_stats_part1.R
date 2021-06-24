@@ -18,6 +18,7 @@ library(sf)
 library(summarytools)
 library(units)
 library(ggpmisc) # adding tables to ggplot
+library(scales)  # allows ggplot axis labels to be wrapped
 
 
 # load datasets
@@ -251,475 +252,25 @@ c_trafficcalming %>%
 
 
 
-##### create summary histograms
-# write function to create summary
-my.summary <- function(x,...){
-  c(Mean = mean(x, ...),
-    SD = sd(x, ...),
-    Median = median(x, ...),
-    Min = min(x, ...),
-    Max = max(x,...))
-}
-
-my.summary2 <- function(x,...){
-  c(Mean = paste0(round(mean(x, ...), digits = 1), " m"),
-    SD = paste0(round(sd(x, ...), digits = 1), " m"),
-    Median = paste0(round(median(x, ...), digits = 1), " m"),
-    IQR = paste0(round((quantile(x, 0.25)), digits = 1), " - ", 
-                 round((quantile(x, 0.75)), digits = 1), " m"),
-    Min = paste0(round(min(x, ...), digits = 1), " m"),
-    Max = paste0(round(max(x,...), digits = 1), " m"))
-}
-
-my.summary_clt <- function(x,...){
-  c(Mean = paste0(round(mean(x, ...), digits = 1), " m"),
-    SD = paste0(round(sd(x, ...), digits = 1), " m"),
-    Median = paste0(round(median(x, ...), digits = 1), " m"),
-    IQR = paste0(round((quantile(x, 0.25)), digits = 1), " - ", 
-                 round((quantile(x, 0.75)), digits = 1), " m"),
-    Min = paste0(round(min(x, ...), digits = 2), " m"),
-    Max = paste0(round(max(x,...), digits = 1), " m"))
-}
-
-# sets units so that [] are removed around m units for ggplots
-units_options(group = c("", "")) 
-
-#### code to obtain original usmmary statistics 
-# library(CycleInfraLnd)
-# asl = st_transform(get_cid_lines(type = "advanced_stop_line"), crs = 27700)
-# crossings = st_transform(get_cid_lines(type = "crossing"), crs = 27700)
-# cycle_lane_track = st_transform(get_cid_lines(type = "cycle_lane_track"), crs = 27700)
-# summary(st_length(asl))
-# # Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
-# # 1.222   3.897   4.503   4.597   5.082  20.633 
-# summary(st_length(crossings))
-# # Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
-# # 0.7531  7.3700  9.8495 11.8003 14.0031 76.8535 
-# summary(st_length(cycle_lane_track))
-# # Min.  1st Qu.   Median     Mean  3rd Qu.     Max. 
-# # 0.28    16.05    44.08   116.35   108.71 19814.96 
-
-
-
-
-# 1) ASL
-asl_hist_df = c_asl %>%
-  mutate(length = drop_units(st_length(geometry))) %>%
-  st_drop_geometry()
-
-asl_summ = data.frame(
-  Measure = c("Mean", "SD", "Median", "Min", "Max"),
-  Values = set_units(round(my.summary(asl_hist_df$length), digits = 1), m)
-)
-
-asl_summ2 = data.frame(
-  Measure = c("Mean", "SD", "Median","IQR", "Min", "Max"),
-  Values = my.summary2(asl_hist_df$length))
-
-asl_df <- tibble(x = 15, y = 1000, tb = list(asl_summ))
-asl_df2 <- tibble(x = 15, y = 1000, tb = list(asl_summ2))
-
-ggplot(asl_hist_df) + 
-  geom_histogram(aes(x = length), fill = "grey", color = "black") + 
-  theme_classic() +
-  labs(y = "Count", x = "Length (m)") +
-  scale_x_continuous(expand = c(0,0)) +
-  scale_y_continuous(expand = c(0,0)) +
-  geom_table(data = asl_df, aes(x = x, y = y, label = tb), 
-             table.colnames = FALSE, table.theme = ttheme_gtminimal)
-# using my.summary2 function
-ggplot(asl_hist_df) + 
-  geom_histogram(aes(x = length), fill = "grey", color = "black") + 
-  theme_classic() +
-  labs(y = "Count", x = "Length (m)") +
-  scale_x_continuous(expand = c(0,0)) +
-  scale_y_continuous(expand = c(0,0)) +
-  geom_table(data = asl_df2, aes(x = x, y = y, label = tb), 
-             table.colnames = FALSE, table.theme = ttheme_gtminimal)
-
-
-# or boxplot
-asl_box_df <- tibble(x = 15, y = 0.4, tb = list(asl_summ))
-ggplot(asl_hist_df) + 
-  geom_boxplot(aes(x = length), fill = "grey", color = "black") + 
-  theme_classic() +
-  labs(x = "Length (m)") +
-  theme(axis.title.y = element_blank(),
-        axis.text.y = element_blank(),
-        axis.ticks.y = element_blank()) +
-  geom_table(data = asl_box_df, aes(x = x, y = y, label = tb), 
-             table.colnames = FALSE, table.theme = ttheme_gtminimal)
-
-# 2) Crossings
-crossing_hist_df = c_crossings %>%
-  mutate(length = drop_units(st_length(geometry))) %>%
-  st_drop_geometry()
-
-cross_summ = data.frame(
-  Measure = c("Mean", "SD", "Median", "Min", "Max"),
-  Values = set_units(round(my.summary(crossing_hist_df$length), digits = 1), m)
-)
-cross_summ2 = data.frame(
-  Measure = c("Mean", "SD", "Median","IQR", "Min", "Max"),
-  Values = my.summary2(crossing_hist_df$length))
-
-cross_df <- tibble(x = 60, y = 600, tb = list(cross_summ))
-cross_df2 <- tibble(x = 60, y = 600, tb = list(cross_summ2))
-
-ggplot(crossing_hist_df) + 
-  geom_histogram(aes(x = length), fill = "grey", color = "black") + 
-  theme_classic() +
-  labs(y = "Count", x = "Width (m)") +
-  scale_x_continuous(expand = c(0,0)) +
-  scale_y_continuous(expand = c(0,0)) +
-  geom_table(data = cross_df, aes(x = x, y = y, label = tb), 
-             table.colnames = FALSE, table.theme = ttheme_gtminimal)
-# using my.summary2: 
-ggplot(crossing_hist_df) + 
-  geom_histogram(aes(x = length), fill = "grey", color = "black") + 
-  theme_classic() +
-  labs(y = "Count", x = "Width (m)") +
-  scale_x_continuous(expand = c(0,0)) +
-  scale_y_continuous(expand = c(0,0)) +
-  geom_table(data = cross_df2, aes(x = x, y = y, label = tb), 
-             table.colnames = FALSE, table.theme = ttheme_gtminimal)
-
-# 3) Cycle lanes and tracks
-clt_hist_df = c_cyclelanetrack %>%
-  mutate(length = drop_units(st_length(geometry))) %>%
-  st_drop_geometry()
-
-clt_summ = data.frame(
-  Measure = c("Mean", "SD", "Median", "Min", "Max"),
-  Values = set_units(round(my.summary(clt_hist_df$length), digits = 1), m)
-)
-
-clt_summ2 = data.frame(
-  Measure = c("Mean", "SD", "Median","IQR", "Min", "Max"),
-  Values = my.summary_clt(clt_hist_df$length))
-
-clt_df <- tibble(x = 15000, y = 16000, tb = list(clt_summ))
-clt_df2 <- tibble(x = 15000, y = 16000, tb = list(clt_summ2))
-
-ggplot(clt_hist_df) + 
-  geom_histogram(aes(x = length), fill = "grey", color = "black", binwidth = 250) + 
-  theme_classic() +
-  labs(y = "Count", x = "Length (m)") +
-  scale_x_continuous(expand = c(0,0)) +
-  scale_y_continuous(expand = c(0,0)) +
-  geom_table(data = clt_df, aes(x = x, y = y, label = tb), 
-             table.colnames = FALSE, table.theme = ttheme_gtminimal)
-
-# using my.summary_clt
-ggplot(clt_hist_df) + 
-  geom_histogram(aes(x = length), fill = "grey", color = "black", binwidth = 250) + 
-  theme_classic() +
-  labs(y = "Count", x = "Length (m)") +
-  scale_x_continuous(expand = c(0,0)) +
-  scale_y_continuous(expand = c(0,0)) +
-  geom_table(data = clt_df2, aes(x = x, y = y, label = tb), 
-             table.colnames = FALSE, table.theme = ttheme_gtminimal)
-
-
-
-###### by length for asl
-#  calculate total length
-asl_length = sum(st_length(c_asl))
-
-length_no_characteristics = c_asl %>%
-  filter(ASL_FDR == FALSE & ASL_FDRLFT == FALSE & ASL_FDCENT == FALSE & ASL_FDRIGH == FALSE &
-           ASL_SHARED == FALSE & ASL_COLOUR == "NONE") %>%
-  mutate(length = st_length(geometry)) %>%
-  summarise(total_length = round(sum(length), digit = 1)) %>%
-  mutate(percentage = round((total_length/asl_length*100), digit = 1))
-length_no_characteristics$total_length/
-  nrow(c_asl %>%
-         filter(ASL_FDR == FALSE & ASL_FDRLFT == FALSE & ASL_FDCENT == FALSE & ASL_FDRIGH == FALSE &
-                  ASL_SHARED == FALSE & ASL_COLOUR == "NONE"))
-# 4.703635 [m]
-
-length_feed_asl = c_asl %>%
-  group_by(ASL_FDR) %>%
-  mutate(length = st_length(geometry)) %>%
-  summarise(total_length = round(sum(length), digit = 1)) %>%
-  mutate(percentage = round((total_length/asl_length*100), digit = 1)) %>%
-  filter(ASL_FDR == TRUE)
-length_feed_asl$total_length/
-  nrow(c_asl %>%
-         filter(ASL_FDR == TRUE))
-# 4.497813 [m]
-
-length_left_asl = c_asl %>%
-  group_by(ASL_FDRLFT) %>%
-  mutate(length = st_length(geometry)) %>%
-  summarise(total_length = round(sum(length), digit = 1)) %>%
-  mutate(percentage = round((total_length/asl_length*100), digit = 1)) %>%
-  filter(ASL_FDRLFT == TRUE)
-length_feed_asl$total_length/
-  nrow(c_asl %>%
-         filter(ASL_FDRLFT == TRUE))
-# 4.731327 [m]
-
-length_centre_asl = c_asl %>%
-  group_by(ASL_FDCENT) %>%
-  mutate(length = st_length(geometry)) %>%
-  summarise(total_length = round(sum(length), digit = 1)) %>%
-  mutate(percentage = round((total_length/asl_length*100), digit = 1)) %>%
-  filter(ASL_FDCENT == TRUE)
-length_centre_asl$total_length/
-  nrow(c_asl %>%
-         filter(ASL_FDCENT == TRUE))
-# 4.367949 [m]
-
-length_right_asl = c_asl %>%
-  group_by(ASL_FDRIGH) %>%
-  mutate(length = st_length(geometry)) %>%
-  summarise(total_length = round(sum(length), digit = 1)) %>%
-  mutate(percentage = round((total_length/asl_length*100), digit = 1)) %>%
-  filter(ASL_FDRIGH == TRUE)
-length_right_asl$total_length/
-  nrow(c_asl %>%
-         filter(ASL_FDRIGH == TRUE))
-# 4.744444 [m]
-
-length_shared_asl = c_asl %>%
-  group_by(ASL_SHARED) %>%
-  mutate(length = st_length(geometry)) %>%
-  summarise(total_length = round(sum(length), digit = 1)) %>%
-  mutate(percentage = round((total_length/asl_length*100), digit = 1)) %>%
-  filter(ASL_SHARED == TRUE)
-length_shared_asl$total_length/
-  nrow(c_asl %>%
-         filter(ASL_SHARED == TRUE))
-# 4.9 [m]
-
-length_coloured_asl = c_asl %>%
-  filter(ASL_COLOUR != "NONE") %>%
-  mutate(length = st_length(geometry)) %>%
-  summarise(total_length = round(sum(length), digit = 1)) %>%
-  mutate(percentage = round((total_length/asl_length*100), digit = 1))
-length_coloured_asl$total_length/
-  nrow(c_asl %>%
-         filter(ASL_COLOUR != "NONE"))
-# 4.531168 [m]
-
-
-
-
-##### By width for Crossings
-crossings_width = sum(st_length(c_crossings))
-
-width_no_characteristics = c_crossings %>%
-  filter(CRS_SIGNAL == FALSE & CRS_SEGREG == FALSE & CRS_CYGAP == FALSE & CRS_PEDEST == FALSE &
-           CRS_LEVEL == FALSE) %>%
-  mutate(width = st_length(geometry)) %>%
-  summarise(total_width = round(sum(width), digit = 1)) %>%
-  mutate(percentage = round((total_width/crossings_width*100), digit = 1))
-width_no_characteristics$total_width/
-  nrow(c_crossings %>%
-         filter(CRS_SIGNAL == FALSE & CRS_SEGREG == FALSE & CRS_CYGAP == FALSE & CRS_PEDEST == FALSE &
-                  CRS_LEVEL == FALSE))
-# 9.313839 [m]
-
-
-width_signalled_crossings = c_crossings %>%
-  group_by(CRS_SIGNAL) %>%
-  mutate(width = st_length(geometry)) %>%
-  summarise(total_width = round(sum(width), digit = 1)) %>%
-  mutate(percentage = round((total_width/crossings_width*100), digit = 1)) %>%
-  filter(CRS_SIGNAL == TRUE)
-width_signalled_crossings$total_width/
-  nrow(c_crossings %>%
-         filter(CRS_SIGNAL == TRUE))
-# 10.14757 [m]
-
-width_seg_crossings = c_crossings %>%
-  group_by(CRS_SEGREG) %>%
-  mutate(width = st_length(geometry)) %>%
-  summarise(total_width = round(sum(width), digit = 1)) %>%
-  mutate(percentage = round((total_width/crossings_width*100), digit = 1)) %>%
-  filter(CRS_SEGREG == TRUE)
-width_seg_crossings$total_width/
-  nrow(c_crossings %>%
-         filter(CRS_SEGREG == TRUE))
-# 11.38314 [m]
-
-width_cycgap_crossings = c_crossings %>%
-  group_by(CRS_CYGAP) %>%
-  mutate(width = st_length(geometry)) %>%
-  summarise(total_width = round(sum(width), digit = 1)) %>%
-  mutate(percentage = round((total_width/crossings_width*100), digit = 1)) %>%
-  filter(CRS_CYGAP == TRUE)
-width_cycgap_crossings$total_width/
-  nrow(c_crossings %>%
-         filter(CRS_CYGAP == TRUE))
-# 12.16866 [m]
-
-width_pedonly_crossings = c_crossings %>%
-  group_by(CRS_PEDEST) %>%
-  mutate(width = st_length(geometry)) %>%
-  summarise(total_width = round(sum(width), digit = 1)) %>%
-  mutate(percentage = round((total_width/crossings_width*100), digit = 1)) %>%
-  filter(CRS_PEDEST == TRUE)
-width_pedonly_crossings$total_width/
-  nrow(c_crossings %>%
-         filter(CRS_PEDEST == TRUE))
-# 8.516667 [m]
-
-width_level_crossings = c_crossings %>%
-  group_by(CRS_LEVEL) %>%
-  mutate(width = st_length(geometry)) %>%
-  summarise(total_width = round(sum(width), digit = 1)) %>%
-  mutate(percentage = round((total_width/crossings_width*100), digit = 1)) %>%
-  filter(CRS_LEVEL == TRUE)
-width_pedonly_crossings$total_width/
-  nrow(c_crossings %>%
-         filter(CRS_LEVEL == TRUE))
-#19.46667 [m]
-
-
-##### By length for CLT
-# length_no_characteristics = c_cyclelanetrack %>%
-#   filter(CLT_CARR == FALSE & CLT_SEGREG == FALSE & CLT_STEPP == FALSE & 
-#            CLT_PARSEG == FALSE & CLT_SHARED == FALSE & CLT_MANDAT == FALSE &
-#            CLT_ADVIS == FALSE & CLT_PRIORI == FALSE & CLT_CONTRA == FALSE &
-#            CLT_BIDIRE == FALSE & CLT_CBYPAS == FALSE & CLT_BBYPAS == FALSE &
-#            CLT_PARKR == FALSE & CLT_WATERR == FALSE & CLT_PTIME == FALSE &
-#            CLT_COLOUR == "NONE") %>%
-#   mutate(length = st_length(geometry)) %>%
-#   summarise(total_length = round(sum(length), digit = 1)) %>%
-#   mutate(percentage = round((total_length/asl_length*100), digit = 1))
-# length_no_characteristics$total_length/
-#   nrow(c_asl %>%
-#          filter(ASL_FDR == FALSE & ASL_FDRLFT == FALSE & ASL_FDCENT == FALSE & ASL_FDRIGH == FALSE &
-#                   ASL_SHARED == FALSE & ASL_COLOUR == "NONE"))
-
-
-c_cyclelanetrack %>%
-  st_drop_geometry() %>%
-  group_by(CLT_CARR) %>%
-  summarise(total_length = round(sum(length_km), digit = 1)) %>%
-  mutate(percentage = round((total_length/2903.5*100), digit = 1))
-  
-c_cyclelanetrack %>%
-    st_drop_geometry() %>%
-    group_by(CLT_SEGREG) %>%
-    summarise(total_length = round(sum(length_km), digit = 1)) %>%
-    mutate(percentage = round((total_length/2903.5*100), digit = 1))
-  
-c_cyclelanetrack %>%
-  st_drop_geometry() %>%
-  group_by(CLT_STEPP) %>%
-  summarise(total_length = round(sum(length_km), digit = 1)) %>%
-  mutate(percentage = round((total_length/2903.5*100), digit = 1))
-
-c_cyclelanetrack %>%
-  st_drop_geometry() %>%
-  group_by(CLT_PARSEG) %>%
-  summarise(total_length = round(sum(length_km), digit = 1)) %>%
-  mutate(percentage = round((total_length/2903.5*100), digit = 1))
-
-c_cyclelanetrack %>%
-  st_drop_geometry() %>%
-  group_by(CLT_MANDAT) %>%
-  summarise(total_length = round(sum(length_km), digit = 1)) %>%
-  mutate(percentage = round((total_length/2903.5*100), digit = 1))
-
-c_cyclelanetrack %>%
-  st_drop_geometry() %>%
-  group_by(CLT_ADVIS) %>%
-  summarise(total_length = round(sum(length_km), digit = 1)) %>%
-  mutate(percentage = round((total_length/2903.5*100), digit = 1))
-
-c_cyclelanetrack %>%
-  st_drop_geometry() %>%
-  group_by(CLT_PRIORI) %>%
-  summarise(total_length = round(sum(length_km), digit = 1)) %>%
-  mutate(percentage = round((total_length/2903.5*100), digit = 1))
-
-c_cyclelanetrack %>%
-  st_drop_geometry() %>%
-  group_by(CLT_CONTRA) %>%
-  summarise(total_length = round(sum(length_km), digit = 1)) %>%
-  mutate(percentage = round((total_length/2903.5*100), digit = 1))
-
-c_cyclelanetrack %>%
-  st_drop_geometry() %>%
-  group_by(CLT_BIDIRE) %>%
-  summarise(total_length = round(sum(length_km), digit = 1)) %>%
-  mutate(percentage = round((total_length/2903.5*100), digit = 1))
-
-c_cyclelanetrack %>%
-  st_drop_geometry() %>%
-  group_by(CLT_CBYPAS) %>%
-  summarise(total_length = round(sum(length_km), digit = 1)) %>%
-  mutate(percentage = round((total_length/2903.5*100), digit = 1))
-
-c_cyclelanetrack %>%
-  st_drop_geometry() %>%
-  group_by(CLT_BBYPAS) %>%
-  summarise(total_length = round(sum(length_km), digit = 1)) %>%
-  mutate(percentage = round((total_length/2903.5*100), digit = 1))
-
-c_cyclelanetrack %>%
-  st_drop_geometry() %>%
-  group_by(CLT_PARKR) %>%
-  summarise(total_length = round(sum(length_km), digit = 1)) %>%
-  mutate(percentage = round((total_length/2903.5*100), digit = 1))
-
-c_cyclelanetrack %>%
-  st_drop_geometry() %>%
-  group_by(CLT_WATERR) %>%
-  summarise(total_length = round(sum(length_km), digit = 1)) %>%
-  mutate(percentage = round((total_length/2903.5*100), digit = 1))
-
-c_cyclelanetrack %>%
-  st_drop_geometry() %>%
-  group_by(CLT_PTIME) %>%
-  summarise(total_length = round(sum(length_km), digit = 1)) %>%
-  mutate(percentage = round((total_length/2903.5*100), digit = 1))
-
-c_cyclelanetrack %>%
-  st_drop_geometry() %>%
-  group_by(CLT_COLOUR) %>%
-  summarise(total_length = round(sum(length_km), digit = 1)) %>%
-  mutate(percentage = round((total_length/2903.5*100), digit = 1))
-2903.5 - 2483.7 # 419.8
-100 - 85.5 # 14.5
-
-
-##### CLT counts for on and off road
-c_cyclelanetrack %>%
-  st_drop_geometry() %>%
-  select(-c("length_m", "length_km")) %>%
-  filter(CLT_CARR == TRUE) %>%
-  summarytools::dfSummary()  # works out counts
-
-c_cyclelanetrack %>%
-  st_drop_geometry() %>%
-  select(-c("length_m", "length_km")) %>%
-  filter(CLT_CARR == FALSE) %>%
-  summarytools::dfSummary()  # works out counts
-
 ################################################################################
 #
 # 5) Create visualisations of the characteristics - bar charts for count/% and 
 # density plots for length - this is to replace a table with the actual figures
 
 
-# create dataframes for count % comparison (insread of table)
+# create dataframes for count % comparison 
 # 1) ASL
 asl_charac = c_asl %>%
   st_drop_geometry() %>%
   select(contains("ASL")) %>%
   mutate(ASL_COLOUR_F = case_when(ASL_COLOUR == "NONE" ~ "FALSE", 
                                   TRUE ~ "TRUE")) %>%
-  select(-c(ASL_COLOUR))
+  select(-c(ASL_COLOUR)) # create df of just ASL characteristics 
 
 ASL_FDR = asl_charac$ASL_FDR %>%freq(cumul = FALSE, report.nas = FALSE) %>% tb() %>%
   filter(ASL_FDR == "TRUE") %>%
-  rename(charac = ASL_FDR)
-ASL_FDR[1] <- "ASL_FDR"
+  rename(charac = ASL_FDR)  # create df of feeder lane characteristic with freq and %
+ASL_FDR[1] <- "ASL_FDR" # relabel 'TRUE' with characteristic
 
 ASL_FDRLFT = asl_charac$ASL_FDRLFT %>%freq(cumul = FALSE, report.nas = FALSE) %>% tb() %>%
   filter(ASL_FDRLFT == "TRUE") %>%
@@ -749,16 +300,16 @@ ASL_COLOUR_F[1] <- "ASL_COLOUR_F"
 ASL_NIL = c("ASL_NIL", 1568, 41.5)
 
 ASL = rbind(ASL_FDR, ASL_NIL,ASL_FDRLFT, ASL_COLOUR_F, ASL_FDCENT, ASL_FDRIGH, ASL_SHARED) %>%
-  mutate(pct = round(as.numeric(pct), digits = 1)) %>%
-  mutate(Percentage = paste0(pct, "%")) %>%
-  mutate(Count = as.numeric(freq)) %>%
+  mutate(pct = round(as.numeric(pct), digits = 1)) %>%  # convert pct from character to numeric
+  mutate(Percentage = paste0(pct, "%")) %>%   # create new text version of %
+  mutate(Count = as.numeric(freq)) %>%  # convert to numeric for plotting
   mutate(charac = factor(charac,
                          levels = c("ASL_SHARED", "ASL_FDRIGH","ASL_FDCENT", "ASL_COLOUR_F", 
                                     "ASL_NIL", "ASL_FDRLFT", "ASL_FDR"),
                          labels = c("Shared e.g. with buses", "Right feeder lane", 
                                     "Centre feeder lane", "Coloured tarmac", 
                                     "No characteristics", "Left feeder lane",  
-                                    "Feeder lane present")))
+                                    "Feeder lane present")))  # factor and order correctly
 
 # # create stacked bar chart of ASL count with % in text
 ggplot() +
@@ -772,27 +323,17 @@ ggplot() +
         axis.title.x = element_text(size = 20)) +
   scale_x_continuous(expand = c(0,0), breaks = c(0, 800, 1600), limits = c(0, 2100)) +
   geom_text(data = ASL, aes(x = Count, label = Percentage, y = charac),
-            hjust = -0.3, size = 5)
+            hjust = -0.3, size = 5) +
+  scale_y_discrete(labels = wrap_format(30))
 
-# # create stacked bar chart of %
-# ggplot() +
-#   geom_bar(data = ASL,
-#            aes(x = Percentage, y = charac), stat = "identity") +
-#   theme_minimal() +
-#   theme(panel.grid = element_blank(),  # removes all grid lines
-#         axis.line.x = element_line(size=0.1, color="black"), # adds axis line back in
-#         axis.title.y = element_blank(), 
-#         axis.text.y = element_blank()) +
-#   scale_x_continuous(expand = c(0,0), breaks = c(0, 40))
-
-# create density plot df
+# Create density plot df
 asl_df = c_asl %>%
   mutate(length = st_length(geometry)) # gives me the length of all ASL
 
 asl_nil = asl_df %>%
   filter(ASL_FDR == FALSE & ASL_FDRLFT == FALSE & ASL_FDCENT == FALSE & ASL_FDRIGH == FALSE &
            ASL_SHARED == FALSE & ASL_COLOUR == "NONE") %>%
-  mutate(charac = "ASL_NIL")
+  mutate(charac = "ASL_NIL")  # create df of just asl_nil and their assoc length
 asl_feeder = asl_df %>%
   filter(ASL_FDR == TRUE) %>%
   mutate(charac = "ASL_FDR")
@@ -820,23 +361,22 @@ asl_density_df = rbind(asl_feeder, asl_nil, asl_left, asl_colour, asl_centre, as
                                     "Coloured tarmac", "Centre feeder lane", "Right feeder lane", 
                                     "Shared e.g. with buses"))) %>%
   select(c(length, charac)) %>%
-  units::drop_units()
+  units::drop_units()  # finalise density plot df with rows for every characteristic (contains 6220 obs)
 
-# asl_gp_mean = asl_density_df %>%
-#   group_by(charac) %>%
-#   summarise(grp_mean = mean(length))
+# Obtain summary stats by grouped characteristics
 asl_gp_med = asl_density_df %>%
   group_by(charac) %>%
   summarise(grp_median = median(length))
+# asl_gp_mean = asl_density_df %>%
+#   group_by(charac) %>%
+#   summarise(grp_mean = mean(length))
 
 
-# Create ggplot of count of length
+# Create density plot of ASL length with median 
 ggplot(asl_density_df) +
   geom_density(aes(x = length, fill = "grey"), fill = "grey") +
   facet_wrap(~charac, ncol = 1) +
   scale_x_continuous(expand = c(0,0), breaks = c(0, 5, 10), limits = c(0, 10.4)) +
- # geom_vline(data = asl_gp_mean, aes(xintercept = grp_mean),
-#             linetype = "solid") +
   geom_vline(data = asl_gp_med, aes(xintercept = grp_median),
              linetype = "longdash") +
   xlab(label = "Length (m)") +
@@ -848,36 +388,131 @@ ggplot(asl_density_df) +
         axis.text = element_text(size = 16),
         axis.title.x = element_text(size = 20))
 
+rm(list = ls())
 
+# 2) Crossings
+cross_charac = c_crossings %>%
+  st_drop_geometry() %>%
+  select(contains("CRS"))  # create df of just crossing characteristics 
 
+CRS_SIGNAL = cross_charac$CRS_SIGNAL %>%freq(cumul = FALSE, report.nas = FALSE) %>% tb() %>%
+  filter(CRS_SIGNAL == "TRUE") %>%
+  rename(charac = CRS_SIGNAL)  # create df of crossing signal characteristic with freq and %
+CRS_SIGNAL[1] <- "CRS_SIGNAL" # relabel 'TRUE' with characteristic
 
-ggplot(asl_density_df) +
-  geom_density(aes(x = length, fill = "grey"), fill = "grey") +
-  facet_wrap(~charac, ncol = 1) +
-  scale_x_continuous(expand = c(0,0), breaks = c(0, 5, 10), limits = c(0, 10.5)) +
-  geom_vline(data = asl_gp_mean, aes(xintercept = grp_mean),
-             linetype = "solid") +
-  geom_vline(data = asl_gp_med, aes(xintercept = grp_median),
-             linetype = "longdash") +
+CRS_SEGREG = cross_charac$CRS_SEGREG %>%freq(cumul = FALSE, report.nas = FALSE) %>% tb() %>%
+  filter(CRS_SEGREG == "TRUE") %>%
+  rename(charac = CRS_SEGREG)
+CRS_SEGREG[1] <- "CRS_SEGREG"
+
+CRS_CYGAP = cross_charac$CRS_CYGAP %>%freq(cumul = FALSE, report.nas = FALSE) %>% tb() %>%
+  filter(CRS_CYGAP == "TRUE") %>%
+  rename(charac = CRS_CYGAP)
+CRS_CYGAP[1] <- "CRS_CYGAP"
+
+CRS_PEDEST = cross_charac$CRS_PEDEST %>%freq(cumul = FALSE, report.nas = FALSE) %>% tb() %>%
+  filter(CRS_PEDEST == "TRUE") %>%
+  rename(charac = CRS_PEDEST)
+CRS_PEDEST[1] <- "CRS_PEDEST"
+
+CRS_LEVEL = cross_charac$CRS_LEVEL %>%freq(cumul = FALSE, report.nas = FALSE) %>% tb() %>%
+  filter(CRS_LEVEL == "TRUE") %>%
+  rename(charac = CRS_LEVEL)
+CRS_LEVEL[1] <- "CRS_LEVEL"
+
+CRS_NIL = c("CRS_NIL", 224, 11.3)
+
+CRS = rbind(CRS_SIGNAL, CRS_SEGREG, CRS_NIL, CRS_CYGAP, CRS_PEDEST, CRS_LEVEL) %>%
+  mutate(pct = round(as.numeric(pct), digits = 1)) %>%  # convert pct from character to numeric
+  mutate(Percentage = paste0(pct, "%")) %>%   # create new text version of %
+  mutate(Count = as.numeric(freq)) %>%  # convert to numeric for plotting
+  mutate(charac = factor(charac,
+                         levels = c("CRS_LEVEL", "CRS_PEDEST", "CRS_CYGAP", "CRS_NIL", 
+                                    "CRS_SEGREG", "CRS_SIGNAL"),
+                         labels = c("Crossing over rail or tram tracks", "Pedestrian-only crosssing (Cyclists dismount)",
+                                    "Gap in island or kerb for cyclists", "No characteristics", 
+                                    "Cyclists segregated from other users", "Signal controlled crossing"))) 
+CRS[2,4] = "17.0%" # manually recode
+
+# Create stacked bar chart of CRS count with % in text
+ggplot() +
+  geom_bar(data = CRS,
+           aes(x = Count, y = charac), stat = "identity") +
   theme_minimal() +
-  geom_rug(aes(x = length, y = 0), position = position_jitter(height = 0)) +
   theme(panel.grid = element_blank(),  # removes all grid lines
-        axis.title.y = element_blank(), 
-        axis.text.y = element_blank())
+        axis.line.x = element_line(size=0.1, color="black"), # adds axis line back in
+        axis.title.y = element_blank(),
+        axis.text = element_text(size = 16),
+        axis.title.x = element_text(size = 20)) +
+  scale_x_continuous(expand = c(0,0), breaks = c(0, 800, 1600), limits = c(0, 2100)) +
+  scale_y_discrete(labels = wrap_format(28)) +
+  geom_text(data = CRS, aes(x = Count, label = Percentage, y = charac),
+            hjust = -0.3, size = 5)
+
+# Create density plot df
+cross_df = c_crossings %>%
+  mutate(width = st_length(geometry)) # gives me the width of all Crossings
+
+cross_nil = cross_df %>%
+  filter(CRS_SIGNAL == FALSE & CRS_SEGREG == FALSE & CRS_CYGAP == FALSE & CRS_PEDEST == FALSE &
+           CRS_LEVEL == FALSE) %>%
+  mutate(charac = "CRS_NIL")  # create df of just crossing_nil and their assoc length
+cross_sig = cross_df %>%
+  filter(CRS_SIGNAL == TRUE) %>%
+  mutate(charac = "CRS_SIGNAL")
+cross_seg = cross_df %>%
+  filter(CRS_SEGREG == TRUE) %>%
+  mutate(charac = "CRS_SEGREG")
+cross_gap = cross_df %>%
+  filter(CRS_CYGAP == TRUE) %>%
+  mutate(charac = "CRS_CYGAP")
+cross_ped = cross_df %>%
+  filter(CRS_PEDEST == TRUE) %>%
+  mutate(charac = "CRS_PEDEST")
+cross_level = cross_df %>%
+  filter(CRS_LEVEL == TRUE) %>%
+  mutate(charac = "CRS_LEVEL")
+
+cross_density_df = rbind(cross_level, cross_ped, cross_gap, cross_nil, cross_seg, cross_sig) %>%
+  st_drop_geometry() %>%
+  mutate(charac = factor(charac,
+                         levels = c("CRS_SIGNAL", "CRS_SEGREG", "CRS_NIL", "CRS_CYGAP",
+                                    "CRS_PEDEST", "CRS_LEVEL"),
+                         labels = c("Signal controlled crossing", "Cyclists segregated from other users",
+                                    "No characteristics", "Gap in island or kerb for cyclists", 
+                                    "Pedestrian-only crosssing (Cyclists dismount)", 
+                                    "Crossing over rail or tram tracks"))) %>%
+  select(c(width, charac)) %>%
+  units::drop_units()  # finalise density plot df with rows for every characteristic (contains 2285 obs)
+
+# # Obtain summary stats by grouped characteristics
+cross_gp_med = cross_density_df %>%
+  group_by(charac) %>%
+  summarise(grp_median = median(width))
+
+
+# Create density plot of crossing length with median
+ggplot(cross_density_df) +
+  geom_density(aes(x = width, fill = "grey"), fill = "grey") +
+  facet_wrap(~charac, ncol = 1) +
+  scale_x_continuous(expand = c(0,0), breaks = c(0, 10, 20), limits = c(0, 25)) +
+  geom_vline(data = cross_gp_med, aes(xintercept = grp_median),
+             linetype = "longdash") +
+  xlab(label = "Width (m)") +
+  theme_minimal() +
+  theme(panel.grid = element_blank(),  # removes all grid lines
+        axis.title.y = element_blank(),
+        axis.text.y = element_blank(),
+        strip.text = element_blank(),
+        axis.text = element_text(size = 16),
+        axis.title.x = element_text(size = 20))
 
 
 
 
-asl_shared %>%
-  units::drop_units() %>%
-  ggplot()+
-  geom_density(aes(x = length, fill = "grey"), fill = "grey") +
-  #facet_wrap(~charac, ncol = 1) +
-  scale_x_continuous(expand = c(0,0), breaks = c(0, 5, 10), limits = c(0, 10.5)) +
-  theme_minimal() 
-  #theme(panel.grid = element_blank(),  # removes all grid lines
-  #      axis.title.y = element_blank(), 
-  #      axis.text.y = element_blank())
+
+
+
 
 
 ################################################################################
@@ -1183,6 +818,375 @@ on_off_clt_comparison_length_counts = cbind(t_on_off_clt_comparison_counts, t_on
 
 
 data3 <- rownames_to_column(on_off_clt_comparison_length_counts, "Characteristic")
+
+################################################################################
+# OLD CODE
+
+################################################################################
+
+
+##### create summary histograms
+# write function to create summary
+my.summary <- function(x,...){
+  c(Mean = mean(x, ...),
+    SD = sd(x, ...),
+    Median = median(x, ...),
+    Min = min(x, ...),
+    Max = max(x,...))
+}
+
+my.summary2 <- function(x,...){
+  c(Mean = paste0(round(mean(x, ...), digits = 1), " m"),
+    SD = paste0(round(sd(x, ...), digits = 1), " m"),
+    Median = paste0(round(median(x, ...), digits = 1), " m"),
+    IQR = paste0(round((quantile(x, 0.25)), digits = 1), " - ", 
+                 round((quantile(x, 0.75)), digits = 1), " m"),
+    Min = paste0(round(min(x, ...), digits = 1), " m"),
+    Max = paste0(round(max(x,...), digits = 1), " m"))
+}
+
+my.summary_clt <- function(x,...){
+  c(Mean = paste0(round(mean(x, ...), digits = 1), " m"),
+    SD = paste0(round(sd(x, ...), digits = 1), " m"),
+    Median = paste0(round(median(x, ...), digits = 1), " m"),
+    IQR = paste0(round((quantile(x, 0.25)), digits = 1), " - ", 
+                 round((quantile(x, 0.75)), digits = 1), " m"),
+    Min = paste0(round(min(x, ...), digits = 2), " m"),
+    Max = paste0(round(max(x,...), digits = 1), " m"))
+}
+
+# sets units so that [] are removed around m units for ggplots
+units_options(group = c("", "")) 
+
+#### code to obtain original usmmary statistics 
+# library(CycleInfraLnd)
+# asl = st_transform(get_cid_lines(type = "advanced_stop_line"), crs = 27700)
+# crossings = st_transform(get_cid_lines(type = "crossing"), crs = 27700)
+# cycle_lane_track = st_transform(get_cid_lines(type = "cycle_lane_track"), crs = 27700)
+# summary(st_length(asl))
+# # Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+# # 1.222   3.897   4.503   4.597   5.082  20.633 
+# summary(st_length(crossings))
+# # Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+# # 0.7531  7.3700  9.8495 11.8003 14.0031 76.8535 
+# summary(st_length(cycle_lane_track))
+# # Min.  1st Qu.   Median     Mean  3rd Qu.     Max. 
+# # 0.28    16.05    44.08   116.35   108.71 19814.96 
+
+
+
+
+# 1) ASL
+asl_hist_df = c_asl %>%
+  mutate(length = drop_units(st_length(geometry))) %>%
+  st_drop_geometry()
+
+asl_summ = data.frame(
+  Measure = c("Mean", "SD", "Median", "Min", "Max"),
+  Values = set_units(round(my.summary(asl_hist_df$length), digits = 1), m)
+)
+
+asl_summ2 = data.frame(
+  Measure = c("Mean", "SD", "Median","IQR", "Min", "Max"),
+  Values = my.summary2(asl_hist_df$length))
+
+asl_df <- tibble(x = 15, y = 1000, tb = list(asl_summ))
+asl_df2 <- tibble(x = 15, y = 1000, tb = list(asl_summ2))
+
+ggplot(asl_hist_df) + 
+  geom_histogram(aes(x = length), fill = "grey", color = "black") + 
+  theme_classic() +
+  labs(y = "Count", x = "Length (m)") +
+  scale_x_continuous(expand = c(0,0)) +
+  scale_y_continuous(expand = c(0,0)) +
+  geom_table(data = asl_df, aes(x = x, y = y, label = tb), 
+             table.colnames = FALSE, table.theme = ttheme_gtminimal)
+# using my.summary2 function
+ggplot(asl_hist_df) + 
+  geom_histogram(aes(x = length), fill = "grey", color = "black") + 
+  theme_classic() +
+  labs(y = "Count", x = "Length (m)") +
+  scale_x_continuous(expand = c(0,0)) +
+  scale_y_continuous(expand = c(0,0)) +
+  geom_table(data = asl_df2, aes(x = x, y = y, label = tb), 
+             table.colnames = FALSE, table.theme = ttheme_gtminimal)
+
+
+# or boxplot
+asl_box_df <- tibble(x = 15, y = 0.4, tb = list(asl_summ))
+ggplot(asl_hist_df) + 
+  geom_boxplot(aes(x = length), fill = "grey", color = "black") + 
+  theme_classic() +
+  labs(x = "Length (m)") +
+  theme(axis.title.y = element_blank(),
+        axis.text.y = element_blank(),
+        axis.ticks.y = element_blank()) +
+  geom_table(data = asl_box_df, aes(x = x, y = y, label = tb), 
+             table.colnames = FALSE, table.theme = ttheme_gtminimal)
+
+# 2) Crossings
+crossing_hist_df = c_crossings %>%
+  mutate(length = drop_units(st_length(geometry))) %>%
+  st_drop_geometry()
+
+cross_summ = data.frame(
+  Measure = c("Mean", "SD", "Median", "Min", "Max"),
+  Values = set_units(round(my.summary(crossing_hist_df$length), digits = 1), m)
+)
+cross_summ2 = data.frame(
+  Measure = c("Mean", "SD", "Median","IQR", "Min", "Max"),
+  Values = my.summary2(crossing_hist_df$length))
+
+cross_df <- tibble(x = 60, y = 600, tb = list(cross_summ))
+cross_df2 <- tibble(x = 60, y = 600, tb = list(cross_summ2))
+
+ggplot(crossing_hist_df) + 
+  geom_histogram(aes(x = length), fill = "grey", color = "black") + 
+  theme_classic() +
+  labs(y = "Count", x = "Width (m)") +
+  scale_x_continuous(expand = c(0,0)) +
+  scale_y_continuous(expand = c(0,0)) +
+  geom_table(data = cross_df, aes(x = x, y = y, label = tb), 
+             table.colnames = FALSE, table.theme = ttheme_gtminimal)
+# using my.summary2: 
+ggplot(crossing_hist_df) + 
+  geom_histogram(aes(x = length), fill = "grey", color = "black") + 
+  theme_classic() +
+  labs(y = "Count", x = "Width (m)") +
+  scale_x_continuous(expand = c(0,0)) +
+  scale_y_continuous(expand = c(0,0)) +
+  geom_table(data = cross_df2, aes(x = x, y = y, label = tb), 
+             table.colnames = FALSE, table.theme = ttheme_gtminimal)
+
+# 3) Cycle lanes and tracks
+clt_hist_df = c_cyclelanetrack %>%
+  mutate(length = drop_units(st_length(geometry))) %>%
+  st_drop_geometry()
+
+clt_summ = data.frame(
+  Measure = c("Mean", "SD", "Median", "Min", "Max"),
+  Values = set_units(round(my.summary(clt_hist_df$length), digits = 1), m)
+)
+
+clt_summ2 = data.frame(
+  Measure = c("Mean", "SD", "Median","IQR", "Min", "Max"),
+  Values = my.summary_clt(clt_hist_df$length))
+
+clt_df <- tibble(x = 15000, y = 16000, tb = list(clt_summ))
+clt_df2 <- tibble(x = 15000, y = 16000, tb = list(clt_summ2))
+
+ggplot(clt_hist_df) + 
+  geom_histogram(aes(x = length), fill = "grey", color = "black", binwidth = 250) + 
+  theme_classic() +
+  labs(y = "Count", x = "Length (m)") +
+  scale_x_continuous(expand = c(0,0)) +
+  scale_y_continuous(expand = c(0,0)) +
+  geom_table(data = clt_df, aes(x = x, y = y, label = tb), 
+             table.colnames = FALSE, table.theme = ttheme_gtminimal)
+
+# using my.summary_clt
+ggplot(clt_hist_df) + 
+  geom_histogram(aes(x = length), fill = "grey", color = "black", binwidth = 250) + 
+  theme_classic() +
+  labs(y = "Count", x = "Length (m)") +
+  scale_x_continuous(expand = c(0,0)) +
+  scale_y_continuous(expand = c(0,0)) +
+  geom_table(data = clt_df2, aes(x = x, y = y, label = tb), 
+             table.colnames = FALSE, table.theme = ttheme_gtminimal)
+
+
+
+# ###### by length for asl
+# #  calculate total length
+# asl_length = sum(st_length(c_asl))
+# 
+# length_no_characteristics = c_asl %>%
+#   filter(ASL_FDR == FALSE & ASL_FDRLFT == FALSE & ASL_FDCENT == FALSE & ASL_FDRIGH == FALSE &
+#            ASL_SHARED == FALSE & ASL_COLOUR == "NONE") %>%
+#   mutate(length = st_length(geometry)) %>%
+#   summarise(total_length = round(sum(length), digit = 1)) %>%
+#   mutate(percentage = round((total_length/asl_length*100), digit = 1))
+# length_no_characteristics$total_length/
+#   nrow(c_asl %>%
+#          filter(ASL_FDR == FALSE & ASL_FDRLFT == FALSE & ASL_FDCENT == FALSE & ASL_FDRIGH == FALSE &
+#                   ASL_SHARED == FALSE & ASL_COLOUR == "NONE"))
+# # 4.703635 [m]
+# 
+# length_feed_asl = c_asl %>%
+#   group_by(ASL_FDR) %>%
+#   mutate(length = st_length(geometry)) %>%
+#   summarise(total_length = round(sum(length), digit = 1)) %>%
+#   mutate(percentage = round((total_length/asl_length*100), digit = 1)) %>%
+#   filter(ASL_FDR == TRUE)
+# length_feed_asl$total_length/
+#   nrow(c_asl %>%
+#          filter(ASL_FDR == TRUE))
+# # 4.497813 [m]
+# 
+# length_left_asl = c_asl %>%
+#   group_by(ASL_FDRLFT) %>%
+#   mutate(length = st_length(geometry)) %>%
+#   summarise(total_length = round(sum(length), digit = 1)) %>%
+#   mutate(percentage = round((total_length/asl_length*100), digit = 1)) %>%
+#   filter(ASL_FDRLFT == TRUE)
+# length_feed_asl$total_length/
+#   nrow(c_asl %>%
+#          filter(ASL_FDRLFT == TRUE))
+# # 4.731327 [m]
+# 
+# length_centre_asl = c_asl %>%
+#   group_by(ASL_FDCENT) %>%
+#   mutate(length = st_length(geometry)) %>%
+#   summarise(total_length = round(sum(length), digit = 1)) %>%
+#   mutate(percentage = round((total_length/asl_length*100), digit = 1)) %>%
+#   filter(ASL_FDCENT == TRUE)
+# length_centre_asl$total_length/
+#   nrow(c_asl %>%
+#          filter(ASL_FDCENT == TRUE))
+# # 4.367949 [m]
+# 
+# length_right_asl = c_asl %>%
+#   group_by(ASL_FDRIGH) %>%
+#   mutate(length = st_length(geometry)) %>%
+#   summarise(total_length = round(sum(length), digit = 1)) %>%
+#   mutate(percentage = round((total_length/asl_length*100), digit = 1)) %>%
+#   filter(ASL_FDRIGH == TRUE)
+# length_right_asl$total_length/
+#   nrow(c_asl %>%
+#          filter(ASL_FDRIGH == TRUE))
+# # 4.744444 [m]
+# 
+# length_shared_asl = c_asl %>%
+#   group_by(ASL_SHARED) %>%
+#   mutate(length = st_length(geometry)) %>%
+#   summarise(total_length = round(sum(length), digit = 1)) %>%
+#   mutate(percentage = round((total_length/asl_length*100), digit = 1)) %>%
+#   filter(ASL_SHARED == TRUE)
+# length_shared_asl$total_length/
+#   nrow(c_asl %>%
+#          filter(ASL_SHARED == TRUE))
+# # 4.9 [m]
+# 
+# length_coloured_asl = c_asl %>%
+#   filter(ASL_COLOUR != "NONE") %>%
+#   mutate(length = st_length(geometry)) %>%
+#   summarise(total_length = round(sum(length), digit = 1)) %>%
+#   mutate(percentage = round((total_length/asl_length*100), digit = 1))
+# length_coloured_asl$total_length/
+#   nrow(c_asl %>%
+#          filter(ASL_COLOUR != "NONE"))
+# # 4.531168 [m]
+# 
+# 
+# 
+# 
+# ##### By width for Crossings
+# crossings_width = sum(st_length(c_crossings))
+# 
+# width_no_characteristics = c_crossings %>%
+#   filter(CRS_SIGNAL == FALSE & CRS_SEGREG == FALSE & CRS_CYGAP == FALSE & CRS_PEDEST == FALSE &
+#            CRS_LEVEL == FALSE) %>%
+#   mutate(width = st_length(geometry)) %>%
+#   summarise(total_width = round(sum(width), digit = 1)) %>%
+#   mutate(percentage = round((total_width/crossings_width*100), digit = 1))
+# width_no_characteristics$total_width/
+#   nrow(c_crossings %>%
+#          filter(CRS_SIGNAL == FALSE & CRS_SEGREG == FALSE & CRS_CYGAP == FALSE & CRS_PEDEST == FALSE &
+#                   CRS_LEVEL == FALSE))
+# # 9.313839 [m]
+# 
+# 
+# width_signalled_crossings = c_crossings %>%
+#   group_by(CRS_SIGNAL) %>%
+#   mutate(width = st_length(geometry)) %>%
+#   summarise(total_width = round(sum(width), digit = 1)) %>%
+#   mutate(percentage = round((total_width/crossings_width*100), digit = 1)) %>%
+#   filter(CRS_SIGNAL == TRUE)
+# width_signalled_crossings$total_width/
+#   nrow(c_crossings %>%
+#          filter(CRS_SIGNAL == TRUE))
+# # 10.14757 [m]
+# 
+# width_seg_crossings = c_crossings %>%
+#   group_by(CRS_SEGREG) %>%
+#   mutate(width = st_length(geometry)) %>%
+#   summarise(total_width = round(sum(width), digit = 1)) %>%
+#   mutate(percentage = round((total_width/crossings_width*100), digit = 1)) %>%
+#   filter(CRS_SEGREG == TRUE)
+# width_seg_crossings$total_width/
+#   nrow(c_crossings %>%
+#          filter(CRS_SEGREG == TRUE))
+# # 11.38314 [m]
+# 
+# width_cycgap_crossings = c_crossings %>%
+#   group_by(CRS_CYGAP) %>%
+#   mutate(width = st_length(geometry)) %>%
+#   summarise(total_width = round(sum(width), digit = 1)) %>%
+#   mutate(percentage = round((total_width/crossings_width*100), digit = 1)) %>%
+#   filter(CRS_CYGAP == TRUE)
+# width_cycgap_crossings$total_width/
+#   nrow(c_crossings %>%
+#          filter(CRS_CYGAP == TRUE))
+# # 12.16866 [m]
+# 
+# width_pedonly_crossings = c_crossings %>%
+#   group_by(CRS_PEDEST) %>%
+#   mutate(width = st_length(geometry)) %>%
+#   summarise(total_width = round(sum(width), digit = 1)) %>%
+#   mutate(percentage = round((total_width/crossings_width*100), digit = 1)) %>%
+#   filter(CRS_PEDEST == TRUE)
+# width_pedonly_crossings$total_width/
+#   nrow(c_crossings %>%
+#          filter(CRS_PEDEST == TRUE))
+# # 8.516667 [m]
+# 
+# width_level_crossings = c_crossings %>%
+#   group_by(CRS_LEVEL) %>%
+#   mutate(width = st_length(geometry)) %>%
+#   summarise(total_width = round(sum(width), digit = 1)) %>%
+#   mutate(percentage = round((total_width/crossings_width*100), digit = 1)) %>%
+#   filter(CRS_LEVEL == TRUE)
+# width_pedonly_crossings$total_width/
+#   nrow(c_crossings %>%
+#          filter(CRS_LEVEL == TRUE))
+# #19.46667 [m]
+
+
+##### By length for CLT
+# length_no_characteristics = c_cyclelanetrack %>%
+#   filter(CLT_CARR == FALSE & CLT_SEGREG == FALSE & CLT_STEPP == FALSE & 
+#            CLT_PARSEG == FALSE & CLT_SHARED == FALSE & CLT_MANDAT == FALSE &
+#            CLT_ADVIS == FALSE & CLT_PRIORI == FALSE & CLT_CONTRA == FALSE &
+#            CLT_BIDIRE == FALSE & CLT_CBYPAS == FALSE & CLT_BBYPAS == FALSE &
+#            CLT_PARKR == FALSE & CLT_WATERR == FALSE & CLT_PTIME == FALSE &
+#            CLT_COLOUR == "NONE") %>%
+#   mutate(length = st_length(geometry)) %>%
+#   summarise(total_length = round(sum(length), digit = 1)) %>%
+#   mutate(percentage = round((total_length/asl_length*100), digit = 1))
+# length_no_characteristics$total_length/
+#   nrow(c_asl %>%
+#          filter(ASL_FDR == FALSE & ASL_FDRLFT == FALSE & ASL_FDCENT == FALSE & ASL_FDRIGH == FALSE &
+#                   ASL_SHARED == FALSE & ASL_COLOUR == "NONE"))
+
+
+
+
+##### CLT counts for on and off road
+c_cyclelanetrack %>%
+  st_drop_geometry() %>%
+  select(-c("length_m", "length_km")) %>%
+  filter(CLT_CARR == TRUE) %>%
+  summarytools::dfSummary()  # works out counts
+
+c_cyclelanetrack %>%
+  st_drop_geometry() %>%
+  select(-c("length_m", "length_km")) %>%
+  filter(CLT_CARR == FALSE) %>%
+  summarytools::dfSummary()  # works out counts
+
+
+
+
 
 
 # ggplot(chloropleth_dataset, aes(x = reorder(Borough_number, -Borough_Area_km2_no_units), 
