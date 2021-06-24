@@ -507,8 +507,312 @@ ggplot(cross_density_df) +
         axis.text = element_text(size = 16),
         axis.title.x = element_text(size = 20))
 
+rm(list = ls())
+
+# 3) CLT
+clt_charac = c_cyclelanetrack %>%
+  st_drop_geometry() %>%
+  select(contains("CLT")) %>%
+  mutate(CLT_COLOUR_F = case_when(CLT_COLOUR == "NONE" ~ "FALSE", 
+                                  TRUE ~ "TRUE")) %>%
+  select(-c(CLT_COLOUR)) # create df of just clt characteristics 
+
+CLT_CARR = clt_charac$CLT_CARR %>%freq(cumul = FALSE, report.nas = FALSE) %>% tb() %>%
+  filter(CLT_CARR == "TRUE") %>%
+  rename(charac = CLT_CARR)  # create df of on/off characteristic with freq and %
+CLT_CARR[1] <- "CLT_CARR" # relabel 'TRUE' with characteristic
+
+CLT_SEGREG = clt_charac$CLT_SEGREG %>%freq(cumul = FALSE, report.nas = FALSE) %>% tb() %>%
+  filter(CLT_SEGREG == "TRUE") %>%
+  rename(charac = CLT_SEGREG)
+CLT_SEGREG[1] <- "CLT_SEGREG"
+
+CLT_STEPP = clt_charac$CLT_STEPP %>%freq(cumul = FALSE, report.nas = FALSE) %>% tb() %>%
+  filter(CLT_STEPP == "TRUE") %>%
+  rename(charac =CLT_STEPP)
+CLT_STEPP[1] <- "CLT_STEPP"
+
+CLT_PARSEG = clt_charac$CLT_PARSEG %>%freq(cumul = FALSE, report.nas = FALSE) %>% tb() %>%
+  filter(CLT_PARSEG== "TRUE") %>%
+  rename(charac = CLT_PARSEG)
+CLT_PARSEG[1] <- "CLT_PARSEG"
+
+CLT_SHARED = clt_charac$CLT_SHARED %>%freq(cumul = FALSE, report.nas = FALSE) %>% tb() %>%
+  filter(CLT_SHARED == "TRUE") %>%
+  rename(charac = CLT_SHARED)
+CLT_SHARED[1] <- "CLT_SHARED"
+
+CLT_MANDAT = clt_charac$CLT_MANDAT %>%freq(cumul = FALSE, report.nas = FALSE) %>% tb() %>%
+  filter(CLT_MANDAT == "TRUE") %>%
+  rename(charac = CLT_MANDAT)
+CLT_MANDAT[1] <- "CLT_MANDAT"
+
+CLT_ADVIS = clt_charac$CLT_ADVIS %>%freq(cumul = FALSE, report.nas = FALSE) %>% tb() %>%
+  filter(CLT_ADVIS == "TRUE") %>%
+  rename(charac = CLT_ADVIS)
+CLT_ADVIS[1] <- "CLT_ADVIS"
+
+CLT_PRIORI = clt_charac$CLT_PRIORI %>%freq(cumul = FALSE, report.nas = FALSE) %>% tb() %>%
+  filter(CLT_PRIORI == "TRUE") %>%
+  rename(charac = CLT_PRIORI)
+CLT_PRIORI[1] <- "CLT_PRIORI"
+
+CLT_CONTRA = clt_charac$CLT_CONTRA %>%freq(cumul = FALSE, report.nas = FALSE) %>% tb() %>%
+  filter(CLT_CONTRA == "TRUE") %>%
+  rename(charac = CLT_CONTRA)
+CLT_CONTRA[1] <- "CLT_CONTRA"
+
+CLT_SHARED = clt_charac$CLT_SHARED %>%freq(cumul = FALSE, report.nas = FALSE) %>% tb() %>%
+  filter(CLT_SHARED == "TRUE") %>%
+  rename(charac = CLT_SHARED)
+CLT_SHARED[1] <- "CLT_SHARED"
+
+CLT_BIDIRE = clt_charac$CLT_BIDIRE %>%freq(cumul = FALSE, report.nas = FALSE) %>% tb() %>%
+  filter(CLT_BIDIRE == "TRUE") %>%
+  rename(charac = CLT_BIDIRE)
+CLT_BIDIRE[1] <- "CLT_BIDIRE"
+
+CLT_CBYPAS = clt_charac$CLT_CBYPAS %>%freq(cumul = FALSE, report.nas = FALSE) %>% tb() %>%
+  filter(CLT_CBYPAS == "TRUE") %>%
+  rename(charac = CLT_CBYPAS)
+CLT_CBYPAS[1] <- "CLT_CBYPAS"
+
+CLT_BBYPAS = clt_charac$CLT_BBYPAS %>%freq(cumul = FALSE, report.nas = FALSE) %>% tb() %>%
+  filter(CLT_BBYPAS == "TRUE") %>%
+  rename(charac = CLT_BBYPAS)
+CLT_BBYPAS[1] <- "CLT_BBYPAS"
+
+CLT_PARKR = clt_charac$CLT_PARKR %>%freq(cumul = FALSE, report.nas = FALSE) %>% tb() %>%
+  filter(CLT_PARKR == "TRUE") %>%
+  rename(charac = CLT_PARKR)
+CLT_PARKR[1] <- "CLT_PARKR"
+
+CLT_WATERR = clt_charac$CLT_WATERR %>%freq(cumul = FALSE, report.nas = FALSE) %>% tb() %>%
+  filter(CLT_WATERR == "TRUE") %>%
+  rename(charac = CLT_WATERR)
+CLT_WATERR[1] <- "CLT_WATERR"
+
+CLT_PTIME = clt_charac$CLT_PTIME %>%freq(cumul = FALSE, report.nas = FALSE) %>% tb() %>%
+  filter(CLT_PTIME == "TRUE") %>%
+  rename(charac = CLT_PTIME)
+CLT_PTIME[1] <- "CLT_PTIME"
+
+CLT_COLOUR_F = clt_charac$CLT_COLOUR_F %>%freq(cumul = FALSE, report.nas = FALSE) %>% tb() %>%
+  filter(CLT_COLOUR_F == "TRUE") %>%
+  rename(charac = CLT_COLOUR_F)
+CLT_COLOUR_F[1] <- "CLT_COLOUR_F"
 
 
+clt_nil = filter_all(clt_charac, all_vars(. == "FALSE")) #= nil so no obs have no characteristics 
+
+
+CLT = rbind(CLT_CARR, CLT_BIDIRE, CLT_SHARED, CLT_ADVIS, CLT_COLOUR_F, CLT_PARKR, 
+            CLT_PARSEG, CLT_PTIME, CLT_PRIORI, CLT_SEGREG, CLT_MANDAT, CLT_CONTRA, 
+            CLT_WATERR, CLT_BBYPAS, CLT_STEPP, CLT_CBYPAS) %>%
+  mutate(pct = round(as.numeric(pct), digits = 1)) %>%  # convert pct from character to numeric
+  mutate(Percentage = paste0(pct, "%")) %>%   # create new text version of %
+  mutate(Count = as.numeric(freq)) %>%  # convert to numeric for plotting
+  mutate(charac = factor(charac,
+                         levels = c("CLT_CBYPAS", "CLT_STEPP", "CLT_BBYPAS", "CLT_WATERR", 
+                                    "CLT_CONTRA", "CLT_MANDAT", "CLT_SEGREG", "CLT_PRIORI", 
+                                    "CLT_PTIME", "CLT_PARSEG", "CLT_PARKR", "CLT_COLOUR_F",
+                                    "CLT_ADVIS", "CLT_SHARED", "CLT_BIDIRE","CLT_CARR"),
+                         labels = c("Cycle bypass at traffic signals", "Stepped segregation", 
+                                    "Continuous cycle facilities at bus stop", 
+                                    "Route by river, canal or water feature", 
+                                    "Contraflow cycle lane/track", "Mandatory cycle lane (painted line)", 
+                                    "Fully segregated", "Cycle lane/track has priority over other users", 
+                                    "Part-time cycle cycle lane/track", "Partially segregated", 
+                                    "Route by or through a Park", "Coloured tarmac", 
+                                    "Advisory cycle lane (painted line)", "Shared e.g. with buses", 
+                                    "Bi-directional (two-way flow)", "On-carriageway")))  # factor and order correctly
+
+CLT[3,4] = "41.0%" # manually recode
+CLT[9,4] = "9.0%"
+
+# # create stacked bar chart of CLT count with % in text
+ggplot() +
+  geom_bar(data = CLT,
+           aes(x = Count, y = charac), stat = "identity") +
+  theme_minimal() +
+  theme(panel.grid = element_blank(),  # removes all grid lines
+        axis.line.x = element_line(size=0.1, color="black"), # adds axis line back in
+        axis.title.y = element_blank(),
+        axis.text = element_text(size = 16),
+        axis.title.x = element_text(size = 20)) +
+  scale_x_continuous(expand = c(0,0), breaks = c(0, 5000, 10000), limits = c(0, 16100)) +
+  geom_text(data = CLT, aes(x = Count, label = Percentage, y = charac),
+            hjust = -0.3, size = 5) +
+  scale_y_discrete(labels = wrap_format(28))
+
+# # Create density plot df
+clt_df = c_cyclelanetrack %>%
+  mutate(length = st_length(geometry)) # gives me the length of all clt
+
+
+clt_density_df = rbind(clt_carr, clt_seg, clt_stepp, clt_parseg, clt_shared, 
+                       clt_mand, clt_advis, clt_priori, clt_contra, clt_bidire, 
+                       clt_cbypas, clt_bbypas, clt_park, clt_water, clt_ptime, clt_colour) %>%
+  st_drop_geometry() %>%
+  mutate(charac = factor(charac,
+                         levels = c("CLT_CARR", "CLT_BIDIRE", "CLT_SHARED", "CLT_ADVIS", 
+                                    "CLT_COLOUR_F", "CLT_PARKR", "CLT_PARSEG", "CLT_PTIME", 
+                                    "CLT_PRIORI", "CLT_SEGREG", "CLT_MANDAT", "CLT_CONTRA", 
+                                    "CLT_WATERR", "CLT_BBYPAS", "CLT_STEPP", "CLT_CBYPAS"),
+                         labels = c("On-carriageway", "Bi-directional (two-way flow)", 
+                                    "Shared e.g. with buses", "Advisory cycle lane (painted line)", 
+                                    "Coloured tarmac", "Route by or through a Park", 
+                                    "Partially segregated", "Part-time cycle cycle lane/track", 
+                                    "Cycle lane/track has priority over other users", 
+                                    "Fully segregated", "Mandatory cycle lane (painted line)", 
+                                    "Contraflow cycle lane/track", "Route by river, canal or water feature", 
+                                    "Continuous cycle facilities at bus stop", 
+                                    "Stepped segregation", "Cycle bypass at traffic signals"))) %>%
+  select(c(length, charac)) %>%
+  units::drop_units()  # finalise density plot df with rows for every characteristic (contains 67310 obs)
+
+# Obtain summary stats by grouped characteristics
+clt_gp_med = clt_density_df %>%
+  group_by(charac) %>%
+  summarise(grp_median = median(length))
+
+# Create density plot of CLT length with median
+ggplot(clt_density_df) +
+  geom_density(aes(x = length, fill = "grey"), fill = "grey") +
+  facet_wrap(~charac, ncol = 1) +
+  scale_x_continuous(expand = c(0,0), breaks = c(0, 180), limits = c(0, 190)) +
+  geom_vline(data = clt_gp_med, aes(xintercept = grp_median),
+             linetype = "longdash") +
+  xlab(label = "Length (m)") +
+  theme_minimal() +
+  theme(panel.grid = element_blank(),  # removes all grid lines
+        axis.title.y = element_blank(),
+        axis.text.y = element_blank(),
+        strip.text = element_blank(),
+        axis.text = element_text(size = 16),
+        axis.title.x = element_text(size = 20))
+
+rm(list = ls())
+
+
+# 4) Signals
+sig_charac = c_signals %>%
+  st_drop_geometry() %>%
+  select(contains("SIG")) # create df of just SIG characteristics 
+
+SIG_HEAD = sig_charac$SIG_HEAD %>%freq(cumul = FALSE, report.nas = FALSE) %>% tb() %>%
+  filter(SIG_HEAD == "TRUE") %>%
+  rename(charac = SIG_HEAD)  # create df of characteristic with freq and %
+SIG_HEAD[1] <- "SIG_HEAD" # relabel 'TRUE' with characteristic
+
+SIG_SEPARA = sig_charac$SIG_SEPARA %>%freq(cumul = FALSE, report.nas = FALSE) %>% tb() %>%
+  filter(SIG_SEPARA == "TRUE") %>%
+  rename(charac = SIG_SEPARA)  
+SIG_SEPARA[1] <- "SIG_SEPARA" 
+
+SIG_EARLY = sig_charac$SIG_EARLY %>%freq(cumul = FALSE, report.nas = FALSE) %>% tb() %>%
+  filter(SIG_EARLY == "TRUE") %>%
+  rename(charac = SIG_EARLY)  
+SIG_EARLY[1] <- "SIG_EARLY" 
+
+SIG_TWOSTG = sig_charac$SIG_TWOSTG%>%freq(cumul = FALSE, report.nas = FALSE) %>% tb() %>%
+  filter(SIG_TWOSTG == "TRUE") %>%
+  rename(charac = SIG_TWOSTG)  
+SIG_TWOSTG[1] <- "SIG_TWOSTG" 
+
+SIG_GATE= sig_charac$SIG_GATE %>%freq(cumul = FALSE, report.nas = FALSE) %>% tb() %>%
+  filter(SIG_GATE == "TRUE") %>%
+  rename(charac = SIG_GATE)  
+SIG_GATE[1] <- "SIG_GATE" 
+
+SIG_NIL = c("SIG_NIL", 4, 0.9)
+
+SIG = rbind(SIG_EARLY, SIG_GATE, SIG_HEAD, SIG_NIL, SIG_SEPARA, SIG_TWOSTG) %>%
+  mutate(pct = round(as.numeric(pct), digits = 1)) %>%  # convert pct from character to numeric
+  mutate(Percentage = paste0(pct, "%")) %>%   # create new text version of %
+  mutate(Count = as.numeric(freq)) %>%  # convert to numeric for plotting
+  mutate(charac = factor(charac,
+                         levels = c("SIG_NIL", "SIG_TWOSTG", "SIG_GATE", "SIG_EARLY", "SIG_SEPARA", "SIG_HEAD"),
+                         labels = c("No characteristics", "Two-stage right turn", 
+                                    "Cycle/bus gate allowing cycles to get ahead of other traffic",
+                                    "Early release for cyclists", "Separate stage for cyclists", 
+                                    "Cycle symbol on signal lights")))  # factor and order correctly
+
+# # create stacked bar chart of Signal count with % in text
+ggplot() +
+  geom_bar(data = SIG,
+           aes(x = Count, y = charac), stat = "identity") +
+  theme_minimal() +
+  theme(panel.grid = element_blank(),  # removes all grid lines
+        axis.line.x = element_line(size=0.1, color="black"), # adds axis line back in
+        axis.title.y = element_blank(),
+        axis.text = element_text(size = 16),
+        axis.title.x = element_text(size = 20)) +
+  scale_x_continuous(expand = c(0,0), breaks = c(0, 300), limits = c(0, 500)) +
+  geom_text(data = SIG, aes(x = Count, label = Percentage, y = charac),
+            hjust = -0.3, size = 5) +
+  scale_y_discrete(labels = wrap_format(30))
+
+rm(list = ls())
+
+
+# 5) Traffic calming
+# sig_charac = c_signals %>%
+#   st_drop_geometry() %>%
+#   select(contains("SIG")) # create df of just SIG characteristics 
+# 
+# SIG_HEAD = sig_charac$SIG_HEAD %>%freq(cumul = FALSE, report.nas = FALSE) %>% tb() %>%
+#   filter(SIG_HEAD == "TRUE") %>%
+#   rename(charac = SIG_HEAD)  # create df of characteristic with freq and %
+# SIG_HEAD[1] <- "SIG_HEAD" # relabel 'TRUE' with characteristic
+# 
+# SIG_SEPARA = sig_charac$SIG_SEPARA %>%freq(cumul = FALSE, report.nas = FALSE) %>% tb() %>%
+#   filter(SIG_SEPARA == "TRUE") %>%
+#   rename(charac = SIG_SEPARA)  
+# SIG_SEPARA[1] <- "SIG_SEPARA" 
+# 
+# SIG_EARLY = sig_charac$SIG_EARLY %>%freq(cumul = FALSE, report.nas = FALSE) %>% tb() %>%
+#   filter(SIG_EARLY == "TRUE") %>%
+#   rename(charac = SIG_EARLY)  
+# SIG_EARLY[1] <- "SIG_EARLY" 
+# 
+# SIG_TWOSTG = sig_charac$SIG_TWOSTG%>%freq(cumul = FALSE, report.nas = FALSE) %>% tb() %>%
+#   filter(SIG_TWOSTG == "TRUE") %>%
+#   rename(charac = SIG_TWOSTG)  
+# SIG_TWOSTG[1] <- "SIG_TWOSTG" 
+# 
+# SIG_GATE= sig_charac$SIG_GATE %>%freq(cumul = FALSE, report.nas = FALSE) %>% tb() %>%
+#   filter(SIG_GATE == "TRUE") %>%
+#   rename(charac = SIG_GATE)  
+# SIG_GATE[1] <- "SIG_GATE" 
+# 
+# SIG_NIL = c("SIG_NIL", 4, 0.9)
+# 
+# SIG = rbind(SIG_EARLY, SIG_GATE, SIG_HEAD, SIG_NIL, SIG_SEPARA, SIG_TWOSTG) %>%
+#   mutate(pct = round(as.numeric(pct), digits = 1)) %>%  # convert pct from character to numeric
+#   mutate(Percentage = paste0(pct, "%")) %>%   # create new text version of %
+#   mutate(Count = as.numeric(freq)) %>%  # convert to numeric for plotting
+#   mutate(charac = factor(charac,
+#                          levels = c("SIG_NIL", "SIG_TWOSTG", "SIG_GATE", "SIG_EARLY", "SIG_SEPARA", "SIG_HEAD"),
+#                          labels = c("No characteristics", "Two-stage right turn", 
+#                                     "Cycle/bus gate allowing cycles to get ahead of other traffic",
+#                                     "Early release for cyclists", "Separate stage for cyclists", 
+#                                     "Cycle symbol on signal lights")))  # factor and order correctly
+# 
+# # # create stacked bar chart of Signal count with % in text
+# ggplot() +
+#   geom_bar(data = SIG,
+#            aes(x = Count, y = charac), stat = "identity") +
+#   theme_minimal() +
+#   theme(panel.grid = element_blank(),  # removes all grid lines
+#         axis.line.x = element_line(size=0.1, color="black"), # adds axis line back in
+#         axis.title.y = element_blank(),
+#         axis.text = element_text(size = 16),
+#         axis.title.x = element_text(size = 20)) +
+#   scale_x_continuous(expand = c(0,0), breaks = c(0, 300), limits = c(0, 500)) +
+#   geom_text(data = SIG, aes(x = Count, label = Percentage, y = charac),
+#             hjust = -0.3, size = 5) +
+#   scale_y_discrete(labels = wrap_format(30))
 
 
 
