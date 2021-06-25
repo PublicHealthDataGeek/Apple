@@ -322,7 +322,7 @@ ggplot() +
   theme(panel.grid = element_blank(),  # removes all grid lines
         axis.line.x = element_line(size=0.1, color="black"), # adds axis line back in
         axis.title.y = element_blank(),
-        axis.text = element_text(size = 16),
+        axis.text = element_text(size = 16, colour = "grey25"),
         axis.title.x = element_text(size = 20)) +
   scale_x_continuous(expand = c(0,0), breaks = c(0, 800, 1600), limits = c(0, 2100)) +
   geom_text(data = ASL, aes(x = Count, label = Percentage, y = charac),
@@ -449,7 +449,7 @@ ggplot() +
   theme(panel.grid = element_blank(),  # removes all grid lines
         axis.line.x = element_line(size=0.1, color="black"), # adds axis line back in
         axis.title.y = element_blank(),
-        axis.text = element_text(size = 16),
+        axis.text = element_text(size = 16, colour = "grey25"),
         axis.title.x = element_text(size = 20)) +
   scale_x_continuous(expand = c(0,0), breaks = c(0, 800, 1600), limits = c(0, 2100)) +
   scale_y_discrete(labels = wrap_format(28)) +
@@ -644,7 +644,7 @@ ggplot() +
   theme(panel.grid = element_blank(),  # removes all grid lines
         axis.line.x = element_line(size=0.1, color="black"), # adds axis line back in
         axis.title.y = element_blank(),
-        axis.text = element_text(size = 16),
+        axis.text = element_text(size = 16, colour = "grey25"),
         axis.title.x = element_text(size = 20)) +
   scale_x_continuous(expand = c(0,0), breaks = c(0, 5000, 10000), limits = c(0, 16100)) +
   geom_text(data = CLT, aes(x = Count, label = Percentage, y = charac),
@@ -1176,20 +1176,29 @@ length = on_off_clt_comparison_lengths %>%
 # join together
 on_off_comparison_lengths4ggplot = left_join(length, perc)
 
+off_var_order = on_off_comparison_lengths4ggplot %>%
+  filter(on_off == "offroad") %>%
+  arrange(desc(perc))
+test = pull(off_var_order$characteristic)
+
+
 # Below creates new column that we use to order the bars and gives sensible variable labels
 on_off_comparison_lengths4ggplot_order = on_off_comparison_lengths4ggplot %>%
   mutate(variable_order = factor(characteristic,
-                                 levels = c("colour", "parttime", "water", "park",
-                                            "busbypass", "bypass","bidir", "contra",
-                                            "priority", "advis","mandat", "shared",
-                                            "partsegreg", "stepp", "segreg"),
-                                 labels = c("Coloured tarmac", "Part-time", "Water route", "Park route",
-                                            "Continuous facilities through bus stop", "Cycle bypass", "Bidirectional", "Contraflow",
-                                            "Given Priority", "Advisory cycle lane","Mandatory cycle lane", 
-                                            "Shared cycle lane", "Part-segregated", "Stepped", "Fully-segregated"))) %>%
+                                 levels = c("mandat", "priority", "advis", "contra",
+                                            "stepp", "colour","parttime", "busbypass",
+                                            "segreg", "bypass","shared","partsegreg", 
+                                            "park", "bidir", "water"),
+                                 labels = c("Mandatory cycle lane", "Given Priority", 
+                                            "Advisory cycle lane", "Contraflow",
+                                            "Stepped", "Coloured tarmac", "Part-time", 
+                                            "Continuous facilities through bus stop", 
+                                            "Fully-segregated", "Cycle bypass", 
+                                            "Shared cycle lane", "Part-segregated",
+                                            "Park route", "Bidirectional", "Water route"))) %>%
   mutate(on_off_order = factor(on_off,
-                                 levels = c("offroad", "onroad"), 
-                                 labels = c("Off-road", "On-road"))) # rename columns for legend label
+                               levels = c("offroad", "onroad"), 
+                               labels = c("Off-road", "On-road"))) # rename columns for legend label
 
 
 
@@ -1198,29 +1207,31 @@ ggplot() +
   geom_bar(data = on_off_comparison_lengths4ggplot_order,
            aes(x = perc, y = variable_order, fill = on_off_order), stat = "identity") +
   scale_fill_manual(values = c("#993404", "#969696")) +
-  labs(title = "Comparison of characteristics of cycle lanes and tracks") +
-  xlab(label = " Percentage of length") +
+  scale_x_continuous(expand = c(0,0), breaks = c(0, 50, 100), limits = c(0, 105)) + 
+  labs(x = paste0("Percentage", "\n", "of Length")) +
   theme_minimal() +
   theme(axis.title.y = element_blank(),
         panel.grid = element_blank(), # removes y axis lines
-        legend.position = "none") 
-# save with width at 439
+        legend.position = "none",
+        axis.text = element_text(size = 16, colour = "grey25"),
+        axis.title.x = element_text(size = 20))
 
 # create stacked bar chart of proportion
 ggplot() +
   geom_bar(data = on_off_comparison_lengths4ggplot_order,
            aes(x = round_length, y = variable_order, fill = on_off_order), stat = "identity") +
   scale_fill_manual(values = c("#993404", "#969696")) +
-  labs(title = "") +
-  xlab(label = "Length in km") +
+  labs(x = paste0("Length in km", "\n", "")) +
   theme_minimal() +
   theme(axis.title.y = element_blank(),
         axis.text.y = element_blank(), 
+        axis.text = element_text(size = 16, colour = "grey25"),
         panel.grid = element_blank(),  # removes all grid lines
         axis.line.x = element_line(size=0.1, color="black"),
         legend.title = element_blank(), # adds axis line back in
-        legend.text = element_text(size = 12)) +
-  scale_x_continuous(expand = c(0,0), breaks = c(0, 1000, 2000), limits = c(0, 2050))   
+        legend.text = element_text(size = 20),
+        axis.title.x = element_text(size = 20)) +
+  scale_x_continuous(expand = c(0,0), breaks = c(0, 1500), limits = c(0, 2050))   
 # save with width at 439
 
 #######
