@@ -774,8 +774,8 @@ ggplot(data, aes(x=wt, y=mpg)) +
 ###############################################################################
 #                       Borough level data and ranking                        #
 #                                                                             #
-# - safety infrastructure at Borough level                                    #
-
+# - safety infrastructure at Borough level  - table by Borough                #
+# - summary statistics
 
 # Load datasets - these datasets were created 2_3_2021 from TFL datasets downloaded 25/2/21
 CID_count = readRDS(file = "/home/bananafan/Documents/PhD/Paper1/data/CID_count_by_borough")
@@ -822,6 +822,30 @@ safe_borough_rank = safe_df2_rank %>%
 # Save dataset so can send to journal/have it in editable format
 write_csv2(safe_borough_rank, 
            file = "/home/bananafan/Documents/PhD/Paper1/output/summary_stats/borough_safety_table.csv")
+
+# Create summary statistics table
+
+my.summary <- function(x,...){ 
+  c("Range" = paste0(round(min(x, ...), digits = 1), " - ", paste0(round(max(x,...), digits = 1))),
+    "Mean (SD)" = paste0(round(mean(x, ...), digits = 1), " (", paste0(round(sd(x, ...), digits = 1)), ")"),
+    "Median (IQR)" = paste0(round(median(x, ...), digits = 1), "  (", paste0(round((quantile(x, 0.25)), digits = 1), " - ",  
+                                                                             round((quantile(x, 0.75)), digits = 1)), ")"))
+} 
+
+my.summary_clt <- function(x,...){ 
+  c("Range" = paste0(round(min(x, ...), digits = 1), " - ", paste0(round(max(x,...), digits = 1), " km")),
+    "Mean (SD)" = paste0(round(mean(x, ...), digits = 1), " km", " (", paste0(round(sd(x, ...), digits = 1)), " km)"),
+    "Median (IQR)" = paste0(round(median(x, ...), digits = 1), " km", "  (", paste0(round((quantile(x, 0.25)), digits = 1), " - ",  
+                                                                             round((quantile(x, 0.75)), digits = 1)), " km)"))
+} 
+
+borough_summary = data.frame(
+  Measure = c("Range", "Mean (SD)", "Median (IQR)"), 
+  ASL = my.summary(safe_df2$ASL),  
+  Crossings = my.summary(safe_df2$Crossings),
+  CycleLaneTrack_km = my.summary_clt(safe_df2$CycleLaneTrack_km),
+  Signals = my.summary(safe_df2$Signals),
+  TrafficCalming = my.summary(safe_df2$TrafficCalming))
 
 
 
