@@ -79,9 +79,45 @@ lon_lad_2020_c2c$Borough_number = fct_recode(lon_lad_2020_c2c$BOROUGH,
                                              "16" = "Haringey",
                                              "14" = "Newham")
 
+lon_lad_2020_c2c$b_acronym = fct_recode(lon_lad_2020_c2c$BOROUGH, 
+                                     "K&C" = "Kensington & Chelsea",
+                                     "B&D" = "Barking & Dagenham",
+                                     "H&F" = "Hammersmith & Fulham",
+                                     "Kin" = "Kingston upon Thames",
+                                     "Ric" = "Richmond upon Thames",
+                                     "City" = "City of London",
+                                     "Wal" = "Waltham Forest",
+                                     "Cro" = "Croydon",
+                                     "Bro" = "Bromley",
+                                     "Hou" = "Hounslow",
+                                     "Eal" = "Ealing",
+                                     "Hav" = "Havering",
+                                     "Hil" = "Hillingdon",
+                                     "Har" = "Harrow",
+                                     "Bre" = "Brent",
+                                     "Bar" = "Barnet",
+                                     "Lam" = "Lambeth",
+                                     "Sou" = "Southwark", 
+                                     "Lew" = "Lewisham",
+                                     "Gre" = "Greenwich",
+                                     "Bex" = "Bexley",
+                                     "Enf" = "Enfield",
+                                     "Red" = "Redbridge",
+                                     "Sut" = "Sutton",
+                                     "Mer" = "Merton",
+                                     "Wan" = "Wandsworth",
+                                     "Wes" = "Westminster",
+                                     "Cam" = "Camden",
+                                     "Tow" = "Tower Hamlets",
+                                     "Isl" = "Islington",
+                                     "Hac" = "Hackney",
+                                     "Har" = "Haringey",
+                                     "New" = "Newham")
+
+
 # Select variables of interest
 lon_lad_2020_c2c = lon_lad_2020_c2c %>%
-  select(c("BOROUGH", "Borough_number", "geometry"))
+  select(c("BOROUGH", "Borough_number", "b_acronym", "geometry"))
 
 
 ###########################################################################################
@@ -155,16 +191,52 @@ london_squared$Borough_number = fct_recode(london_squared$BOROUGH,
                                            "16" = "Haringey",
                                            "14" = "Newham")
 
+london_squared$b_acronym = fct_recode(london_squared$BOROUGH, 
+                                        "K&C" = "Kensington & Chelsea",
+                                        "B&D" = "Barking & Dagenham",
+                                        "H&F" = "Hammersmith & Fulham",
+                                        "Kin" = "Kingston upon Thames",
+                                        "Ric" = "Richmond upon Thames",
+                                        "City" = "City of London",
+                                        "Wal" = "Waltham Forest",
+                                        "Cro" = "Croydon",
+                                        "Bro" = "Bromley",
+                                        "Hou" = "Hounslow",
+                                        "Eal" = "Ealing",
+                                        "Hav" = "Havering",
+                                        "Hil" = "Hillingdon",
+                                        "Har" = "Harrow",
+                                        "Bre" = "Brent",
+                                        "Bar" = "Barnet",
+                                        "Lam" = "Lambeth",
+                                        "Sou" = "Southwark", 
+                                        "Lew" = "Lewisham",
+                                        "Gre" = "Greenwich",
+                                        "Bex" = "Bexley",
+                                        "Enf" = "Enfield",
+                                        "Red" = "Redbridge",
+                                        "Sut" = "Sutton",
+                                        "Mer" = "Merton",
+                                        "Wan" = "Wandsworth",
+                                        "Wes" = "Westminster",
+                                        "Cam" = "Camden",
+                                        "Tow" = "Tower Hamlets",
+                                        "Isl" = "Islington",
+                                        "Hac" = "Hackney",
+                                        "Har" = "Haringey",
+                                        "New" = "Newham")
+
+
 # simplify dataset for joining
 london_squared_tidy = london_squared %>%
-  select(c("BOROUGH", "Borough_number", "fY", "fX"))
+  select(c("BOROUGH", "Borough_number", "b_acronym", "fY", "fX"))
 
 
 ##########################
 # Import cycle lane data #
 ##########################
 
-# Import Cycle Lanes and Tracks dataset (created from TFL datasets downloaded 25/2/21)
+# Import Cycle Lanes and Tracks dataset 
 c_cyclelanetrack = readRDS(file = "/home/bananafan/Documents/PhD/Paper1/data/cleansed_cycle_lane_track")
 # n = 25315
 
@@ -355,19 +427,32 @@ on_road_factor = on_road_factor %>%
                                              "Mandatory cycle lane", "Advisory cycle lane",
                                              "No separation")))
 # # Check to see works ok
-# on_road_factor %>%
+on_road_factor %>%
+  st_drop_geometry() %>%
+  group_by(Highest_separation) %>%
+  summarise(count = n(), sum_length = sum(length_km))
+
+
+# Highest_separation   count sum_length
+# <fct>                <int>       [km]
+# 1 Segregated            1371     39.2  
+# 2 Stepped                  5      0.713
+# 3 Part-segregated        349     15.7  
+# 4 Mandatory cycle lane  1672     85.3  
+# 5 Advisory cycle lane   7196    487.0   
+# 6 No separation         3372    316.1 
+
+
+# no_sep_length = on_road_factor %>%
 #   st_drop_geometry() %>%
-#   group_by(Highest_separation) %>%
-#   summarise(count = n())
-# 
-# #   Highest_separation     count
-# #   <fct>                  <int>
-# # 1 Segregated              1371
-# # 2 Stepped                    5
-# # 3 Part-segregated          349
-# # 4 Mandatory cycle lane    1672
-# # 5 Advisory cycle lane     7196
-# # 6 No level of separation  3372                            
+#   filter(Highest_separation == "No separation")
+# sum(no_sep_length$length_km) # 316.0967 [km]
+# adv_length = on_road_factor %>%
+#   st_drop_geometry() %>%
+#   filter(Highest_separation == "Advisory cycle lane")
+# sum(adv_length$length_km) # 487.0448 [km]
+
+                        
                                     
 
 # create datasets by type
@@ -382,18 +467,25 @@ rest = on_road_factor %>%
 rest_sep = rest %>%
   st_drop_geometry() %>%
   group_by(Highest_separation) %>%
-  summarise(rest_count = n())
+  summarise(rest_count = n(), sum_rest_length_km = sum(length_km))
 contra_sep = contra %>%
   st_drop_geometry() %>%
   group_by(Highest_separation) %>%
-  summarise(contra_count = n())
+  summarise(contra_count = n(), sum_contra_length_km = sum(length_km))
 shared_sep = shared %>%
   st_drop_geometry() %>%
   group_by(Highest_separation) %>%
-  summarise(shared_count = n())
+  summarise(shared_count = n(), sum_shared_length_km = sum(length_km))
 summary_high_sep = left_join(rest_sep, contra_sep) %>%
-  left_join(shared_sep)
+  left_join(shared_sep) %>%
+  units::drop_units()
 summary_high_sep[is.na(summary_high_sep)] <- 0
+
+summary_high_sep = summary_high_sep %>%
+  colwise() %>%
+  mutate(row_count_sum = sum(c(rest_count, contra_count, shared_count))) %>%
+  mutate(row_length_sum = sum(c(sum_rest_length_km, sum_contra_length_km, sum_shared_length_km)))
+
 # Highest_separation   rest_count contra_count shared_count
 # <fct>                     <int>        <int>        <int>
 # 1 Segregated                  976          393            2
@@ -418,36 +510,21 @@ separation_map = tm_shape(lon_lad_2020_c2c) +
   tm_lines("Highest_separation",
            palette = "viridis",
            lwd = 2.5, 
-           alpha = 0.75, 
-           title.col = "Degree of separation") +
-  tm_layout(title = "On road cycle lane separation from other road users", 
-            frame = FALSE)
+           alpha = 0.75, legend.col.show = FALSE) +
+  tm_layout(frame = FALSE)
 
-separation_map_type = tm_shape(lon_lad_2020_c2c) +
-  tm_polygons(col = "gray98", border.col = "gray70") +
-  tm_shape(on_road_factor) +
-  tm_lines("Highest_separation",
-           palette = "viridis",
-           lwd = 2.5, 
-           alpha = 0.75) + 
-  tm_facets(by = "type",
-        free.coords = FALSE) +
-  tm_layout(legend.position = c("left", "top"))
-
-# Other colour options
-# purp_green_sep = tm_shape(lon_lad_2020_c2c) +
-#   tm_polygons(col = "white") +
+# separation_map_type = tm_shape(lon_lad_2020_c2c) +
+#   tm_polygons(col = "gray98", border.col = "gray70") +
 #   tm_shape(on_road_factor) +
 #   tm_lines("Highest_separation",
-#            palette = "PiYG",
-#            lwd = 2)  
-# 
-# magma_sep = tm_shape(lon_lad_2020_c2c) +
-#   tm_polygons(col = "white") +
-#   tm_shape(on_road_factor) +
-#   tm_lines("Highest_separation",
-#            palette = "magma",
-#            lwd = 2)  
+#            palette = "viridis",
+#            lwd = 2.5, 
+#            alpha = 0.75) + 
+#   tm_facets(by = "type",
+#         free.coords = FALSE) +
+#   tm_layout(legend.position = c("left", "top"))
+
+
 
 ####################################################################
 # Generating borough level data on lengths by degree of separation #
@@ -646,6 +723,21 @@ borough_separation_length_spatial %>%
   geom_text(data=.%>% filter(Highest_separation == "No separation"), x = 1, y = 0.7, aes(label = Borough_number)) +
   coord_flip() +
   scale_fill_viridis(discrete = TRUE, direction = -1, guide = guide_legend(reverse = TRUE)) +
+  facet_grid(-fY ~ fX) +  # need to do -fY to get correct orientation with enfield top row and sutton bottom row
+  theme_void() +
+  theme(strip.text = element_blank(),
+        panel.spacing.y = unit(-0.8, "lines"))
+
+# Amended roger code with 3 letter acronyms - panel spacing may not be right depending on saving size
+borough_separation_length_spatial %>%
+  ungroup() %>%
+  mutate(total_length2 = total_length/max(total_length)) %>%
+  ggplot() +
+  geom_rect(data=.%>% filter(Highest_separation == "No separation"), xmin = 0.5, xmax = 1.5, ymin = -0.2, ymax = 1.5, fill = "#cdcdcd") +
+  geom_bar(aes(x = -Highest_separation, y = total_length2, fill = Highest_separation), stat = "identity") +
+  geom_text(data=.%>% filter(Highest_separation == "No separation"), x = 1, y = 0.7, aes(label = b_acronym)) +
+  coord_flip() +
+  scale_fill_viridis(discrete = TRUE, direction = -1, guide = guide_legend(reverse = TRUE), name = "") +
   facet_grid(-fY ~ fX) +  # need to do -fY to get correct orientation with enfield top row and sutton bottom row
   theme_void() +
   theme(strip.text = element_blank(),
