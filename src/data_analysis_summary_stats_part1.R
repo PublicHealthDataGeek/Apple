@@ -8,8 +8,10 @@
 # 1) Calculate total number of assets and total length                         #
 # 2) Calculate dates and year of surveying                                     #
 # 3) URL NAs
-# 4) Summary of 5 safety datasets (counts and % and then lengths % for CLT too)
-# 5) Comparison of variables of on v off road infrastructure
+# 4) Summary of 5 safety datasets 
+# 5) characteristics charts - bars plus denisty plots
+# 6) length/width bar charts for ASL, crossings and clt
+# 7)Comparison of variables of on v off road infrastructure
 
 
 # load packages
@@ -246,7 +248,7 @@ c_trafficcalming %>%
   summarytools::dfSummary()
 
 
-
+summary(c_trafficcalming$length)
 
 
 
@@ -256,7 +258,7 @@ c_trafficcalming %>%
 #
 # 5) Create visualisations of the characteristics - bar charts for count/% and 
 # density plots for length - this is to replace a table with the actual figures
-
+# plus histograms of length/width
 
 # create dataframes for count % comparison 
 # 1) ASL
@@ -297,7 +299,8 @@ ASL_COLOUR_F = asl_charac$ASL_COLOUR_F %>%freq(cumul = FALSE, report.nas = FALSE
   rename(charac = ASL_COLOUR_F)
 ASL_COLOUR_F[1] <- "ASL_COLOUR_F"
 
-ASL_NIL = c("ASL_NIL", 1568, 41.5)
+asl_nil = filter_all(asl_charac, all_vars(. == "FALSE")) #= 224 
+ASL_NIL = c("ASL_NIL", nrow(asl_nil), round((nrow(asl_nil)/nrow(c_asl)*100), digits = 1))
 
 ASL = rbind(ASL_FDR, ASL_NIL,ASL_FDRLFT, ASL_COLOUR_F, ASL_FDCENT, ASL_FDRIGH, ASL_SHARED) %>%
   mutate(pct = round(as.numeric(pct), digits = 1)) %>%  # convert pct from character to numeric
@@ -329,6 +332,9 @@ ggplot() +
 # Create density plot df
 asl_df = c_asl %>%
   mutate(length = st_length(geometry)) # gives me the length of all ASL
+summary(asl_df$length)
+# Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+# 1.222   3.897   4.503   4.597   5.082  20.633 
 
 asl_nil = asl_df %>%
   filter(ASL_FDR == FALSE & ASL_FDRLFT == FALSE & ASL_FDCENT == FALSE & ASL_FDRIGH == FALSE &
@@ -420,7 +426,8 @@ CRS_LEVEL = cross_charac$CRS_LEVEL %>%freq(cumul = FALSE, report.nas = FALSE) %>
   rename(charac = CRS_LEVEL)
 CRS_LEVEL[1] <- "CRS_LEVEL"
 
-CRS_NIL = c("CRS_NIL", 224, 11.3)
+crs_nil = filter_all(cross_charac, all_vars(. == "FALSE")) 
+CRS_NIL = c("CRS_NIL", nrow(crs_nil), round((nrow(crs_nil)/nrow(c_crossings)*100), digits = 1))
 
 CRS = rbind(CRS_SIGNAL, CRS_SEGREG, CRS_NIL, CRS_CYGAP, CRS_PEDEST, CRS_LEVEL) %>%
   mutate(pct = round(as.numeric(pct), digits = 1)) %>%  # convert pct from character to numeric
@@ -489,7 +496,6 @@ cross_density_df = rbind(cross_level, cross_ped, cross_gap, cross_nil, cross_seg
 cross_gp_med = cross_density_df %>%
   group_by(charac) %>%
   summarise(grp_median = median(width))
-
 
 # Create density plot of crossing length with median
 ggplot(cross_density_df) +
@@ -647,7 +653,56 @@ ggplot() +
 
 # # Create density plot df
 clt_df = c_cyclelanetrack %>%
-  mutate(length = st_length(geometry)) # gives me the length of all clt
+  mutate(length = st_length(geometry))
+
+clt_carr = clt_df %>%
+  filter(CLT_CARR == "TRUE") %>%
+  mutate(charac = "CLT_CARR")
+clt_seg = clt_df %>%
+  filter(CLT_SEGREG == "TRUE") %>%
+  mutate(charac = "CLT_SEGREG")
+clt_stepp = clt_df %>%
+  filter(CLT_STEPP == "TRUE") %>%
+  mutate(charac = "CLT_STEPP")
+clt_parseg = clt_df %>%
+  filter(CLT_PARSEG == "TRUE") %>%
+  mutate(charac = "CLT_PARSEG")
+clt_shared = clt_df %>%
+  filter(CLT_SHARED == "TRUE") %>%
+  mutate(charac = "CLT_SHARED")
+clt_mand = clt_df %>%
+  filter(CLT_MANDAT == "TRUE") %>%
+  mutate(charac = "CLT_MANDAT")
+clt_advis = clt_df %>%
+  filter(CLT_ADVIS == "TRUE") %>%
+  mutate(charac = "CLT_ADVIS")
+clt_priori = clt_df %>%
+  filter(CLT_PRIORI == "TRUE") %>%
+  mutate(charac = "CLT_PRIORI")
+clt_contra = clt_df %>%
+  filter(CLT_CONTRA == "TRUE") %>%
+  mutate(charac = "CLT_CONTRA")
+clt_bidire = clt_df %>%
+  filter(CLT_BIDIRE == "TRUE") %>%
+  mutate(charac = "CLT_BIDIRE")
+clt_cbypas = clt_df %>%
+  filter(CLT_CBYPAS == "TRUE") %>%
+  mutate(charac = "CLT_CBYPAS")
+clt_bbypas = clt_df %>%
+  filter(CLT_BBYPAS == "TRUE") %>%
+  mutate(charac = "CLT_BBYPAS")
+clt_park = clt_df %>%
+  filter(CLT_PARKR == "TRUE") %>%
+  mutate(charac = "CLT_PARKR")
+clt_water = clt_df %>%
+  filter(CLT_WATERR == "TRUE") %>%
+  mutate(charac = "CLT_WATERR")
+clt_ptime = clt_df %>%
+  filter(CLT_PTIME == "TRUE") %>%
+  mutate(charac = "CLT_PTIME")
+clt_colour = clt_df %>%
+  filter(CLT_COLOUR != "NONE") %>%
+  mutate(charac = "CLT_COLOUR_F")
 
 
 clt_density_df = rbind(clt_carr, clt_seg, clt_stepp, clt_parseg, clt_shared, 
@@ -725,7 +780,8 @@ SIG_GATE= sig_charac$SIG_GATE %>%freq(cumul = FALSE, report.nas = FALSE) %>% tb(
   rename(charac = SIG_GATE)  
 SIG_GATE[1] <- "SIG_GATE" 
 
-SIG_NIL = c("SIG_NIL", 4, 0.9)
+sig_nil = filter_all(sig_charac, all_vars(. == "FALSE")) #= 4
+SIG_NIL = c("SIG_NIL", nrow(sig_nil), round((nrow(sig_nil)/nrow(c_signals)*100), digits = 1))
 
 SIG = rbind(SIG_EARLY, SIG_GATE, SIG_HEAD, SIG_NIL, SIG_SEPARA, SIG_TWOSTG) %>%
   mutate(pct = round(as.numeric(pct), digits = 1)) %>%  # convert pct from character to numeric
@@ -748,7 +804,7 @@ ggplot() +
         axis.title.y = element_blank(),
         axis.text = element_text(size = 16),
         axis.title.x = element_text(size = 20)) +
-  scale_x_continuous(expand = c(0,0), breaks = c(0, 300), limits = c(0, 500)) +
+  scale_x_continuous(expand = c(0,0), breaks = c(0, 300), limits = c(0, 525)) +
   geom_text(data = SIG, aes(x = Count, label = Percentage, y = charac),
             hjust = -0.3, size = 5) +
   scale_y_discrete(labels = wrap_format(30))
@@ -756,63 +812,238 @@ ggplot() +
 rm(list = ls())
 
 
-# 5) Traffic calming
-# sig_charac = c_signals %>%
-#   st_drop_geometry() %>%
-#   select(contains("SIG")) # create df of just SIG characteristics 
-# 
-# SIG_HEAD = sig_charac$SIG_HEAD %>%freq(cumul = FALSE, report.nas = FALSE) %>% tb() %>%
-#   filter(SIG_HEAD == "TRUE") %>%
-#   rename(charac = SIG_HEAD)  # create df of characteristic with freq and %
-# SIG_HEAD[1] <- "SIG_HEAD" # relabel 'TRUE' with characteristic
-# 
-# SIG_SEPARA = sig_charac$SIG_SEPARA %>%freq(cumul = FALSE, report.nas = FALSE) %>% tb() %>%
-#   filter(SIG_SEPARA == "TRUE") %>%
-#   rename(charac = SIG_SEPARA)  
-# SIG_SEPARA[1] <- "SIG_SEPARA" 
-# 
-# SIG_EARLY = sig_charac$SIG_EARLY %>%freq(cumul = FALSE, report.nas = FALSE) %>% tb() %>%
-#   filter(SIG_EARLY == "TRUE") %>%
-#   rename(charac = SIG_EARLY)  
-# SIG_EARLY[1] <- "SIG_EARLY" 
-# 
-# SIG_TWOSTG = sig_charac$SIG_TWOSTG%>%freq(cumul = FALSE, report.nas = FALSE) %>% tb() %>%
-#   filter(SIG_TWOSTG == "TRUE") %>%
-#   rename(charac = SIG_TWOSTG)  
-# SIG_TWOSTG[1] <- "SIG_TWOSTG" 
-# 
-# SIG_GATE= sig_charac$SIG_GATE %>%freq(cumul = FALSE, report.nas = FALSE) %>% tb() %>%
-#   filter(SIG_GATE == "TRUE") %>%
-#   rename(charac = SIG_GATE)  
-# SIG_GATE[1] <- "SIG_GATE" 
-# 
-# SIG_NIL = c("SIG_NIL", 4, 0.9)
-# 
-# SIG = rbind(SIG_EARLY, SIG_GATE, SIG_HEAD, SIG_NIL, SIG_SEPARA, SIG_TWOSTG) %>%
-#   mutate(pct = round(as.numeric(pct), digits = 1)) %>%  # convert pct from character to numeric
-#   mutate(Percentage = paste0(pct, "%")) %>%   # create new text version of %
-#   mutate(Count = as.numeric(freq)) %>%  # convert to numeric for plotting
-#   mutate(charac = factor(charac,
-#                          levels = c("SIG_NIL", "SIG_TWOSTG", "SIG_GATE", "SIG_EARLY", "SIG_SEPARA", "SIG_HEAD"),
-#                          labels = c("No characteristics", "Two-stage right turn", 
-#                                     "Cycle/bus gate allowing cycles to get ahead of other traffic",
-#                                     "Early release for cyclists", "Separate stage for cyclists", 
-#                                     "Cycle symbol on signal lights")))  # factor and order correctly
-# 
-# # # create stacked bar chart of Signal count with % in text
-# ggplot() +
-#   geom_bar(data = SIG,
-#            aes(x = Count, y = charac), stat = "identity") +
-#   theme_minimal() +
-#   theme(panel.grid = element_blank(),  # removes all grid lines
-#         axis.line.x = element_line(size=0.1, color="black"), # adds axis line back in
-#         axis.title.y = element_blank(),
-#         axis.text = element_text(size = 16),
-#         axis.title.x = element_text(size = 20)) +
-#   scale_x_continuous(expand = c(0,0), breaks = c(0, 300), limits = c(0, 500)) +
-#   geom_text(data = SIG, aes(x = Count, label = Percentage, y = charac),
-#             hjust = -0.3, size = 5) +
-#   scale_y_discrete(labels = wrap_format(30))
+#5) Traffic calming
+tc_charac = c_trafficcalming %>%
+  st_drop_geometry() %>%
+  select(contains("TRF"))
+
+TRF_RAISED = tc_charac$TRF_RAISED %>% freq(cumul = FALSE, report.nas = FALSE) %>% tb() %>%
+  filter(TRF_RAISED == "TRUE") %>%
+  rename(charac = TRF_RAISED)  # create df of characteristic with freq and %
+TRF_RAISED[1] <- "TRF_RAISED" # relabel 'TRUE' with characteristic
+
+TRF_ENTRY = tc_charac$TRF_ENTRY %>% freq(cumul = FALSE, report.nas = FALSE) %>% tb() %>%
+  filter(TRF_ENTRY == "TRUE") %>%
+  rename(charac = TRF_ENTRY)  
+TRF_ENTRY[1] <- "TRF_ENTRY" 
+
+TRF_CUSHI = tc_charac$TRF_CUSHI %>% freq(cumul = FALSE, report.nas = FALSE) %>% tb() %>%
+  filter(TRF_CUSHI == "TRUE") %>%
+  rename(charac = TRF_CUSHI)  
+TRF_CUSHI[1] <- "TRF_CUSHI" 
+
+TRF_HUMP = tc_charac$TRF_HUMP %>% freq(cumul = FALSE, report.nas = FALSE) %>% tb() %>%
+  filter(TRF_HUMP == "TRUE") %>%
+  rename(charac = TRF_HUMP)  
+TRF_HUMP[1] <- "TRF_HUMP" 
+
+TRF_SINUSO = tc_charac$TRF_SINUSO %>% freq(cumul = FALSE, report.nas = FALSE) %>% tb() %>%
+  filter(TRF_SINUSO == "TRUE") %>%
+  rename(charac = TRF_SINUSO)  
+TRF_SINUSO[1] <- "TRF_SINUSO" 
+
+TRF_BARIER = tc_charac$TRF_BARIER %>% freq(cumul = FALSE, report.nas = FALSE) %>% tb() %>%
+  filter(TRF_BARIER == "TRUE") %>%
+  rename(charac = TRF_BARIER)  
+TRF_BARIER[1] <- "TRF_BARIER"
+
+TRF_NAROW = tc_charac$TRF_NAROW %>% freq(cumul = FALSE, report.nas = FALSE) %>% tb() %>%
+  filter(TRF_NAROW == "TRUE") %>%
+  rename(charac = TRF_NAROW)  
+TRF_NAROW[1] <- "TRF_NAROW"
+
+TRF_CALM = tc_charac$TRF_CALM%>% freq(cumul = FALSE, report.nas = FALSE) %>% tb() %>%
+  filter(TRF_CALM == "TRUE") %>%
+  rename(charac = TRF_CALM)  
+TRF_CALM[1] <- "TRF_CALM"
+
+tc_nil = filter_all(tc_charac, all_vars(. == "FALSE")) 
+TRF_NIL = c("TRF_NIL", nrow(tc_nil), round((nrow(tc_nil)/nrow(c_trafficcalming)*100), digits = 2))
+
+
+TC = rbind(TRF_BARIER, TRF_CALM, TRF_CUSHI, TRF_ENTRY, TRF_HUMP, TRF_NAROW, TRF_NIL, TRF_RAISED, TRF_SINUSO) %>%
+  mutate(pct = round(as.numeric(pct), digits = 1)) %>%  # convert pct from character to numeric
+  mutate(Percentage = paste0(pct, "%")) %>%   # create new text version of %
+  mutate(Count = as.numeric(freq)) %>%
+  mutate(charac = factor(charac,
+                         levels = c("TRF_NIL", "TRF_NAROW", "TRF_CALM", "TRF_BARIER", 
+                                    "TRF_RAISED", "TRF_SINUSO", "TRF_ENTRY", 
+                                    "TRF_CUSHI", "TRF_HUMP"),
+                         labels = c("No characteristics", "Carriageway narrowing e.g. chicane", 
+                                    "Other traffic calming measure", "Barrier cyclists can pass", 
+                                    "Raised table at junction", "Hump/cushion is sinusoidal", 
+                                    "Side road entry treatment e.g. raised", "Speed cushion", "Speed hump")))
+TC[7,4] = "0.02%" # manually recode
+
+# # create stacked bar chart of traffic count with % in text
+ggplot() +
+  geom_bar(data = TC,
+           aes(x = Count, y = charac), stat = "identity") +
+  theme_minimal() +
+  theme(panel.grid = element_blank(),  # removes all grid lines
+        axis.line.x = element_line(size=0.1, color="black"), # adds axis line back in
+        axis.title.y = element_blank(),
+        axis.text = element_text(size = 16),
+        axis.title.x = element_text(size = 20)) +
+  scale_x_continuous(expand = c(0,0), breaks = c(0, 20000), limits = c(0, 39000)) +
+  geom_text(data = TC, aes(x = Count, label = Percentage, y = charac),
+            hjust = -0.3, size = 5) +
+  scale_y_discrete(labels = wrap_format(30))
+
+
+################################################################################
+# 6) Create summary histograms for length/width of ASL, crossings and CLT
+
+##### create summary histograms
+# write function to create summary
+my.summary <- function(x,...){
+  c(Mean = mean(x, ...),
+    SD = sd(x, ...),
+    Median = median(x, ...),
+    Min = min(x, ...),
+    Max = max(x,...))
+}
+
+my.summary2 <- function(x,...){
+  c(Mean = paste0(round(mean(x, ...), digits = 1), " m"),
+    SD = paste0(round(sd(x, ...), digits = 1), " m"),
+    Median = paste0(round(median(x, ...), digits = 1), " m"),
+    IQR = paste0(round((quantile(x, 0.25)), digits = 1), " - ", 
+                 round((quantile(x, 0.75)), digits = 1), " m"),
+    Min = paste0(round(min(x, ...), digits = 1), " m"),
+    Max = paste0(round(max(x,...), digits = 1), " m"))
+}
+
+my.summary_clt <- function(x,...){
+  c(Mean = paste0(round(mean(x, ...), digits = 1), " m"),
+    SD = paste0(round(sd(x, ...), digits = 1), " m"),
+    Median = paste0(round(median(x, ...), digits = 1), " m"),
+    IQR = paste0(round((quantile(x, 0.25)), digits = 1), " - ", 
+                 round((quantile(x, 0.75)), digits = 1), " m"),
+    Min = paste0(round(min(x, ...), digits = 2), " m"),
+    Max = paste0(round(max(x,...), digits = 1), " m"))
+}
+
+# sets units so that [] are removed around m units for ggplots
+units_options(group = c("", "")) 
+
+
+summary(st_length(c_asl))
+# # Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+# # 1.222   3.897   4.503   4.597   5.082  20.633 
+summary(st_length(c_crossings))
+# # Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+# # 0.7531  7.3700  9.8495 11.8003 14.0031 76.8535 
+summary(st_length(c_cyclelanetrack))
+# Min.  1st Qu.   Median     Mean  3rd Qu.     Max. 
+# 0.02    15.72    43.49   114.70   107.82 19790.54 
+
+
+
+
+# 1) ASL
+asl_hist_df = c_asl %>%
+  mutate(length = drop_units(st_length(geometry))) %>%
+  st_drop_geometry()
+
+asl_summ = data.frame(
+  Measure = c("Mean", "SD", "Median", "Min", "Max"),
+  Values = set_units(round(my.summary(asl_hist_df$length), digits = 1), m)
+)
+
+asl_summ2 = data.frame(
+  Measure = c("Mean", "SD", "Median","IQR", "Min", "Max"),
+  Values = my.summary2(asl_hist_df$length))
+
+asl_df <- tibble(x = 15, y = 1000, tb = list(asl_summ))
+asl_df2 <- tibble(x = 15, y = 1000, tb = list(asl_summ2))
+
+# using my.summary2 function
+ggplot(asl_hist_df) + 
+  geom_histogram(aes(x = length), fill = "grey", color = "black") + 
+  theme_minimal() +
+  theme(panel.grid = element_blank(),  # removes all grid lines
+        axis.line.y = element_line(size=0.1, color="black"), # adds axis line back in
+        axis.text = element_text(size = 16),
+        axis.title = element_text(size = 20)) +
+  labs(y = "Count", x = "Length (m)") +
+  scale_x_continuous(expand = c(0,0), breaks = c(10, 20)) +
+  scale_y_continuous(expand = c(0,0), breaks = c(0, 1000)) +
+  geom_table(data = asl_df2, aes(x = x, y = y, label = tb), 
+             table.colnames = FALSE, table.theme = ttheme_gtminimal, 
+             size = 6,
+             hjust = "middle")
+
+# 2) Crossings
+crossing_hist_df = c_crossings %>%
+  mutate(length = drop_units(st_length(geometry))) %>%
+  st_drop_geometry()
+
+cross_summ = data.frame(
+  Measure = c("Mean", "SD", "Median", "Min", "Max"),
+  Values = set_units(round(my.summary(crossing_hist_df$length), digits = 1), m)
+)
+cross_summ2 = data.frame(
+  Measure = c("Mean", "SD", "Median","IQR", "Min", "Max"),
+  Values = my.summary2(crossing_hist_df$length))
+
+cross_df <- tibble(x = 60, y = 600, tb = list(cross_summ))
+cross_df2 <- tibble(x = 60, y = 600, tb = list(cross_summ2))
+
+ggplot(crossing_hist_df) + 
+  geom_histogram(aes(x = length), fill = "grey", color = "black") + 
+  theme_minimal() +
+  theme(panel.grid = element_blank(),  # removes all grid lines
+        axis.line.y = element_line(size=0.1, color="black"), # adds axis line back in
+        axis.text = element_text(size = 16),
+        axis.title = element_text(size = 20)) +
+  labs(y = "Count", x = "Length (m)") +
+  scale_x_continuous(expand = c(0,0), breaks = c(20)) +
+  scale_y_continuous(expand = c(0,0), breaks = c(0, 650)) +
+  geom_table(data = cross_df2, aes(x = x, y = y, label = tb), 
+             table.colnames = FALSE, table.theme = ttheme_gtminimal, 
+             size = 6,
+             hjust = "right")
+# save with 450 width min
+
+
+# 3) Cycle lanes and tracks
+clt_hist_df = c_cyclelanetrack %>%
+  mutate(length = drop_units(st_length(geometry))) %>%
+  st_drop_geometry()
+
+clt_summ = data.frame(
+  Measure = c("Mean", "SD", "Median", "Min", "Max"),
+  Values = set_units(round(my.summary(clt_hist_df$length), digits = 1), m)
+)
+
+clt_summ2 = data.frame(
+  Measure = c("Mean", "SD", "Median","IQR", "Min", "Max"),
+  Values = my.summary_clt(clt_hist_df$length))
+
+clt_df <- tibble(x = 15000, y = 16000, tb = list(clt_summ))
+clt_df2 <- tibble(x = 15000, y = 16000, tb = list(clt_summ2))
+
+ggplot(clt_hist_df) + 
+  geom_histogram(aes(x = length), fill = "grey", color = "black", binwidth = 250) + 
+  theme_minimal() +
+  theme(panel.grid = element_blank(),  # removes all grid lines
+        axis.line.y = element_line(size=0.1, color="black"), # adds axis line back in
+        axis.text = element_text(size = 16),
+        axis.title = element_text(size = 20)) +
+  labs(y = "Count", x = "Length (m)") +
+  scale_x_continuous(expand = c(0,0), breaks = c(0, 15000)) +
+  scale_y_continuous(expand = c(0,0), breaks = c(0, 15000)) +
+  geom_table(data = clt_df2, aes(x = x, y = y, label = tb), 
+             table.colnames = FALSE, table.theme = ttheme_gtminimal, 
+             size = 6,
+             hjust = "right")
+
+
+
+
+
+
 
 
 
@@ -820,7 +1051,7 @@ rm(list = ls())
 
 
 ################################################################################
-#6) Comparison of variables of on v off road infrastructure
+#7) Comparison of variables of on v off road infrastructure
 # including drawing bar charts
 
 
