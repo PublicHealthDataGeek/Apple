@@ -236,11 +236,11 @@ p3 = ggplot()+
   geom_sf(data = motorways, fill = "#EEEEEE",  colour = "#EEEEEE") +
   geom_sf(data = borough_areas, fill = "#d4d4d4",  colour = "#444444", alpha = 0.3, size = 0.05) +
   geom_sf(data = riverthames_simplify, fill = "#99CCEE",  colour = "#99CCEE") +
-  geom_sf(data = c_signals_point, colour = alpha("blue", 0.2), size = 0.1) +
+  geom_sf(data = c_cyclelanetrack, colour = alpha("blue", 0.2)) +
   theme_classic() +
-  theme(plot.margin = unit(c(0.1, 0.1, 0.1, 0.1), "cm"),
+  theme(plot.margin = unit(c(0.1, 0.1, 0.1, 0.1), "cm"), 
         text = element_text(family = "Arial")) + 
-  ggtitle("d) Cycle signals") +
+  ggtitle("d) Cycle lanes and tracks") +
   coord_sf(crs = st_crs(riverthames_simplify), datum = NA) 
 
 p4 = ggplot()+
@@ -258,12 +258,13 @@ p5 = ggplot()+
   geom_sf(data = motorways, fill = "#EEEEEE",  colour = "#EEEEEE") +
   geom_sf(data = borough_areas, fill = "#d4d4d4",  colour = "#444444", alpha = 0.3, size = 0.05) +
   geom_sf(data = riverthames_simplify, fill = "#99CCEE",  colour = "#99CCEE") +
-  geom_sf(data = c_cyclelanetrack, colour = alpha("blue", 0.2)) +
+  geom_sf(data = c_signals_point, colour = alpha("blue", 0.2), size = 0.1) +
   theme_classic() +
-  theme(plot.margin = unit(c(0.1, 0.1, 0.1, 0.1), "cm"), 
+  theme(plot.margin = unit(c(0.1, 0.1, 0.1, 0.1), "cm"),
         text = element_text(family = "Arial")) + 
-  ggtitle("f) Cycle lanes and tracks") +
+  ggtitle("f) Cycle signals") +
   coord_sf(crs = st_crs(riverthames_simplify), datum = NA) 
+
   
 all_assets_map = gridExtra::grid.arrange(p0, p1, p2, p3, p4, p5, ncol = 3)
 
