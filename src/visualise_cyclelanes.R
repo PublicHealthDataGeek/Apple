@@ -6,6 +6,8 @@
 #
 # Initial code sorts out the assets that have more than one label for separation
 # e.g. jointly labelled as being segregated and stepped.  
+# Also adds type so can see difference between shared, contraflow and other cycle lanes
+# Visualises the lines on a borough map overall and then facetted by type.  
 
 
 #Load packages
@@ -157,7 +159,7 @@ london_squared_tidy = london_squared %>%
 c_cyclelanetrack = readRDS(file = "/home/bananafan/Documents/PhD/Paper1/data/cleansed_cycle_lane_track")
 # n = 25315
 
-# Details of variables
+# Details of variables:
 # CLT_CARR   on/off
 # CLT_SEGREG lanes or tracks - TRUE = physical separation of cyclist from other users using continuous/near continuous kerb, upstand or planted verge.
 # CLT_STEPP - onroad only, cycle lane/track is at a level between the carriageway and footway 
@@ -302,10 +304,12 @@ on_road_factor = on_road_factor %>%
                                              "Mandatory cycle lane", "Advisory cycle lane",
                                              "No separation")))
 # # Check to see works ok
-on_road_factor %>%
+table = on_road_factor %>%
   st_drop_geometry() %>%
   group_by(Highest_separation) %>%
-  summarise(count = n(), sum_length = sum(length_km))
+  summarise(count = n(), sum_length = sum(length_km)) %>%
+  mutate(proportion = round((sum_length/sum(sum_length) *100), digit = 1))
+sum(table$sum_length)
 
 # Highest_separation   count sum_length
 # <fct>                <int>       [km]
@@ -329,20 +333,25 @@ rest = on_road_factor %>%
 rest_sep = rest %>%
   st_drop_geometry() %>%
   group_by(Highest_separation) %>%
-  summarise(rest_count = n(), sum_rest_length_km = sum(length_km))
+  summarise(sum_r_length = sum(length_km)) %>%
+  mutate(proportion_r = round((sum_r_length/sum(sum_r_length) *100), digit = 1))
 contra_sep = contra %>%
   st_drop_geometry() %>%
   group_by(Highest_separation) %>%
-  summarise(contra_count = n(), sum_contra_length_km = sum(length_km))
+  summarise(sum_c_length = sum(length_km)) %>%
+  mutate(proportion_c = round((sum_c_length/sum(sum_c_length) *100), digit = 1))
 shared_sep = shared %>%
   st_drop_geometry() %>%
   group_by(Highest_separation) %>%
-  summarise(shared_count = n(), sum_shared_length_km = sum(length_km))
+  summarise(sum_s_length = sum(length_km)) %>%
+  mutate(proportion_s = round((sum_s_length/sum(sum_s_length) *100), digit = 1))
 summary_high_sep = left_join(rest_sep, contra_sep) %>%
   left_join(shared_sep) %>%
   units::drop_units()
 summary_high_sep[is.na(summary_high_sep)] <- 0
 
+total_contra_length = round(sum(summary_high_sep$sum_c_length), digit = 1)
+total_shared_length = round(sum(summary_high_sep$sum_s_length), digit = 1)
 
 # Highest_separation   rest_count sum_rest_length_km contra_count sum_contra_length_km shared_count sum_shared_length_km
 # <fct>                     <int>              <dbl>        <int>                <dbl>        <int>                <dbl>
@@ -356,7 +365,7 @@ summary_high_sep[is.na(summary_high_sep)] <- 0
 rm(rest, rest_sep, shared, shared_sep, contra, contra_sep) # remove redundant objects
 
 # Save onroad cycle lane dataset for use with LTN 1/20 analysis
-saveRDS(on_road_factor, file = "/home/bananafan/Documents/PhD/Paper1/data/cleansed_onroad_cyclelanes_segregation.Rds")
+#saveRDS(on_road_factor, file = "/home/bananafan/Documents/PhD/Paper1/data/cleansed_onroad_cyclelanes_segregation.Rds")
 
 ##########################################################################
 # Create maps of cycle lanes coloured by degrees of separation #
@@ -371,9 +380,6 @@ tm_shape(lon_lad_2020_c2c) +
            lwd = 2.5, 
            alpha = 0.75, legend.col.show = FALSE) +
   tm_layout(frame = FALSE)
-
-
-
 
 # Plot facetted by type
 on_road_factor = on_road_factor %>%
@@ -393,8 +399,8 @@ tm_shape(lon_lad_2020_c2c) +
 
 ####################################################################
 # Generating borough level data on lengths by degree of separation #
-# and visualisations                                              #
-#    PART 1 - all assets together                                  #
+# and visualisations                                               #
+#                                                                  #
 ####################################################################
 
 # Create variable for length by Highest Separation by Borough
@@ -403,7 +409,7 @@ borough_separation_length = on_road_factor %>%
   group_by(BOROUGH, Highest_separation) %>%
   summarise(total_length = sum(length_m))
 
-# Create variable for total length by Borough of all on road cycle lanes - needed for inset barchart
+# # Create variable for total length by Borough of all on road cycle lanes - may be needed for Results section
 total_borough_separation_length = on_road_factor %>%
   st_drop_geometry() %>%
   group_by(BOROUGH) %>%
@@ -421,180 +427,26 @@ borough_separation_length = left_join(borough_separation_length, total_borough_s
 borough_separation_length_reorder <- borough_separation_length # reorder so that Segregated appears at top
 borough_separation_length_reorder$Highest_separation = fct_rev(borough_separation_length_reorder$Highest_separation)
 
-# Create multiple bar charts of each Borough by degree of separation
-ggplot(borough_separation_length_reorder) +
-  geom_bar(aes(x = Highest_separation, y = total_length, fill = Highest_separation), 
-           stat = "identity") +
-  coord_flip() +
-  scale_fill_viridis(discrete = TRUE, direction = -1, guide = guide_legend(reverse = TRUE)) +
-  facet_wrap(~ BOROUGH) +
-  theme(axis.text.y = element_blank(),
-        axis.ticks.y = element_blank())
-
-# This creates multiple deep stacked bar charts faceted by borough - easier to see size of bar than the second approach before
-ggplot(borough_separation_length_reorder) +
-  geom_bar(aes(x = -Highest_separation, y = total_length, fill = Highest_separation), 
-           stat = "identity")+
-  coord_flip() +
-  scale_fill_viridis(discrete = TRUE, direction = -1, guide = guide_legend(reverse = TRUE)) +
-  facet_wrap(~ BOROUGH) +
-  theme(axis.text.y = element_blank(),
-        axis.ticks.y = element_blank())
-
-# This creates multiple stacked bar charts faceted by borough - bar charts are located in various y positions relating to the order of the Borough
-ggplot(borough_separation_length_reorder) +
-  geom_bar(aes(x = BOROUGH, y = total_length, fill = Highest_separation), 
-           stat = "identity")+
-  coord_flip() +
-  scale_fill_viridis(discrete = TRUE, direction = -1, guide = guide_legend(reverse = TRUE)) +
-  facet_wrap(~ BOROUGH) +
-  theme(axis.text.y = element_blank(),
-        axis.ticks.y = element_blank())
-
-
-####################################################################
-# Generating borough level data on lengths by degree of separation #
-# and visualisations                                               #
-#  PART 2 - by rest, contra and shared                             #
-####################################################################
-
-
-
-#####NEED TO UPDATE BELOW CODE ONCE HAVE GOT AGREEMENT ON THE ABOVE SPATIAL BAR PLOT STYLE
-
-
-# Create variable for length by Highest Separation by Borough for each type
-type_borough_separation_length = on_road_factor %>%
-  st_drop_geometry() %>%
-  group_by(BOROUGH, type, Highest_separation) %>%
-  summarise(total_length_by_type = sum(length_m))
-
-total_type_borough_separation_length = on_road_factor %>%  # needed for insert bar chart
-  st_drop_geometry() %>%
-  group_by(BOROUGH, type) %>%
-  summarise(total_borough_length_by_type = sum(length_m))#  
-
-# remove units to allow plotting
-type_borough_separation_length$total_length_by_type = as.integer(round(units::drop_units(
-  type_borough_separation_length$total_length_by_type)))
-total_type_borough_separation_length$total_borough_length_by_type = as.integer(round(units::drop_units(
-  total_type_borough_separation_length$total_borough_length_by_type)))
-
-# join total borough lengths to borough_separation_length
-type_borough_separation_length = left_join(type_borough_separation_length, total_type_borough_separation_length)
-
-# Reorder factors so Segregated is 'highest' value
-type_borough_separation_length_reorder <- type_borough_separation_length # reorder so that Segregated appears at top
-type_borough_separation_length_reorder$Highest_separation = fct_rev(type_borough_separation_length_reorder$Highest_separation)
-
-# Create stacked bar charts for each type faceted by Borough
-type_borough_separation_length_reorder %>%
-  filter(type == "Rest") %>%
-  ggplot() +
-  geom_bar(aes(x = -Highest_separation, y = total_length_by_type, fill = Highest_separation), stat = "identity") +
-  coord_flip() +
-  scale_fill_viridis(discrete = TRUE, direction = -1, guide = guide_legend(reverse = TRUE)) +
-  facet_wrap(~ BOROUGH) +
-  labs(title = "Rest") +
-  theme(axis.text.y = element_blank(),
-        axis.ticks.y = element_blank())
-
-type_borough_separation_length_reorder %>%
-  filter(type == "Shared") %>%
-  ggplot() +
-  geom_bar(aes(x = -Highest_separation, y = total_length_by_type, fill = Highest_separation), stat = "identity") +
-  coord_flip() +
-  scale_fill_viridis(discrete = TRUE, direction = -1, guide = guide_legend(reverse = TRUE)) +
-  facet_wrap(~ BOROUGH) +
-  labs(title = "Shared") +
-  theme(axis.text.y = element_blank(),
-        axis.ticks.y = element_blank())
-
-type_borough_separation_length_reorder %>%
-  filter(type == "Contraflow") %>%
-  ggplot() +
-  geom_bar(aes(x = -Highest_separation, y = total_length_by_type, fill = Highest_separation), stat = "identity") +
-  coord_flip() +
-  scale_fill_viridis(discrete = TRUE, direction = -1, guide = guide_legend(reverse = TRUE)) +
-  facet_wrap(~ BOROUGH) +
-  labs(title = "Contraflow") +
-  theme(axis.text.y = element_blank(),
-        axis.ticks.y = element_blank())
-
-
-
-###############################################################
-# Create bar charts spatially located by Borough + standalone #
-###############################################################
-
-############################
-# PART 1 - all cycle lanes #
-############################
-
-
 # Join london_squared to cycle lane lengths
 borough_separation_length_spatial = left_join(borough_separation_length_reorder, london_squared_tidy, by = "BOROUGH")
 
-# basic plot works ok - keep as gives the basic layout
-ggplot(borough_separation_length_spatial, aes(x = -Highest_separation, y = total_length, fill = Highest_separation)) +
-  geom_bar(stat = "identity")+
-  coord_flip() +
-  scale_fill_viridis(discrete = TRUE, direction = -1, guide = guide_legend(reverse = TRUE)) +
-  facet_grid(-fY ~ fX) +  # need to do -fY to get correct orientation with enfield top row and sutton bottom row
-  theme(axis.text.y = element_blank(),
-        axis.ticks.y = element_blank(),
-        panel.spacing=unit(-0.5, "lines"))  # THis works in a basic way. 
-
-#fiddling to make look better
-ggplot(borough_separation_length_spatial, aes(x = -Highest_separation, y = total_length, fill = Highest_separation)) +
-  geom_bar(stat = "identity") +  
-  coord_flip() +
-  scale_fill_viridis(discrete = TRUE, direction = -1, guide = guide_legend(reverse = TRUE)) +
-  scale_y_continuous(breaks = c(0, 60000)) +  # 58000 uis the highest total value (Croydon)
-  facet_grid(-fY ~ fX) +
-  theme_classic() +
-  theme(axis.text.y = element_blank(),
-        axis.text.x = element_blank(),
-        axis.ticks.y = element_blank(),
-        axis.ticks.x = element_blank(),axis.line = element_blank(),
-        axis.title = element_blank(),
-        strip.text = element_blank(),
-        panel.spacing=unit(-0.5, "lines"),
-        plot.title = element_text(hjust = 0.5))
-
-# Code developed with Roger THIS WORKS
-# borough_separation_length_spatial %>%
-#   ungroup() %>%
-#   mutate(total_length2 = total_length/max(total_length)) %>%
-#   ggplot() +
-#   geom_rect(data=.%>% filter(Highest_separation == "No separation"), xmin = 0.2, xmax = 1.8, ymin = -0.2, ymax = 1.5, fill = "#aeaeae") +
-#   geom_bar(aes(x = -Highest_separation, y = total_length2, fill = Highest_separation), stat = "identity") +
-#   geom_text(data=.%>% filter(Highest_separation == "No separation"), x = 1, y = 0.5, aes(label = Borough_number)) +
-#   coord_flip() +
-#   scale_fill_viridis(discrete = TRUE, direction = -1, guide = guide_legend(reverse = TRUE)) +
-#   facet_grid(-fY ~ fX) +  # need to do -fY to get correct orientation with enfield top row and sutton bottom row
-#   theme(axis.text.y = element_blank(),
-#         axis.ticks.y = element_blank(),
-#         panel.spacing=unit(-0.5, "lines")) +
-#   theme_void()
-
-# Amended roger code - panel spacing may not be right depending on saving size
+# Create degree of separation by Borough spatially located in borough location
 borough_separation_length_spatial %>%
   ungroup() %>%
-  mutate(total_length2 = total_length/max(total_length)) %>%
+  mutate(total_length2 = total_length/max(total_length)) %>%  # This just scales the bars
   ggplot() +
   geom_rect(data=.%>% filter(Highest_separation == "No separation"), xmin = 0.5, xmax = 1.5, ymin = -0.2, ymax = 1.5, fill = "#cdcdcd") +
-  geom_bar(aes(x = -Highest_separation, y = total_length2, fill = Highest_separation), stat = "identity") +
-  geom_text(data=.%>% filter(Highest_separation == "No separation"), x = 1, y = 0.7, aes(label = Borough_number)) +
+  geom_bar(aes(x = -Highest_separation, y = total_length2, fill = Highest_separation), stat = "identity", show.legend = FALSE) +
+  geom_text(data=.%>% filter(Highest_separation == "No separation"), x = 1, y = 0.7, aes(label = b_acronym)) +
   coord_flip() +
-  scale_fill_viridis(discrete = TRUE, direction = -1, guide = guide_legend(reverse = TRUE)) +
+  scale_fill_viridis(discrete = TRUE, direction = -1) +
   facet_grid(-fY ~ fX) +  # need to do -fY to get correct orientation with enfield top row and sutton bottom row
   theme_void() +
   theme(strip.text = element_blank(),
-        panel.spacing.y = unit(-0.8, "lines"))
+        panel.spacing.y = unit(-0.2, "lines"))
 
-# Amended roger code with 3 letter acronyms - panel spacing may not be right depending on saving size
-borough_separation_length_spatial %>%
+# Obtain legend for use in paper
+legend_plot = borough_separation_length_spatial %>%
   ungroup() %>%
   mutate(total_length2 = total_length/max(total_length)) %>%
   ggplot() +
@@ -606,448 +458,36 @@ borough_separation_length_spatial %>%
   facet_grid(-fY ~ fX) +  # need to do -fY to get correct orientation with enfield top row and sutton bottom row
   theme_void() +
   theme(strip.text = element_blank(),
-        panel.spacing.y = unit(-0.8, "lines"))
-
-
-# Create bar chart (like for the assets) for total length by borough
-ggplot(borough_separation_length_spatial) +
-  geom_bar(aes(x = reorder(Borough_number, -total_borough_length), y = total_length, fill = Highest_separation), 
-           stat = "identity") +
-  coord_flip() +
-  scale_fill_viridis(discrete = TRUE, direction = -1, guide = guide_legend(reverse = TRUE)) +
-  scale_y_continuous(limits = c(0, 62000), expand = c(0,0), breaks = c(20000, 40000, 60000)) +
-  theme_classic() +
-  labs(y = "Total length (km)", x = NULL) +
-  theme(axis.ticks.y = element_blank(),
-        axis.line = element_blank(),
-        legend.position = "none")
-
-
-
-############################
-# PART 2 - by type   lanes #
-############################
-
-
-# Join london_squared to cycle lane lengths by type
-type_borough_separation_length_spatial = left_join(type_borough_separation_length_reorder, london_squared_tidy, by = "BOROUGH")
-
-# FOr Rest
-type_borough_separation_length_spatial %>%
-  filter(type == "Rest") %>%
-  ggplot() +
-  geom_bar(aes(x = -Highest_separation, y = total_length_by_type, fill = Highest_separation), stat = "identity")+
-  coord_flip() +
-  scale_fill_viridis(discrete = TRUE, direction = -1, guide = guide_legend(reverse = TRUE)) +
-  facet_grid(-fY ~ fX) +  # need to do -fY to get correct orientation with enfield top row and sutton bottom row
-  labs(title = "Rest") +
-  theme_classic() +
-  theme(axis.text.y = element_blank(),
-        axis.text.x = element_blank(),
-        axis.ticks.y = element_blank(),
-        axis.ticks.x = element_blank(),axis.line = element_blank(),
-        axis.title = element_blank(),
-        strip.text = element_blank(),
-        panel.spacing=unit(-0.5, "lines"),
-        plot.title = element_text(hjust = 0.5))
-
-# FOr SHared
-type_borough_separation_length_spatial %>%
-  filter(type == "Shared") %>%
-  ggplot() +
-  geom_bar(aes(x = -Highest_separation, y = total_length_by_type, fill = Highest_separation), stat = "identity")+
-  coord_flip() +
-  scale_fill_viridis(discrete = TRUE, direction = -1, guide = guide_legend(reverse = TRUE)) +
-  facet_grid(-fY ~ fX) +  # need to do -fY to get correct orientation with enfield top row and sutton bottom row
-  labs(title = "Shared") +
-  theme_classic() +
-  theme(axis.text.y = element_blank(),
-        axis.text.x = element_blank(),
-        axis.ticks.y = element_blank(),
-        axis.ticks.x = element_blank(),axis.line = element_blank(),
-        axis.title = element_blank(),
-        strip.text = element_blank(),
-        panel.spacing=unit(-0.5, "lines"),
-        plot.title = element_text(hjust = 0.5))
-
-# FOr COntraflow
-type_borough_separation_length_spatial %>%
-  filter(type == "Contraflow") %>%
-  ggplot() +
-  geom_bar(aes(x = -Highest_separation, y = total_length_by_type, fill = Highest_separation), stat = "identity")+
-  coord_flip() +
-  scale_fill_viridis(discrete = TRUE, direction = -1, guide = guide_legend(reverse = TRUE)) +
-  facet_grid(-fY ~ fX) +  # need to do -fY to get correct orientation with enfield top row and sutton bottom row
-  labs(title = "Contraflow") +
-  theme_classic() +
-  theme(axis.text.y = element_blank(),
-        axis.text.x = element_blank(),
-        axis.ticks.y = element_blank(),
-        axis.ticks.x = element_blank(),axis.line = element_blank(),
-        axis.title = element_blank(),
-        strip.text = element_blank(),
-        panel.spacing=unit(-0.5, "lines"),
-        plot.title = element_text(hjust = 0.5))
-
-# Create bar chart (like for the assets) for total length by borough faceted by type
-ggplot(type_borough_separation_length_spatial) +
-  geom_bar(aes(x = reorder(Borough_number, -total_borough_length_by_type), y = total_length_by_type, fill = Highest_separation),
-           stat = "identity") +
-  coord_flip() +
-  scale_fill_viridis(discrete = TRUE, direction = -1, guide = guide_legend(reverse = TRUE)) +
-  scale_y_continuous(limits = c(0, 62000), expand = c(0,0), breaks = c(20000, 40000, 60000)) +
-  theme_classic() +
-  facet_wrap(~ type) +
-  labs(y = "Total length (km)", x = NULL) +
-  theme(axis.ticks.y = element_blank(),
-        axis.line = element_blank(),
-        legend.position = "none")
-
-# Create individual bar charts for each type
-type_borough_separation_length_spatial %>%
-  filter(type == "Rest") %>%
-  ggplot() +
-  geom_bar(aes(x = reorder(Borough_number, -total_borough_length_by_type), y = total_length_by_type, fill = Highest_separation),
-           stat = "identity") +
-  coord_flip() +
-  scale_fill_viridis(discrete = TRUE, direction = -1, guide = guide_legend(reverse = TRUE)) +
-  scale_y_continuous(limits = c(0, 50000), expand = c(0,0), breaks = c(20000, 40000)) +
-  theme_classic() +
-  labs(y = "Total length (km)", x = NULL, title = "Rest") +
-  theme(axis.ticks.y = element_blank(),
-        axis.line = element_blank(),
-        legend.position = "none")
-
-type_borough_separation_length_spatial %>%
-  filter(type == "Shared") %>%
-  ggplot() +
-  geom_bar(aes(x = reorder(Borough_number, -total_borough_length_by_type), y = total_length_by_type, fill = Highest_separation),
-           stat = "identity") +
-  coord_flip() +
-  scale_fill_viridis(discrete = TRUE, direction = -1, guide = guide_legend(reverse = TRUE)) +
-  scale_y_continuous(limits = c(0, 25000), expand = c(0,0), breaks = 20000) +
-  theme_classic() +
-  labs(y = "Total length (km)", x = NULL, title = "Shared") +
-  theme(axis.ticks.y = element_blank(),
-        axis.line = element_blank(),
-        legend.position = "none")
-
-type_borough_separation_length_spatial %>%
-  filter(type == "Contraflow") %>%
-  ggplot() +
-  geom_bar(aes(x = reorder(Borough_number, -total_borough_length_by_type), y = total_length_by_type, fill = Highest_separation),
-           stat = "identity") +
-  coord_flip() +
-  scale_fill_viridis(discrete = TRUE, direction = -1, guide = guide_legend(reverse = TRUE)) +
-  scale_y_continuous(limits = c(0, 12500), expand = c(0,0), breaks = 10000) +
-  theme_classic() +
-  labs(y = "Total length (km)", x = NULL, title = "Contraflow") +
-  theme(axis.ticks.y = element_blank(),
-        axis.line = element_blank(),
-        legend.position = "none")
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# # Therefore want to label the 1282 as Segregated, 89 as stepped not segregated but instead stepped
-# # want to check up on those coded as mandat and advisory where seg and mand or seg and adv = TRUE
-# seg_step = on_road %>%
-#   filter(CLT_SEGREG == TRUE & CLT_STEPP == TRUE) 
-# x = on_road %>%
-#   filter(CLT_SEGREG == FALSE & CLT_STEPP == TRUE)
-# 
-# seg_mand = on_road %>%
-#   filter(CLT_SEGREG == TRUE & CLT_MANDAT == TRUE)
-# seg_advis = on_road %>%
-#   filter(CLT_SEGREG == TRUE & CLT_ADVIS == TRUE)
-# seg_step = on_road %>%
-#   filter(CLT_SEGREG == TRUE & CLT_STEPP == TRUE)
-# # examined both datast - recode both of these as CLT_ADVIS/MANDAT as false
-# 
-# # Correct these - this code is not working correctly.  ? related to https://github.com/rstudio/rstudio/issues/7372 affecting case_When?  
-# # a) CLT_MAND
-# # on_road = on_road %>%
-# #   mutate(CLT_MANDAT2 = case_when(CLT_SEGREG == TRUE & CLT_MANDAT == TRUE ~ "FALSE")) 
-# # on_road$CLT_MANDAT2[is.na(on_road$MANDAT2)] = "FALSE"
-# # seg_mand2 = on_road %>%
-# #   filter(CLT_SEGREG == TRUE & CLT_MANDAT2 == TRUE) # 0 observations
-# # # b) CLT_ADVIS
-# # on_road = on_road %>%
-# #   mutate(CLT_ADVIS2 = case_when(CLT_SEGREG == TRUE & CLT_ADVIS == TRUE ~ "FALSE")) 
-# # on_road$CLT_ADVIS2[is.na(on_road$CLT_ADVIS2)] = "FALSE"
-# # seg_advis2 = on_road %>%
-# #   filter(CLT_SEGREG == TRUE & CLT_ADVIS2 == TRUE) # 0 observations
-# # 
-# # # c) CLT_STEPP  ### DO I WANT TO DO THAT - ARE THEY ACTUALLY SEGREGATED AND STEPPED IN WHICH CASE KEEP SEGREGATED....
-# # # want to recode CLT_SEGREG as false where CLT_SEGREG == TRUE & CLT_STEPP == TRUE
-# on_road = on_road %>%
-#   mutate(CLT_SEGREG2 = case_when(CLT_SEGREG == TRUE & CLT_STEPP == TRUE ~ "FALSE",
-#                                  CLT_SEGREG == TRUE & CLT_STEPP == FALSE ~ "TRUE"))
-# on_road$CLT_SEGREG2[is.na(on_road$CLT_SEGREG2)] = "FALSE"
-# seg_step2 = on_road %>%
-#  filter(CLT_SEGREG2 == TRUE & CLT_STEPP== TRUE) # 0 observations
-# view(ctable(x = on_road$CLT_SEGREG2, y = on_road$CLT_STEPP)) # now have 1282 true segregated (false stepped) and 94 false seg but true stepped
-# 
-
-
-
-
-
-# Want to code all 94 as stepped once check up on those coded as advisory ie stepp and advis = TRUE
-
-seg_levels = c("Segregated", "Stepped", "Partially segregated", "Mandatory cycle lane", "Advisory cycle lane")
-
-https://www.marsja.se/r-add-column-to-dataframe-based-on-other-columns-conditions-dplyr/
-  
-  # Create new variable that indicates degree of separation from traffic 
-  # seg_levels = c("Segregated", "Stepped", "Partially segregated", "Mandatory cycle lane", "Advisory cycle lane")
-  
-  # # COnvert factor variables into numeric  
-  # cols = c("CLT_SEGREG", "CLT_STEPP", "CLT_PARSEG", "CLT_MANDAT", "CLT_ADVIS") 
-  # on_road_test = on_road %>% as.integer(as.character("CLT_SEGREG"))
-  
-  # try smaller dataset of on_road
-  
-  # test_df = on_road %>%
-#   st_drop_geometry() %>%
-#   select(c("FEATURE_ID", "CLT_SEGREG"))
-# set.seed(321)
-# test_df = sample_n(test_df, 50) # 5 TRUE
-# str(test_df)
-# tibble[,2] [50 × 2] (S3: tbl_df/tbl/data.frame)
-# $ FEATURE_ID: chr [1:50] "RWG236927" "RWG279152" "RWG207149" "RWG042572" ...
-# $ CLT_SEGREG: Factor w/ 2 levels "FALSE","TRUE": 1 1 1 1 1 1 1 1 1 1 ...
-# test_df$CLT_SEGREG = as.numeric(test_df$CLT_SEGREG) # false -> 1, true -> 2
-# test_df$CLT_SEGREG[test_df$CLT_SEGREG == 1] <- 0
-# test_df$CLT_SEGREG[test_df$CLT_SEGREG == 2] <- 1
-# sum(test_df$CLT_SEGREG)
-# # This now works
-# 
-# test_df = on_road %>%
-#   st_drop_geometry() %>%
-#   select(c("FEATURE_ID", "CLT_SEGREG", "CLT_STEPP"))
-# set.seed(321)
-# test_df = sample_n(test_df, 50) # 5 TRUE
-# str(test_df)
-# # tibble[,2] [50 × 2] (S3: tbl_df/tbl/data.frame)
-# # $ FEATURE_ID: chr [1:50] "RWG236927" "RWG279152" "RWG207149" "RWG042572" ...
-# # $ CLT_SEGREG: Factor w/ 2 levels "FALSE","TRUE": 1 1 1 1 1 1 1 1 1 1 ...
-# test_df = test_df %>%
-#   mutate(CLT_SEGREG_NUMERIC = as.numeric(test_df$CLT_SEGREG)) %>%
-#   mutate(CLT_STEPP_NUMERIC = as.numeric(test_df$CLT_STEPP)) 
-#   # false -> 1, true -> 2
-# test_df$CLT_SEGREG_NUMERIC[test_df$CLT_SEGREG_NUMERIC == 1] <- 0
-# test_df$CLT_SEGREG_NUMERIC[test_df$CLT_SEGREG_NUMERIC == 2] <- 1
-# test_df$CLT_STEPP_NUMERIC[test_df$CLT_STEPP_NUMERIC == 1] <- 0
-# test_df$CLT_STEPP_NUMERIC[test_df$CLT_STEPP_NUMERIC == 2] <- 1
-# sum(test_df$CLT_SEGREG_NUMERIC) # n = 1371
-# sum(test_df$CLT_STEPP_NUMERIC) # n = 94
-# 
-# test_df$CLT_SEGREG_NUMERIC[test_df$CLT_SEGREG_NUMERIC == 1] <- 5
-# test_df$CLT_STEPP_NUMERIC[test_df$CLT_STEPP_NUMERIC == 1] <- 4
-# test_df$row_sum = rowSums(test_df[, c(4, 5)])
-# # This now works
-# 
-# # if do on_road then get unique values in row)sm of 0, 5, 9, 4 
-# # will need to figure out if this works when add in other columns
-
-
-
-
-
-
-
-
-
-
-
-# on_road_numeric = on_road_numeric %>%
-#   rowwise() %>%
-#   mutate(weight_3 = sum(c_across(CLT_SHARED_weight:CLT_PARKR_weight)))
-# 
-# unique(on_road_numeric$weight_3)
-# #  0  20 200 220   2 202  22
-# 
-# weight_3_count = on_road_numeric %>%
-#   st_drop_geometry() %>%
-#   group_by(weight_3) %>%
-#   summarise(count = n())
-# sum(weight_3_count$count)  # n = 13965
-
-# weight_3 count
-# <dbl> <int>
-# 1        0  9594 Not park, contra or shared
-# 2        2    91 Park
-# 3       20  1429 Contra
-# 4       22     6 Contra + Park
-# 5      200  2806 Shared
-# 6      202    11 Shared + Park
-# 7      220    28 Shared + Contra
-
-
-
-# total_weight count
-# <dbl> <int>
-#  1            0    48  none of the categories
-#  2            1  6838 advisory cycle lane only
-#  3            2     5  Park 
-#  4            3    39  Park + advisory
-#  5           10  1488  mand cycle lane only
-#  6           12    13  mand & park
-#  7           20   521  contra
-#  8           21   282  contra + advisory
-#  9           22     1  contra + park
-# 10           23     1  contra + park + advisory
-# 11           30   163  contra + mand
-# 12           32     2  contra + park + mand
-# 13          100    60 part segregated only
-# 14          101    58 part seg + advisory
-# 15          102     2 part seg + park
-# 16          103     2 part seg + park + advisory
-# 17          110   150 part seg + mand
-# 18          112     1 part seg + park + mand 
-# 19          120    34 part seg + contra
-# 20          121    13 part seg + contra + advisory
-# 21          130    25 part seg + contra + mand
-# 22          200  2758 shared
-# 23          201    36 shared + advisory
-# 24          202    11 shared + park
-# 25          210     6 shared + mandatory
-# 26          220    28 shared + contra
-# 27          300     4 shared + partseg
-# 28         1000     3 stepped only
-# 29         1001     2 stepped + advisory 
-# 30        10000   861 segregated only
-# 31        10001     2 segregated + advisory
-# 32        10002    26 segregated + park
-# 33        10010     5 segregated + mandatory
-# 34        10020   384 segregated + contra
-# 35        10022     2 segregated + contra + park
-# 36        10200     1 segregated + shared
-# 37        10210     1 segregated + shared + mandat
-# 38        11000    79 segregated + stepped
-# 39        11002     3 segregated + stepped + park
-# 40        11020     7 segregated + stepped + contra
-
-
-
-
-
-
-
-
-
-
-
-
-
-# 4) PCT data
-# The code for obtaining this data is in: get_pct_km_cycled.R file
-pct_borough_commuting = readRDS(file = "/home/bananafan/Documents/PhD/Paper1/data/Borough_commuting.rds") %>%
-  mutate(total_100000km_cycled_for_commuting_per_year_estimated = total_km_cycled_for_commuting_per_year_estimated / 100000) 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# 1) Local Authority spatial data  - which dataset do I wnat this or BRE?
-# # import May 2020 ONS LA boundary data clipped to coastline (used so that River Thames appears)
-# lon_lad_2020_c2c = readRDS(file = "./map_data/lon_LAD_boundaries_May_2020_BFC.Rds")
-# 
-# # simply borough shapes
-# lon_lad_2020_c2c <- rmapshaper::ms_simplify(lon_lad_2020_c2c, keep=0.015) #Simplify boroughs
-# # lon_lad_2020_c2c$BOROUGH_short = fct_recode(lon_lad_2020_c2c$BOROUGH, 
-# #                                       "Kens & Chel" = "Kensington & Chelsea",
-# #                                       "Bark & Dage" = "Barking & Dagenham",
-# #                                       "Hamm & Fulh" = "Hammersmith & Fulham",
-# #                                       "Kingston" = "Kingston upon Thames",
-# #                                       "Richmond" = "Richmond upon Thames",
-# #                                       "City" = "City of London",
-# #                                       "T Hamlets" = "Tower Hamlets",
-# #                                       "W Forest" = "Waltham Forest") # rename Boroughs to reduce text length
-# 
-# # Create new variable that labels the Boroughs by number (matches the overall map)
-# lon_lad_2020_c2c$Borough_number = fct_recode(lon_lad_2020_c2c$BOROUGH, 
-#                                              "7" = "Kensington & Chelsea",
-#                                              "32" = "Barking & Dagenham",
-#                                              "8" = "Hammersmith & Fulham",
-#                                              "25" = "Kingston upon Thames",
-#                                              "24" = "Richmond upon Thames",
-#                                              "1" = "City of London",
-#                                              "15" = "Waltham Forest",
-#                                              "28" = "Croydon",
-#                                              "29" = "Bromley",
-#                                              "23" = "Hounslow",
-#                                              "20" = "Ealing",
-#                                              "31" = "Havering",
-#                                              "22" = "Hillingdon",
-#                                              "21" = "Harrow",
-#                                              "19" = "Brent",
-#                                              "18" = "Barnet",
-#                                              "10" = "Lambeth",
-#                                              "11" = "Southwark", 
-#                                              "12" = "Lewisham",
-#                                              "13" = "Greenwich",
-#                                              "30" = "Bexley",
-#                                              "17" = "Enfield",
-#                                              "33" = "Redbridge",
-#                                              "27" = "Sutton",
-#                                              "26" = "Merton",
-#                                              "9" = "Wandsworth",
-#                                              "6" = "Westminster",
-#                                              "5" = "Camden",
-#                                              "2" = "Tower Hamlets",
-#                                              "4" = "Islington",
-#                                              "3" = "Hackney",
-#                                              "16" = "Haringey",
-#                                              "14" = "Newham")
-# 
-# # Convert borough area into km^2 from m^2 
-# lon_lad_2020_c2c$Shape__Are = units::set_units(lon_lad_2020_c2c$Shape__Are, m^2)
-# lon_lad_2020_c2c = lon_lad_2020_c2c %>%
-#   mutate(Borough_Area_km2 = (units::set_units(lon_lad_2020_c2c$Shape__Are, km^2)))# change area units to km^2 from m^2
-# 
-# 
-# # Select variables of interest
-# lon_lad_2020_c2c_reduced = lon_lad_2020_c2c %>%
-#   select(c("BOROUGH", "Borough_number", "Borough_Area_km2", "geometry"))
-
-
-
+        panel.spacing.y = unit(-0.2, "lines"))
+
+# extract and convert to ggplot (so can save as jpeg)
+legend = ggpubr::get_legend(legend_plot)
+ggpubr::as_ggplot(legend)
+
+# Create table of separation by length
+borough_separation_table = borough_separation_length %>%
+  arrange(Highest_separation, desc(total_length)) %>%
+  mutate(total_length = units::set_units(total_length, "m")) %>%
+  mutate(total_length = units::set_units(total_length, "km")) %>%
+  mutate(total_length_rounded = round(units::set_units(total_length, "km"), digits = 1))
+
+count_borough_separation = borough_separation_table %>%
+  group_by(Highest_separation) %>%
+  summarise(n())
+
+wider_borough_separation_table = borough_separation_table %>%
+  select(-c("total_borough_length", "total_length_rounded")) %>%
+  mutate(total_length = units::set_units(total_length, "m")) %>%
+  units::drop_units() %>%
+  pivot_wider(names_from = "Highest_separation", values_from = "total_length")
+wider_borough_separation_table[is.na(wider_borough_separation_table)] <- 0
+
+# # Create variable for total length by Borough of all on road cycle lanes - may be needed for Results section
+total_borough_some_Separation = on_road_factor %>%
+  st_drop_geometry() %>%
+  filter(Highest_separation != "No separation") %>%
+  group_by(BOROUGH) %>%
+  summarise(total_borough_length = sum(length_m))# max = Croydon 58331.287 [m], min = Sutton 5832.761 [m]
+
+
+         
