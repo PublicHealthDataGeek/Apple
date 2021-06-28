@@ -1,32 +1,20 @@
 ####################################################################################
-# Visualise cycle lanes 
+#                            Visualise cycle lanes 
 # 
 # This code aims to visualise on road cycle lanes by the degree of separation
-# from other road users.  The visualisation also aims to take into account speed
-# limit (as that determines degree of recommended separation by the DfT) and 
-# cycling usage from the Propensity to Cycle Tool.
+# from other road users.  
 #
 # Initial code sorts out the assets that have more than one label for separation
 # e.g. jointly labelled as being segregated and stepped.  
-
-####JOBS:
-# update spatial bar charts once have agreed style
-# delete code no longer needed
-# tidy up this code file
 
 
 #Load packages
 library(tidyverse)
 library(mapview)
 library(tmap)
-#library(cowplot)
-#library(patchwork)
-#library(summarytools) # dont run if want to use mapview as it stops it working
 library(sf)
 library(tmaptools) # for palette explorer 
 library(viridis)
-#library(ggpubr) # for text grobs
-#library(ggspatial) # get north arrow and bar
 
 # Package options
 mapviewOptions(native.crs = TRUE)
@@ -43,42 +31,7 @@ lon_lad_2020_c2c = readRDS(file = "./map_data/lon_LAD_boundaries_May_2020_BFC.Rd
 # simply borough shapes
 lon_lad_2020_c2c <- rmapshaper::ms_simplify(lon_lad_2020_c2c, keep=0.015) #Simplify boroughs
 
-# Create new variable that labels the Boroughs by number (matches the overall map)
-lon_lad_2020_c2c$Borough_number = fct_recode(lon_lad_2020_c2c$BOROUGH, 
-                                             "7" = "Kensington & Chelsea",
-                                             "32" = "Barking & Dagenham",
-                                             "8" = "Hammersmith & Fulham",
-                                             "25" = "Kingston upon Thames",
-                                             "24" = "Richmond upon Thames",
-                                             "1" = "City of London",
-                                             "15" = "Waltham Forest",
-                                             "28" = "Croydon",
-                                             "29" = "Bromley",
-                                             "23" = "Hounslow",
-                                             "20" = "Ealing",
-                                             "31" = "Havering",
-                                             "22" = "Hillingdon",
-                                             "21" = "Harrow",
-                                             "19" = "Brent",
-                                             "18" = "Barnet",
-                                             "10" = "Lambeth",
-                                             "11" = "Southwark", 
-                                             "12" = "Lewisham",
-                                             "13" = "Greenwich",
-                                             "30" = "Bexley",
-                                             "17" = "Enfield",
-                                             "33" = "Redbridge",
-                                             "27" = "Sutton",
-                                             "26" = "Merton",
-                                             "9" = "Wandsworth",
-                                             "6" = "Westminster",
-                                             "5" = "Camden",
-                                             "2" = "Tower Hamlets",
-                                             "4" = "Islington",
-                                             "3" = "Hackney",
-                                             "16" = "Haringey",
-                                             "14" = "Newham")
-
+# Add three letter acronym column
 lon_lad_2020_c2c$b_acronym = fct_recode(lon_lad_2020_c2c$BOROUGH, 
                                      "K&C" = "Kensington & Chelsea",
                                      "B&D" = "Barking & Dagenham",
@@ -117,14 +70,12 @@ lon_lad_2020_c2c$b_acronym = fct_recode(lon_lad_2020_c2c$BOROUGH,
 
 # Select variables of interest
 lon_lad_2020_c2c = lon_lad_2020_c2c %>%
-  select(c("BOROUGH", "Borough_number", "b_acronym", "geometry"))
+  select(c("BOROUGH", "b_acronym", "geometry"))
 
 
 ###########################################################################################
 # Import and manipulate london_squared dataset to enable spatial arrangement of barcharts #
 ###########################################################################################
-
-# Example of what trying to acheive: https://github.com/rogerbeecham/od-flowvis-ggplot2
 
 # source data  = "https://github.com/aftertheflood/londonsquared/blob/master/site/data/grid.csv"
 
@@ -140,56 +91,21 @@ map_scale <- function(value, min1, max1, min2, max2) {
   return  (min2+(max2-min2)*((value-min1)/(max1-min1)))
 }
 
-# Used to reverse london_squared layout for use in ggplot2 facet_grid().
+# Manipulate london_squared layout for use in ggplot2 facet_grid().
 max_y <- max(london_squared$fY)
 min_y <- min(london_squared$fY)
 
-london_squared <- london_squared %>% mutate(fY=map_scale(fY, min_y, max_y, max_y, min_y))
+london_squared <- london_squared %>% 
+  mutate(fY=map_scale(fY, min_y, max_y, max_y, min_y))
 rm(min_y,max_y)
 
-# relabel values in london_squared so can join to borough_separation
+# Relabel values in london_squared so can join to Boroughs
 london_squared$BOROUGH <- london_squared$name
 london_squared$BOROUGH = as.factor(london_squared$BOROUGH) 
 london_squared$BOROUGH = fct_recode(london_squared$BOROUGH, 
                                     "Kensington & Chelsea" = "Kensington and Chelsea", 
                                     "Barking & Dagenham" = "Barking and Dagenham",
                                     "Hammersmith & Fulham" = "Hammersmith and Fulham")                            
-
-# Create new variable that labels the Boroughs by number (matches the overall map)
-london_squared$Borough_number = fct_recode(london_squared$BOROUGH, 
-                                           "7" = "Kensington & Chelsea",
-                                           "32" = "Barking & Dagenham",
-                                           "8" = "Hammersmith & Fulham",
-                                           "25" = "Kingston upon Thames",
-                                           "24" = "Richmond upon Thames",
-                                           "1" = "City of London",
-                                           "15" = "Waltham Forest",
-                                           "28" = "Croydon",
-                                           "29" = "Bromley",
-                                           "23" = "Hounslow",
-                                           "20" = "Ealing",
-                                           "31" = "Havering",
-                                           "22" = "Hillingdon",
-                                           "21" = "Harrow",
-                                           "19" = "Brent",
-                                           "18" = "Barnet",
-                                           "10" = "Lambeth",
-                                           "11" = "Southwark", 
-                                           "12" = "Lewisham",
-                                           "13" = "Greenwich",
-                                           "30" = "Bexley",
-                                           "17" = "Enfield",
-                                           "33" = "Redbridge",
-                                           "27" = "Sutton",
-                                           "26" = "Merton",
-                                           "9" = "Wandsworth",
-                                           "6" = "Westminster",
-                                           "5" = "Camden",
-                                           "2" = "Tower Hamlets",
-                                           "4" = "Islington",
-                                           "3" = "Hackney",
-                                           "16" = "Haringey",
-                                           "14" = "Newham")
 
 london_squared$b_acronym = fct_recode(london_squared$BOROUGH, 
                                         "K&C" = "Kensington & Chelsea",
@@ -229,49 +145,35 @@ london_squared$b_acronym = fct_recode(london_squared$BOROUGH,
 
 # simplify dataset for joining
 london_squared_tidy = london_squared %>%
-  select(c("BOROUGH", "Borough_number", "b_acronym", "fY", "fX"))
+  select(c("BOROUGH", "b_acronym", "fY", "fX"))
 
 
-##########################
-# Import cycle lane data #
-##########################
+
+##############################################################################
+# Import cycle lane data and manipulate to enable analysis and visualisation #
+##############################################################################
 
 # Import Cycle Lanes and Tracks dataset 
 c_cyclelanetrack = readRDS(file = "/home/bananafan/Documents/PhD/Paper1/data/cleansed_cycle_lane_track")
 # n = 25315
 
-# Join to borough geometry  ?do I want to do that???
-# geom_cyclelanetrack = left_join(lon_lad_2020_c2c_reduced, c_cyclelanetrack) 
-
-
-# names(c_cyclelanetrack)
-# [1] "FEATURE_ID" "SVDATE"     "CLT_CARR"   "CLT_SEGREG" "CLT_STEPP" 
-# [6] "CLT_PARSEG" "CLT_SHARED" "CLT_MANDAT" "CLT_ADVIS"  "CLT_PRIORI"
-# [11] "CLT_CONTRA" "CLT_BIDIRE" "CLT_CBYPAS" "CLT_BBYPAS" "CLT_PARKR" 
-# [16] "CLT_WATERR" "CLT_PTIME"  "CLT_ACCESS" "CLT_COLOUR" "BOROUGH"   
-# [21] "PHOTO1_URL" "PHOTO2_URL" "geometry"   "length_m"   "length_km" 
-
 # Details of variables
 # CLT_CARR   on/off
 # CLT_SEGREG lanes or tracks - TRUE = physical separation of cyclist from other users using continuous/near continuous kerb, upstand or planted verge.
-# CLT_STEPP - onroad only, cycle lane/track (?) is at a level between the carriageway and footway 
+# CLT_STEPP - onroad only, cycle lane/track is at a level between the carriageway and footway 
 # CLT_PARSEG - on and off, on - involves objects eg wants, off is a visual feature eg white line
 # TRUE = additional forms of delineation NB as often used by Mand/Adv cycle lanes can have this set to TRUE and mand/advi set to TRUE
 # CLT_SHARED - on and off, on - TRUE = shared with bus lane, off - TRUE = shared with other users eg pedestrians
 # CLT_MANDAT - onroad only, TRUE = mandatory cycle lane
 # CLT_ADVIS - onroad only, TRUE = advisory cycle lane
 # NB onroad can only have MAND TRUE, ADVIS TRUE or both FALSE
-# CLT_PRIORI
-# "CLT_PTIME" - is the on/off cycle lane track part time or not?  
-# [11] "CLT_CONTRA" "CLT_BIDIRE" "CLT_CBYPAS" "CLT_BBYPAS" "CLT_PARKR" 
-# [16] "CLT_WATERR"   "CLT_ACCESS" "CLT_COLOUR" 
 
 # Order of Protection from motor traffic on highways (DFT guidance pg 33)
 # Fully kerbed > stepped > light segregation > Mandatory/Advisory
 # FK/S/LS suitable for most people at 20/30 mph only FK suitable for 40mph+
 # M/A only suitable for most poepl on 20mph roads with motor vehicle flow of <5000
 
-# Correspnd in CID to:
+# Correspond in CID to:
 # CLT_SEGREG > CLT_STEPP > CLT_PARSEG > CLT_MANDAT > CLT_ADVIS
 #  NB seems to be little difference in CID between SEGREG and STEPP - majority of 
 # stepped are also labelled as segreg and only 5 are labelled as just stepped and they
@@ -281,7 +183,7 @@ c_cyclelanetrack = readRDS(file = "/home/bananafan/Documents/PhD/Paper1/data/cle
 on_road = c_cyclelanetrack %>%
   filter(CLT_CARR == TRUE) # n = 13965
 
-# Create dataframe so can obtain a df summary
+# Create dataframe so can obtain a df summary of number of observations
 # on_road_drop = on_road %>%
 #   st_drop_geometry() %>%
 #   select(-c("length_m", "length_km"))
@@ -296,25 +198,6 @@ on_road = c_cyclelanetrack %>%
 # NB total is 13965 - what are the rest of the on road cycle lanes????
 
 
-
-# Examine the dataset as think that some assets are coded with more than one level of segregation
-# test_code_seg = on_road_drop %>%
-#   select(c("FEATURE_ID", "CLT_SEGREG", "CLT_STEPP", "CLT_PARSEG", "CLT_MANDAT", "CLT_ADVIS"))
-
-# Findings when looking at CLT_SEGREG - this code runs using summarytools package
-# view(ctable(x = test_code_seg$CLT_SEGREG, y = test_code_seg$CLT_STEPP))
-# # Of the 1371 on road segregated cycle lanes 89 are also coded as stepped
-# view(ctable(x = test_code_seg$CLT_SEGREG, y = test_code_seg$CLT_PARSEG))
-# # none are part segregated
-# view(ctable(x = test_code_seg$CLT_SEGREG, y = test_code_seg$CLT_MANDAT))
-# # 6 are also coded as mandatory cycle lanes
-# view(ctable(x = test_code_seg$CLT_SEGREG, y = test_code_seg$CLT_ADVIS))
-# # 2 are also coded as advisory cycle lanes
-
-#################################################################
-# CID dataset manipulation to enable analysis and visualisation #
-#################################################################
-
 # Create new variable that divides observations into shared, contraflow and rest as these seem to have different patterns of segregation
 on_road = on_road %>%
   mutate(type = case_when(CLT_SHARED == TRUE ~ "Shared",
@@ -325,14 +208,12 @@ on_road$type = factor(on_road$type, levels = c("Rest", "Shared", "Contraflow"))
 on_road %>%
   st_drop_geometry() %>%
   group_by(type) %>%
-  summarise(count = n())
-#   type       count
-#   <chr>      <int>
-# 1 Rest        9685
-# 2 Shared      2845
-# 3 Contraflow  1435
-1435+9685+2845 
-# = 13965 
+  summarise(count = n(), sum_length = sum(length_km))
+# type       count sum_length
+# <fct>      <int>       [km]
+# 1 Rest        9685       595.
+# 2 Shared      2845       236.
+# 3 Contraflow  1435       112.
 
 
 # Convert Factors to numeric
@@ -354,9 +235,6 @@ on_road_numeric$CLT_STEPP_NUMERIC = ifelse(on_road_numeric$CLT_STEPP_NUMERIC == 
 on_road_numeric$CLT_PARSEG_NUMERIC = ifelse(on_road_numeric$CLT_PARSEG_NUMERIC == 1, 0, 1)
 on_road_numeric$CLT_MANDAT_NUMERIC = ifelse(on_road_numeric$CLT_MANDAT_NUMERIC == 1, 0, 1)
 on_road_numeric$CLT_ADVIS_NUMERIC = ifelse(on_road_numeric$CLT_ADVIS_NUMERIC == 1, 0, 1)
-# on_road_numeric$CLT_SHARED_NUMERIC = ifelse(on_road_numeric$CLT_SHARED_NUMERIC == 1, 0, 1)
-# on_road_numeric$CLT_CONTRA_NUMERIC = ifelse(on_road_numeric$CLT_CONTRA_NUMERIC == 1, 0, 1)
-# on_road_numeric$CLT_PARKR_NUMERIC = ifelse(on_road_numeric$CLT_PARKR_NUMERIC == 1, 0, 1)
 
 # Check now gives the count that I expect
 sum(on_road_numeric$CLT_SEGREG_NUMERIC) # n = 1371
@@ -364,9 +242,6 @@ sum(on_road_numeric$CLT_STEPP_NUMERIC) # n = 94
 sum(on_road_numeric$CLT_PARSEG_NUMERIC) # n = 349
 sum(on_road_numeric$CLT_MANDAT_NUMERIC) # n = 1854
 sum(on_road_numeric$CLT_ADVIS_NUMERIC) # n = 7273
-# sum(on_road_numeric$CLT_SHARED_NUMERIC) # n = 2845
-# sum(on_road_numeric$CLT_CONTRA_NUMERIC) # n = 1463
-# sum(on_road_numeric$CLT_PARKR_NUMERIC) # n = 108
 
 # Recode to give weighted value with segregated weighted highest and advisory cycle lane weighted lowest
 on_road_numeric$CLT_SEGREG_weight = ifelse(on_road_numeric$CLT_SEGREG_NUMERIC == 1, 10000, 0)
@@ -432,7 +307,6 @@ on_road_factor %>%
   group_by(Highest_separation) %>%
   summarise(count = n(), sum_length = sum(length_km))
 
-
 # Highest_separation   count sum_length
 # <fct>                <int>       [km]
 # 1 Segregated            1371     39.2  
@@ -443,19 +317,7 @@ on_road_factor %>%
 # 6 No separation         3372    316.1 
 
 
-# no_sep_length = on_road_factor %>%
-#   st_drop_geometry() %>%
-#   filter(Highest_separation == "No separation")
-# sum(no_sep_length$length_km) # 316.0967 [km]
-# adv_length = on_road_factor %>%
-#   st_drop_geometry() %>%
-#   filter(Highest_separation == "Advisory cycle lane")
-# sum(adv_length$length_km) # 487.0448 [km]
-
-                        
-                                    
-
-# create datasets by type
+# Create datasets by type
 contra = on_road_factor %>%
   filter(type == "Contraflow") # n = 1435
 shared = on_road_factor %>%
@@ -481,19 +343,15 @@ summary_high_sep = left_join(rest_sep, contra_sep) %>%
   units::drop_units()
 summary_high_sep[is.na(summary_high_sep)] <- 0
 
-summary_high_sep = summary_high_sep %>%
-  colwise() %>%
-  mutate(row_count_sum = sum(c(rest_count, contra_count, shared_count))) %>%
-  mutate(row_length_sum = sum(c(sum_rest_length_km, sum_contra_length_km, sum_shared_length_km)))
 
-# Highest_separation   rest_count contra_count shared_count
-# <fct>                     <int>        <int>        <int>
-# 1 Segregated                  976          393            2
-# 2 Stepped                       5            0            0
-# 3 Part-segregated             273           72            4
-# 4 Mandatory cycle lane       1501          165            6
-# 5 Advisory cycle lane        6877          283           36
-# 6 No separation                53          522         2797
+# Highest_separation   rest_count sum_rest_length_km contra_count sum_contra_length_km shared_count sum_shared_length_km
+# <fct>                     <int>              <dbl>        <int>                <dbl>        <int>                <dbl>
+# 1 Segregated                  976             33.2            393                 5.75            2                0.268
+# 2 Stepped                       5              0.713            0                 0               0                0    
+# 3 Part-segregated             273             12.2             72                 3.25            4                0.288
+# 4 Mandatory cycle lane       1501             74.4            165                 9.93            6                0.924
+# 5 Advisory cycle lane        6877            464.             283                20.8            36                2.48 
+# 6 No separation                53             11.0            522                72.7          2797              232.   
 
 rm(rest, rest_sep, shared, shared_sep, contra, contra_sep) # remove redundant objects
 
@@ -504,7 +362,8 @@ saveRDS(on_road_factor, file = "/home/bananafan/Documents/PhD/Paper1/data/cleans
 # Create maps of cycle lanes coloured by degrees of separation #
 ##########################################################################
 
-separation_map = tm_shape(lon_lad_2020_c2c) +
+# Separation map
+tm_shape(lon_lad_2020_c2c) +
   tm_polygons(col = "gray98", border.col = "gray70") +
   tm_shape(on_road_factor) +
   tm_lines("Highest_separation",
@@ -513,17 +372,23 @@ separation_map = tm_shape(lon_lad_2020_c2c) +
            alpha = 0.75, legend.col.show = FALSE) +
   tm_layout(frame = FALSE)
 
-# separation_map_type = tm_shape(lon_lad_2020_c2c) +
-#   tm_polygons(col = "gray98", border.col = "gray70") +
-#   tm_shape(on_road_factor) +
-#   tm_lines("Highest_separation",
-#            palette = "viridis",
-#            lwd = 2.5, 
-#            alpha = 0.75) + 
-#   tm_facets(by = "type",
-#         free.coords = FALSE) +
-#   tm_layout(legend.position = c("left", "top"))
 
+
+
+# Plot facetted by type
+on_road_factor = on_road_factor %>%
+  mutate(type = fct_relevel(type, c("Shared", "Contraflow", "Rest")))
+
+tm_shape(lon_lad_2020_c2c) +
+  tm_polygons(col = "gray98", border.col = "gray70") +
+  tm_shape(on_road_factor) +
+  tm_lines("Highest_separation",
+           palette = "viridis",
+           lwd = 2.5, 
+           alpha = 0.75,
+           title.col = "Degree of separation") +
+  tm_facets(by = "type",
+        free.coords = FALSE, ncol = 2)
 
 
 ####################################################################
