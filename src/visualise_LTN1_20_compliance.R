@@ -198,6 +198,21 @@ osm_speed_limits_tidy = osm_speed_limits %>%
 # Import cleansed onroad cycle lanes dataframe that has segregation information coded (created in VISUALISE CYCLELANES.r)
 cycle_lanes = readRDS(file = "/home/bananafan/Documents/PhD/Paper1/data/cleansed_onroad_cyclelanes_segregation.Rds")
 
+# collapse segregation into these categories that match Figure 4.1 in LTN 1/20
+# Convert factored numbers to relevant labels
+cycle_lanes = cycle_lanes %>%
+  select(c(FEATURE_ID, BOROUGH, geometry, length_m, type, Highest_separation)) %>%
+  mutate(Highest_separation = fct_collapse(Highest_separation, 
+                                           "Stepped/part segregation" = c("Stepped", "Part-segregated"),
+                                           "Mandatory/Advisory cycle lane" = c("Mandatory cycle lane", "Advisory cycle lane")))
+# Highest_separation            `n()`
+# <fct>                         <int>
+# 1 Segregated                     1371   -> Any speed limit, any traffic flow
+# 2 Stepped/part segregation        354   -> max 30moh, any traffic flow
+# 3 Mandatory/Advisory cycle lane  8868   -> max20mph and traffic flow under 5000 
+# 4 No separation                  3372   -> max 20mp and traffic flow under 2500
+
+
 # Import tidied london OSM speed limit dataset
 osm_speed_limits_tidy = readRDS(file = "/home/bananafan/Documents/PhD/Paper1/data/lon_osm_speed_limits_tidy.Rds")
 # refactor speed limit
@@ -226,7 +241,7 @@ barnet_intersects = st_join(barnet_cl_buffer, barnet_sl_buffer_73) # n = 297 (wa
 
 barnet_within = st_join(barnet_cl_buffer, barnet_sl_buffer_73, join = st_within) # n = 93)
 road_intersects = barnet_speeds_limits[barnet_cl_buffer, ]  # this code spatial selects - see geocomp with R
-mapview(road_intersects) + mapview(barnet_cl_buffer)  
+mapview(road_intersects) + mapview(barnet_cl_buffer)
 
 # Next steps from d/w RL
 #try 1) increasing buffer size (10m for roads) and use st_within 
@@ -386,13 +401,10 @@ barnet_speed_near_test = barnet_speed_nearest %>%
   mutate(seg_appro_speed_limit = case_when((maxspeed_num == 50) & (Highest_separation == "Segregated") ~ "TRUE",
                                            (maxspeed_num == 40) & (Highest_separation == "Segregated") ~ "TRUE",
                                            (maxspeed_num == 30) & (Highest_separation == "Segregated") ~ "TRUE",
-                                           (maxspeed_num == 30) & (Highest_separation == "Stepped") ~ "TRUE",
-                                           (maxspeed_num == 30) & (Highest_separation == "Part-segregated") ~ "TRUE",
+                                           (maxspeed_num == 30) & (Highest_separation == "Stepped/part segregation") ~ "TRUE",
                                            (maxspeed_num <= 20) & (Highest_separation == "Segregated") ~ "TRUE",
-                                           (maxspeed_num <= 20) & (Highest_separation == "Stepped") ~ "TRUE",
-                                           (maxspeed_num <= 20) & (Highest_separation == "Part-segregated") ~ "TRUE",
-                                           (maxspeed_num <= 20) & (Highest_separation == "Mandatory cycle lane") ~ "TRUE",
-                                           (maxspeed_num <= 20) & (Highest_separation == "Advisory cycle lane") ~ "TRUE",
+                                           (maxspeed_num <= 20) & (Highest_separation == "Stepped/part segregation") ~ "TRUE",
+                                           (maxspeed_num <= 20) & (Highest_separation == "Mandatory/Advisory cycle lane") ~ "TRUE",
                                            (maxspeed_num <= 20) & (Highest_separation == "No separation") ~ "FALSE",   ### IS tHIS CORRECT??? Lots are shared bus lanes
                                            TRUE ~ "FALSE"))
 # THis seems to work for barnet - need to check on other datasets
