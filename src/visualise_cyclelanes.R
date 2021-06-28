@@ -82,7 +82,7 @@ lon_lad_2020_c2c = lon_lad_2020_c2c %>%
 # source data  = "https://github.com/aftertheflood/londonsquared/blob/master/site/data/grid.csv"
 
 # Import london squared dataset
-london_squared = read.table(file = "/home/bananafan/Downloads/londonsquared.txt", header = TRUE, sep = ",")
+london_squared = read.table(file = "/home/bananafan/Documents/PhD/Paper1/data/londonsquared.txt", header = TRUE, sep = ",")
 
 # Rename columns
 london_squared$fY <-london_squared$y
