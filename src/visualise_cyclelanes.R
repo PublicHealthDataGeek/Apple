@@ -69,10 +69,18 @@ lon_lad_2020_c2c$b_acronym = fct_recode(lon_lad_2020_c2c$BOROUGH,
                                      "Har" = "Haringey",
                                      "New" = "Newham")
 
+# Convert borough area into km^2 from m^2 
+lon_lad_2020_c2c$Shape__Are = units::set_units(lon_lad_2020_c2c$Shape__Are, m^2)
+lon_lad_2020_c2c = lon_lad_2020_c2c %>%
+  mutate(Borough_Area_km2 = (units::set_units(lon_lad_2020_c2c$Shape__Are, km^2)))# change area units to km^2 from m^2
 
 # Select variables of interest
 lon_lad_2020_c2c = lon_lad_2020_c2c %>%
-  select(c("BOROUGH", "b_acronym", "geometry"))
+  select(c("BOROUGH", "b_acronym", "Borough_Area_km2", "geometry"))
+
+# Create new dataset just containing Borough_Area
+lon_area = lon_lad_2020_c2c %>%
+  select(c("BOROUGH", "Borough_Area_km2"))
 
 
 ###########################################################################################
@@ -415,11 +423,6 @@ total_borough_separation_length = on_road_factor %>%
   group_by(BOROUGH) %>%
   summarise(total_borough_length = sum(length_m))# max = Croydon 58331.287 [m], min = Sutton 5832.761 [m]
 
-# remove units to allow plotting
-borough_separation_length$total_length = as.integer(round(units::drop_units(borough_separation_length$total_length)))
-total_borough_separation_length$total_borough_length = as.integer(round(units::drop_units(
-  total_borough_separation_length$total_borough_length)))
-
 # join total borough lengths to borough_separation_length
 borough_separation_length = left_join(borough_separation_length, total_borough_separation_length)
 
@@ -427,8 +430,23 @@ borough_separation_length = left_join(borough_separation_length, total_borough_s
 borough_separation_length_reorder <- borough_separation_length # reorder so that Segregated appears at top
 borough_separation_length_reorder$Highest_separation = fct_rev(borough_separation_length_reorder$Highest_separation)
 
-# Join london_squared to cycle lane lengths
-borough_separation_length_spatial = left_join(borough_separation_length_reorder, london_squared_tidy, by = "BOROUGH")
+# Join london_squared and borough area to cycle lane lengths
+borough_separation_length_spatial = left_join(borough_separation_length_reorder, london_squared_tidy, by = "BOROUGH") %>%
+  left_join(lon_area, by = "BOROUGH")
+
+# Create new variables that divide length by area
+borough_separation_length_spatial = borough_separation_length_spatial %>%
+  mutate(tl_km = units::set_units(total_length, "km"),
+         tlperkm2 = tl_km/Borough_Area_km2,
+         tbl_km = units::set_units(total_borough_length, "km"),
+         tblperkm2 = tbl_km/Borough_Area_km2)
+
+
+# remove units to allow plotting
+borough_separation_length_spatial = units::drop_units(borough_separation_length_spatial)
+
+
+
 
 # Create degree of separation by Borough spatially located in borough location
 borough_separation_length_spatial %>%
@@ -464,6 +482,25 @@ legend_plot = borough_separation_length_spatial %>%
 legend = ggpubr::get_legend(legend_plot)
 ggpubr::as_ggplot(legend)
 
+# Create degree of separation by Borough - standardised by Borough area
+borough_separation_length_spatial %>%
+  ungroup() %>%
+  mutate(total_length2 = tlperkm2/max(tlperkm2)) %>%  # This just scales the bars
+  ggplot() +
+  geom_rect(data=.%>% filter(Highest_separation == "No separation"), xmin = 0.5, xmax = 1.5, ymin = -0.2, ymax = 2.4, fill = "#cdcdcd") +
+  geom_bar(aes(x = -Highest_separation, y = total_length2, fill = Highest_separation), stat = "identity", show.legend = FALSE) +
+  geom_text(data=.%>% filter(Highest_separation == "No separation"), x = 1, y = 1.2, aes(label = b_acronym)) +
+  coord_flip() +
+  scale_fill_viridis(discrete = TRUE, direction = -1) +
+  facet_grid(-fY ~ fX) +  # need to do -fY to get correct orientation with enfield top row and sutton bottom row
+  theme_void() +
+  theme(strip.text = element_blank(),
+        panel.spacing.y = unit(-0.2, "lines"))
+
+################################################################################
+# Table generation for results section
+################################################################################
+
 # Create table of separation by length
 borough_separation_table = borough_separation_length %>%
   arrange(Highest_separation, desc(total_length)) %>%
@@ -471,10 +508,19 @@ borough_separation_table = borough_separation_length %>%
   mutate(total_length = units::set_units(total_length, "km")) %>%
   mutate(total_length_rounded = round(units::set_units(total_length, "km"), digits = 1))
 
-count_borough_separation = borough_separation_table %>%
+borough_separation_table %>%
   group_by(Highest_separation) %>%
   summarise(n())
+# Highest_separation   `n()`
+# <fct>                <int>
+# 1 Segregated              33
+# 2 Stepped                  4
+# 3 Part-segregated         31
+# 4 Mandatory cycle lane    33
+# 5 Advisory cycle lane     33
+# 6 No separation           33
 
+# Create table where each row is Borough level data by separation
 wider_borough_separation_table = borough_separation_table %>%
   select(-c("total_borough_length", "total_length_rounded")) %>%
   mutate(total_length = units::set_units(total_length, "m")) %>%
@@ -487,7 +533,35 @@ total_borough_some_Separation = on_road_factor %>%
   st_drop_geometry() %>%
   filter(Highest_separation != "No separation") %>%
   group_by(BOROUGH) %>%
-  summarise(total_borough_length = sum(length_m))# max = Croydon 58331.287 [m], min = Sutton 5832.761 [m]
+  summarise(total_borough_length = sum(length_m))
 
 
-         
+# Create table of separation by length with the additional length by borough area variables
+borough_separation_table2 = borough_separation_length_spatial %>%
+  select(c("BOROUGH", "Highest_separation", "total_length","total_borough_length",
+           "tlperkm2", "tblperkm2")) %>%
+  arrange(Highest_separation, desc(total_length)) %>%
+  mutate(total_length = units::set_units(total_length, "m")) %>%
+  mutate(total_length = units::set_units(total_length, "km")) %>%
+  mutate(total_length_rounded = round(units::set_units(total_length, "km"), digits = 1))
+
+
+borough_separation_table2 = borough_separation_table %>%
+  arrange(desc(Highest_separation), desc(tlperkm2)) 
+
+
+# # Create variable for total length by Borough using length/km2
+total_borough_some_Separation2 = on_road_factor %>%
+  st_drop_geometry() %>%
+  filter(Highest_separation != "No separation") %>%
+  group_by(BOROUGH) %>%
+  summarise(total_borough_length = sum(length_m)) %>%
+  left_join(lon_area) %>%
+  mutate(lengthbyarea = total_borough_length/Borough_Area_km2)
+# max = Croydon 58331.287 [m], min = Sutton 5832.761 [m]
+# City has the greatest density 4.07 km/km^2
+# Barnet has the least 0.05 km/kmk^2
+
+
+
+
