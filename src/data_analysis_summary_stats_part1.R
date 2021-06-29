@@ -312,7 +312,8 @@ ASL = rbind(ASL_FDR, ASL_NIL,ASL_FDRLFT, ASL_COLOUR_F, ASL_FDCENT, ASL_FDRIGH, A
                          labels = c("Shared e.g. with buses", "Right feeder lane", 
                                     "Centre feeder lane", "Coloured tarmac", 
                                     "No characteristics", "Left feeder lane",  
-                                    "Feeder lane present")))  # factor and order correctly
+                                    "Feeder lane present"))) %>% # factor and order correctly
+  mutate(asset = "ASL")
 
 # # create stacked bar chart of ASL count with % in text
 ggplot() +
@@ -438,7 +439,8 @@ CRS = rbind(CRS_SIGNAL, CRS_SEGREG, CRS_NIL, CRS_CYGAP, CRS_PEDEST, CRS_LEVEL) %
                                     "CRS_SEGREG", "CRS_SIGNAL"),
                          labels = c("Crossing over rail or tram tracks", "Pedestrian-only crosssing (Cyclists dismount)",
                                     "Gap in island or kerb for cyclists", "No characteristics", 
-                                    "Cyclists segregated from other users", "Signal controlled crossing"))) 
+                                    "Cyclists segregated from other users", "Signal controlled crossing"))) %>%
+  mutate(asset = "Crossings")
 CRS[2,4] = "17.0%" # manually recode
 
 # Create stacked bar chart of CRS count with % in text
@@ -631,7 +633,8 @@ CLT = rbind(CLT_CARR, CLT_BIDIRE, CLT_SHARED, CLT_ADVIS, CLT_COLOUR_F, CLT_PARKR
                                     "Part-time cycle cycle lane/track", "Partially segregated", 
                                     "Route by or through a Park", "Coloured tarmac", 
                                     "Advisory cycle lane (painted line)", "Shared e.g. with buses", 
-                                    "Bi-directional (two-way flow)", "On-carriageway")))  # factor and order correctly
+                                    "Bi-directional (two-way flow)", "On-carriageway"))) %>%
+  mutate(asset = "cyclelanestracks") # factor and order correctly
 
 CLT[3,4] = "41.0%" # manually recode
 CLT[9,4] = "9.0%"
@@ -792,7 +795,8 @@ SIG = rbind(SIG_EARLY, SIG_GATE, SIG_HEAD, SIG_NIL, SIG_SEPARA, SIG_TWOSTG) %>%
                          labels = c("No characteristics", "Two-stage right turn", 
                                     "Cycle/bus gate allowing cycles to get ahead of other traffic",
                                     "Early release for cyclists", "Separate stage for cyclists", 
-                                    "Cycle symbol on signal lights")))  # factor and order correctly
+                                    "Cycle symbol on signal lights"))) %>%
+  mutate(asset = "signals")
 
 # # create stacked bar chart of Signal count with % in text
 ggplot() +
@@ -872,7 +876,8 @@ TC = rbind(TRF_BARIER, TRF_CALM, TRF_CUSHI, TRF_ENTRY, TRF_HUMP, TRF_NAROW, TRF_
                          labels = c("No characteristics", "Carriageway narrowing e.g. chicane", 
                                     "Other traffic calming measure", "Barrier cyclists can pass", 
                                     "Raised table at junction", "Hump/cushion is sinusoidal", 
-                                    "Side road entry treatment e.g. raised", "Speed cushion", "Speed hump")))
+                                    "Side road entry treatment e.g. raised", "Speed cushion", "Speed hump"))) %>%
+  mutate(asset = "trafficcalming")
 TC[7,4] = "0.02%" # manually recode
 
 # # create stacked bar chart of traffic count with % in text
@@ -889,6 +894,27 @@ ggplot() +
   geom_text(data = TC, aes(x = Count, label = Percentage, y = charac),
             hjust = -0.3, size = 5) +
   scale_y_discrete(labels = wrap_format(30))
+
+
+# Join dataframes together to do faceted characteristics plot
+df = rbind(ASL, CRS, CLT, SIG, TC)
+
+ggplot() +
+  geom_bar(data = df,
+           aes(x = Count, y = charac), stat = "identity") +
+  #theme_minimal() +
+  facet_grid(scales = "free") +
+  theme(panel.grid = element_blank(),  # removes all grid lines
+        axis.line.x = element_line(size=0.1, color="black"), # adds axis line back in
+        axis.title.y = element_blank(),
+        axis.text = element_text(size = 16),
+        axis.title.x = element_text(size = 20)) +
+  scale_x_continuous(expand = c(0,0), breaks = c(0, 20000), limits = c(0, 39000)) +
+  geom_text(data = TC, aes(x = Count, label = Percentage, y = charac),
+            hjust = -0.3, size = 5) +
+  scale_y_discrete(labels = wrap_format(30))
+
+
 
 
 ################################################################################
