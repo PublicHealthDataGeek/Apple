@@ -235,18 +235,26 @@ m1 =  mapview(barnet_cl, zcol = "Highest_separation")
 b_speedlimits = mapview(barnet_speeds_limits, zcol = "speed_limit", color = brewer.pal(9, "YlOrRd"))
 leafsync::sync(m1, b_speedlimits)  # initial visualisation suggests that unlikely that any cycle lanes are on roads > 30mph
 
-barnet_cl_buffer = st_buffer(barnet_cl, dist = 6) #6m buffer around cycle lanes
+barnet_cl_buffer = st_buffer(barnet_cl, dist = 10) #10m buffer around cycle lanes
 barnet_sl_buffer_73 = st_buffer(barnet_speeds_limits, dist = 7.3) # 7.3m around road - allowing for 2 way traffic
-barnet_intersects = st_join(barnet_cl_buffer, barnet_sl_buffer_73) # n = 297 (was 93)
+barnet_intersects = st_join(barnet_cl_buffer, barnet_sl_buffer_73) # n = 325 (was 93) LOTS OF SPEED LIMITS BUT ? ACCURAGE
+#barnet_within = st_join(barnet_cl_buffer, barnet_sl_buffer_73, join = st_within) # n = 93  #NB NO SPEED LIMITS
 
-barnet_within = st_join(barnet_cl_buffer, barnet_sl_buffer_73, join = st_within) # n = 93)
-road_intersects = barnet_speeds_limits[barnet_cl_buffer, ]  # this code spatial selects - see geocomp with R
-mapview(road_intersects) + mapview(barnet_cl_buffer)
+
+
+# barnet_within = st_join(barnet_cl_buffer, barnet_sl_buffer_73, join = st_within) # n = 93)
+# road_intersects = barnet_speeds_limits[barnet_cl_buffer, ]  # this code spatial selects - see geocomp with R
+# mapview(road_intersects) + mapview(barnet_cl_buffer)
 
 # Next steps from d/w RL
 #try 1) increasing buffer size (10m for roads) and use st_within 
 # and if that doesn’t work then 2) use line_segment (?stplanr) to break up road lengths 
 # Raise issue on github stplanr 
+
+# barnet_cl_buffer = st_buffer(barnet_cl, dist = 10) #6m buffer around cycle lanes
+# barnet_within = st_join(barnet_cl_buffer, barnet_speeds_limits, join = st_within) # n = 93)
+
+
 
 
 
@@ -255,11 +263,13 @@ barnet_intersects %>%
   group_by(speed_limit) %>%
   summarise(count = n())
 
+# speed_limit count
+# <fct>       <int>
 # 1 20mph          22
-# 2 30mph         262
+# 2 30mph         290
 # 3 40mph           2
-# 4 50mph           7
-# 5 NA              4
+# 4 50mph           8
+# 5 NA              3
 
 # examine whether speed limits differ by new segments of each FEATURE_ID
 count_na <- function(x) sum(is.na(x))  # function that counts number of NAs in a row
@@ -269,16 +279,272 @@ single_speed_limit = barnet_intersects %>%
   pivot_wider(id_cols = c("FEATURE_ID", "speed_limit"), 
               names_from = speed_limit,
               values_from = speed_limit,
-              names_glue = "{speed_limit}_{.value}",
+              names_glue = "{.value}_{speed_limit}",
               values_fn = length) %>%
-  select(c("FEATURE_ID", "20mph_speed_limit", "30mph_speed_limit", "40mph_speed_limit", "50mph_speed_limit", "NA_speed_limit")) %>%
+  select(c("FEATURE_ID", "speed_limit_20mph", "speed_limit_30mph", "speed_limit_40mph", "speed_limit_50mph", "speed_limit_NA")) %>%
+  mutate(count_na = apply(., 1, count_na)) %>%
+  mutate(single_speed_limit = case_when(count_na == 4  ~ TRUE,
+                                        TRUE ~ FALSE))  # if there are 4 NAs and 1 speedlimit then set 'single_speed_limit' to TRUE, 
+                                                        # if there are <4 NAs then this means >1 speed limit so set to FALSE
+
+
+# 79 only had 1 speed limit, 14 had >1 different speed limits
+single_speed_limit %>%
+  count(single_speed_limit)
+# single_speed_limit     n
+# <lgl>              <int>
+# 1 FALSE                 14
+# 2 TRUE                  79
+
+
+# Now all depends on whether the different speed limits are appropriate for the level of segregation.  
+# So can look at this by joining these speed limits to original cycle lanes and then seeing.  
+
+# add new column with speed limit where single_speed_limit = TRUE
+single_speed_limit2 <- single_speed_limit # duplicate df
+single_speed_limit2[is.na(single_speed_limit2)] <- 0 # convert NAs to 0
+single_speed_limit2  = single_speed_limit2 %>%
+  mutate(buffered_speed_limit = case_when(single_speed_limit == TRUE & speed_limit_20mph > 0 ~ "20",
+                                          single_speed_limit == TRUE & speed_limit_30mph > 0 ~ "30",
+                                          single_speed_limit == TRUE & speed_limit_40mph > 0 ~ "40",
+                                          single_speed_limit == TRUE & speed_limit_50mph > 0 ~ "50",
+                                          single_speed_limit == TRUE & speed_limit_NA > 0 ~ "NA",
+                                          TRUE ~ "Unknown"))  # This now works!
+single_speed_limit2 %>%
+  count(buffered_speed_limit)
+#   buffered_speed_limit     n
+#   <chr>                <int>
+# 1 20                       3
+# 2 30                      73
+# 3 NA                       3
+# 4 Unknown                 14
+
+# join to barnet cl
+barnet_cl2 = left_join(barnet_cl, single_speed_limit2)
+
+# 1) MANAGE THOSE WHERE SPEED LIMIT IS UNKNOWN OR NA
+# pull out those where speed limit is unknown or NA
+barnet_cl2_unknown_na = barnet_cl2 %>%
+  filter(buffered_speed_limit == "Unknown" | buffered_speed_limit == "NA" )
+
+# identify highest osm speed for that FEATURE_ID
+barnet_cl2_unknown_na = barnet_cl2_unknown_na %>%
+  mutate(highest_osm_speed_limit = 
+           case_when(speed_limit_50mph > 0 ~ "50",
+                     speed_limit_40mph > 0 ~ "40", 
+                     speed_limit_30mph > 0 ~ "30",
+                     speed_limit_20mph > 0 ~ "20",
+                     speed_limit_NA > 0 ~ "NA"))  # This is ordered -checking 50mph first
+
+
+# now apply 'appropriateness test' to that highest speed
+barnet_cl2_unknown_na_test = barnet_cl2_unknown_na %>%
+  mutate(seg_appro_speed_limit = case_when((highest_osm_speed_limit == 50) & (Highest_separation == "Segregated") ~ "TRUE",
+                                           (highest_osm_speed_limit == 40) & (Highest_separation == "Segregated") ~ "TRUE",
+                                           (highest_osm_speed_limit == 30) & (Highest_separation == "Segregated") ~ "TRUE",
+                                           (highest_osm_speed_limit == 30) & (Highest_separation == "Stepped/part segregation") ~ "TRUE",
+                                           (highest_osm_speed_limit <= 20) & (Highest_separation == "Segregated") ~ "TRUE",
+                                           (highest_osm_speed_limit <= 20) & (Highest_separation == "Stepped/part segregation") ~ "TRUE",
+                                           (highest_osm_speed_limit <= 20) & (Highest_separation == "Mandatory/Advisory cycle lane") ~ "TRUE",
+                                           (highest_osm_speed_limit <= 20) & (Highest_separation == "No separation") ~ "FALSE",
+                                           (highest_osm_speed_limit == "NA") ~ "Unknown - no OSM data",
+                                           TRUE ~ "FALSE"))
+barnet_cl2_unknown_na_test %>%
+  st_drop_geometry() %>%
+  count(seg_appro_speed_limit)
+# seg_appro_speed_limit     n
+# <chr>                 <int>
+# 1 FALSE                     8  
+# 2 TRUE                      6  - THESE ONES WE DONT NEED TO WORRY ABOUT - the segregation is appropriate for the road speed
+# 3 Unknown - no OSM data     3
+
+# Re the FALSE ones - these may include:
+# - ones where the segregation is appropriate but the OSM speed limit is incorrectly linked thus a false positive
+# - ones where the segregation is not appropriate and the OSM speed limit is correct ie a true positive
+
+# Now map the FALSE ONES to see what speed limit is to investigate this
+m1df = barnet_cl2_unknown_na_test %>% filter(seg_appro_speed_limit == FALSE)
+m1 = barnet_cl2_unknown_na_test %>%
+  filter(seg_appro_speed_limit == FALSE) %>%
+  mapview(zcol = "Highest_separation")
+b_speedlimits = mapview(barnet_speeds_limits, zcol = "speed_limit", color = brewer.pal(9, "YlOrRd"))
+leafsync::sync(m1, b_speedlimits) 
+
+# The only one where the seg_appro_speed_limit needs to change is for RWG279031
+# This observation was linked to the wrong road and the correct road has a lower sl (20mph)
+# Thus making the mandatory/advisory seg appropriate
+####
+#NEED TO CHANGE RWG279031 to TRUE
+
+# 2) MANAGE THOSE WHERE SPEED LIMIT IS KNOWN 
+# pull out those where speed limit is known 
+barnet_cl2_known = barnet_cl2 %>%
+  filter(buffered_speed_limit != "Unknown" & buffered_speed_limit != "NA" ) # n = 76
+
+# now apply 'appropriateness test' to that known speed
+barnet_cl2_known_test = barnet_cl2_known %>%
+  mutate(seg_appro_speed_limit = case_when((buffered_speed_limit == 50) & (Highest_separation == "Segregated") ~ "TRUE",
+                                           (buffered_speed_limit == 40) & (Highest_separation == "Segregated") ~ "TRUE",
+                                           (buffered_speed_limit == 30) & (Highest_separation == "Segregated") ~ "TRUE",
+                                           (buffered_speed_limit == 30) & (Highest_separation == "Stepped/part segregation") ~ "TRUE",
+                                           (buffered_speed_limit <= 20) & (Highest_separation == "Segregated") ~ "TRUE",
+                                           (buffered_speed_limit <= 20) & (Highest_separation == "Stepped/part segregation") ~ "TRUE",
+                                           (buffered_speed_limit <= 20) & (Highest_separation == "Mandatory/Advisory cycle lane") ~ "TRUE",
+                                           (buffered_speed_limit <= 20) & (Highest_separation == "No separation") ~ "FALSE",
+                                           (buffered_speed_limit == "NA") ~ "Unknown - no OSM data",
+                                           TRUE ~ "FALSE"))
+
+barnet_cl2_known_test %>%
+  st_drop_geometry() %>%
+  count(seg_appro_speed_limit)
+
+# seg_appro_speed_limit     n
+# <chr>                 <int>
+# 1 FALSE                    55
+# 2 TRUE                     21
+
+#CAn therefore repeat the above to identify if truely false or falsely false!!!!
+
+
+
+
+
+
+###############################################################################
+# NOW WORK OUT VOLUME OF WORK FOR WHOLE OF LONDON
+
+# Check to see how many segments over whole of London
+cl_buffer = st_buffer(cycle_lanes, dist = 10) #10m buffer around cycle lanes
+sl_buffer_73 = st_buffer(osm_speed_limits_tidy, dist = 7.3) # 7.3m around road - allowing for 2 way traffic
+cl_sl_intersects = st_join(cl_buffer, sl_buffer_73) # n = 45406 
+
+count_na <- function(x) sum(is.na(x))  # function that counts number of NAs in a row
+lon_single_speed_limit = cl_sl_intersects %>%
+  st_drop_geometry() %>%
+  select(c("FEATURE_ID", "speed_limit")) %>%
+  pivot_wider(id_cols = c("FEATURE_ID", "speed_limit"), 
+              names_from = speed_limit,
+              values_from = speed_limit,
+              names_glue = "{.value}_{speed_limit}",
+              values_fn = length) %>%
+  select(c("FEATURE_ID", "speed_limit_20mph", "speed_limit_30mph", "speed_limit_40mph", "speed_limit_50mph", "speed_limit_NA")) %>%
   mutate(count_na = apply(., 1, count_na)) %>%
   mutate(single_speed_limit = case_when(count_na == 4  ~ TRUE,
                                         TRUE ~ FALSE))  # if there are 4 NAs and 1 speedlimit then set 'single_speed_limit' to TRUE
+lon_single_speed_limit %>%
+  count(single_speed_limit) # 3377 false, 10588 true
 
-# 79 only had 1 speed limit, 14 had 2 different speed limits
+# Now all depends on whether the different speed limits are appropriate for the level of segregation.  
+# So can look at this by joining these speed limits to original cycle lanes and then seeing.  
 
-         
+# add new column with speed limit where single_speed_limit = TRUE
+lon_single_speed_limit2 <- lon_single_speed_limit # duplicate df
+lon_single_speed_limit2[is.na(lon_single_speed_limit2)] <- 0 # convert NAs to 0
+lon_single_speed_limit2  = lon_single_speed_limit2 %>%
+  mutate(buffered_speed_limit = case_when(single_speed_limit == TRUE & speed_limit_20mph > 0 ~ "20",
+                                          single_speed_limit == TRUE & speed_limit_30mph > 0 ~ "30",
+                                          single_speed_limit == TRUE & speed_limit_40mph > 0 ~ "40",
+                                          single_speed_limit == TRUE & speed_limit_50mph > 0 ~ "50",
+                                          single_speed_limit == TRUE & speed_limit_NA > 0 ~ "NA",
+                                          TRUE ~ "Unknown"))  # This now works!
+lon_single_speed_limit2 %>%
+  count(buffered_speed_limit)
+# buffered_speed_limit     n
+# <chr>                <int>
+# 1 20                    4824
+# 2 30                    3671
+# 3 40                     128
+# 4 50                      18
+# 5 NA                    1947
+# 6 Unknown               3377
+# 
+# # join to london cycle lanes
+cl2 = left_join(cycle_lanes, lon_single_speed_limit2)
+# 
+# # 1) MANAGE THOSE WHERE SPEED LIMIT IS UNKNOWN OR NA
+# # pull out those where speed limit is unknown or NA
+cl2_unknown_na = cl2 %>%
+   filter(buffered_speed_limit == "Unknown" | buffered_speed_limit == "NA" )
+
+# identify highest osm speed for that FEATURE_ID
+cl2_unknown_na = cl2_unknown_na %>%
+  mutate(highest_osm_speed_limit =
+           case_when(speed_limit_50mph > 0 ~ "50",
+                     speed_limit_40mph > 0 ~ "40",
+                     speed_limit_30mph > 0 ~ "30",
+                     speed_limit_20mph > 0 ~ "20",
+                     speed_limit_NA > 0 ~ "NA"))  # This is ordered -checking 50mph first
+
+# # now apply 'appropriateness test' to that highest speed
+cl2_unknown_na_test = cl2_unknown_na %>%
+  mutate(seg_appro_speed_limit = case_when((highest_osm_speed_limit == 50) & (Highest_separation == "Segregated") ~ "TRUE",
+                                           (highest_osm_speed_limit == 40) & (Highest_separation == "Segregated") ~ "TRUE",
+                                           (highest_osm_speed_limit == 30) & (Highest_separation == "Segregated") ~ "TRUE",
+                                           (highest_osm_speed_limit == 30) & (Highest_separation == "Stepped/part segregation") ~ "TRUE",
+                                           (highest_osm_speed_limit <= 20) & (Highest_separation == "Segregated") ~ "TRUE",
+                                           (highest_osm_speed_limit <= 20) & (Highest_separation == "Stepped/part segregation") ~ "TRUE",
+                                           (highest_osm_speed_limit <= 20) & (Highest_separation == "Mandatory/Advisory cycle lane") ~ "TRUE",
+                                           (highest_osm_speed_limit <= 20) & (Highest_separation == "No separation") ~ "FALSE",
+                                           (highest_osm_speed_limit == "NA") ~ "Unknown - no OSM data",
+                                           TRUE ~ "FALSE"))
+cl2_unknown_na_test %>%
+  st_drop_geometry() %>%
+  count(seg_appro_speed_limit)
+
+# seg_appro_speed_limit     n
+# <chr>                 <int>
+# 1 FALSE                  3072
+# 2 TRUE                    305  - seg is appropriate for road speed. 
+# 3 Unknown - no OSM data  1947
+
+# # Re the FALSE ones - these may include:
+# # - ones where the segregation is appropriate but the OSM speed limit is incorrectly linked thus a false positive
+# # - ones where the segregation is not appropriate and the OSM speed limit is correct ie a true positive
+
+
+# 2) MANAGE THOSE WHERE SPEED LIMIT IS KNOWN
+# pull out those where speed limit is known
+cl2_known = cl2 %>%
+  filter(buffered_speed_limit != "Unknown" & buffered_speed_limit != "NA" ) # n = 8641
+
+# now apply 'appropriateness test' to that known speed
+cl2_known_test = cl2_known %>%
+  mutate(seg_appro_speed_limit = case_when((buffered_speed_limit == 50) & (Highest_separation == "Segregated") ~ "TRUE",
+                                           (buffered_speed_limit == 40) & (Highest_separation == "Segregated") ~ "TRUE",
+                                           (buffered_speed_limit == 30) & (Highest_separation == "Segregated") ~ "TRUE",
+                                           (buffered_speed_limit == 30) & (Highest_separation == "Stepped/part segregation") ~ "TRUE",
+                                           (buffered_speed_limit <= 20) & (Highest_separation == "Segregated") ~ "TRUE",
+                                           (buffered_speed_limit <= 20) & (Highest_separation == "Stepped/part segregation") ~ "TRUE",
+                                           (buffered_speed_limit <= 20) & (Highest_separation == "Mandatory/Advisory cycle lane") ~ "TRUE",
+                                           (buffered_speed_limit <= 20) & (Highest_separation == "No separation") ~ "FALSE",
+                                           (buffered_speed_limit == "NA") ~ "Unknown - no OSM data",
+                                           TRUE ~ "FALSE"))
+
+cl2_known_test %>%
+  st_drop_geometry() %>%
+  count(seg_appro_speed_limit)
+
+# seg_appro_speed_limit     n
+# <chr>                 <int>
+# 1 FALSE                  4736
+# 2 TRUE                   3905
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
          
 ##########################################################################################         
 barnet_20 = barnet_intersects %>%
