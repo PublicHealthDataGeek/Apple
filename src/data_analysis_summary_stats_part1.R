@@ -446,7 +446,8 @@ CRS[2,4] = "17.0%" # manually recode
 # Create stacked bar chart of CRS count with % in text
 ggplot() +
   geom_bar(data = CRS,
-           aes(x = Count, y = charac), stat = "identity") +
+           aes(x = Count, y = charac), stat = "identity",
+           width = 0.5) +
   theme_minimal() +
   theme(panel.grid = element_blank(),  # removes all grid lines
         axis.line.x = element_line(size=0.1, color="black"), # adds axis line back in
@@ -896,23 +897,133 @@ ggplot() +
   scale_y_discrete(labels = wrap_format(30))
 
 
-# Join dataframes together to do faceted characteristics plot
-df = rbind(ASL, CRS, CLT, SIG, TC)
-
-ggplot() +
-  geom_bar(data = df,
-           aes(x = Count, y = charac), stat = "identity") +
-  #theme_minimal() +
-  facet_grid(scales = "free") +
-  theme(panel.grid = element_blank(),  # removes all grid lines
-        axis.line.x = element_line(size=0.1, color="black"), # adds axis line back in
-        axis.title.y = element_blank(),
-        axis.text = element_text(size = 16),
-        axis.title.x = element_text(size = 20)) +
-  scale_x_continuous(expand = c(0,0), breaks = c(0, 20000), limits = c(0, 39000)) +
-  geom_text(data = TC, aes(x = Count, label = Percentage, y = charac),
-            hjust = -0.3, size = 5) +
-  scale_y_discrete(labels = wrap_format(30))
+# # Join dataframes together to do faceted characteristics plot
+# df = rbind(ASL, CRS, CLT, SIG, TC)
+# 
+# ggplot() +
+#   geom_bar(data = df,
+#            aes(x = Count, y = charac), stat = "identity") +
+#   #theme_minimal() +
+#   facet_grid(asset ~., scales = "free") +
+#   theme(panel.grid = element_blank(),  # removes all grid lines
+#         axis.line.x = element_line(size=0.1, color="black"), # adds axis line back in
+#         axis.title.y = element_blank(),
+#         axis.text = element_text(size = 16),
+#         axis.title.x = element_text(size = 20)) +
+#  # scale_x_continuous(expand = c(0,0), breaks = c(0, 20000), limits = c(0, 39000)) +
+#   geom_text(data = df, aes(x = Count, label = Percentage, y = charac),
+#             hjust = -0.3, size = 5) +
+#   scale_y_discrete(labels = wrap_format(30))
+# 
+# ggplot()+
+#   geom_bar(data = df, aes(x = Count, y = charac), stat="identity") +
+#   facet_grid(asset ~ ., 
+#              space = "free",
+#              scales = "free") +
+#   theme(strip.text.y = element_text(angle=0),
+#         legend.position = "none")
+# 
+# q = ggplot()+
+#   geom_bar(data = df, aes(x = Count, y = charac), stat="identity") +
+#   facet_wrap(asset ~ ., 
+#              scales = "free", ncol = 1) +
+#   theme(strip.text.y = element_text(angle=0),
+#         legend.position = "none")
+# gt = ggplotGrob(q)
+# gt$widths
+# gt$widths[5] = unit(7, "null")
+# 
+# 
+# mdf <- read.table(text="
+#    strain val     type
+# 1       1 0.0000  sample
+# 2       1 0.0140  sample
+# 3       1 0.0175  sample
+# 4       2 0.0025  sample
+# 5       2 0.0260  sample
+# 6       2 0.0105  sample
+# 7       3 0.0190  sample
+# 8       3 0.0725  sample
+# 9       3 0.0390  sample
+# 10      4 0.0560  sample
+# 11      4 0.0695  sample
+# 12      4 0.0605  sample
+# 13      5 0.0735  sample
+# 14      5 0.1065  sample
+# 15      5 0.0890  sample
+# 16      6 0.1135  sample
+# 17      6 0.2105  sample
+# 18      6 0.1410  sample
+# 19      7 0.1360  sample
+# 20      7 0.2610  sample
+# 21      7 0.1740  sample
+# 22      8 0.3850 control
+# 23      8 0.7580 control
+# 24      8 0.5230 control
+# 25      9 0.5230 control
+# 26      9 0.5860 control
+# 27      9 0.7240 control")
+# 
+# q <- ggplot(mdf, aes(factor(strain), val)) +
+#   labs(x = "Strain", y = "intensity") +
+#   geom_boxplot() +
+#   geom_point() +
+#   facet_wrap( ~ type, scales = "free")
+# # Get the ggplot grob
+# gt = ggplotGrob(q)
+# 
+# # Check for the widths - you need to change the two that are set to 1null
+# gt$widths
+# 
+# # Replace the default widths with relative widths:
+# gt$widths[4] = unit(2, "null")
+# gt$widths[8] = unit(7, "null")
+# gt$widths[5] = unit(1, "cm")
+# # Draw the plot
+# grid::grid.newpage()
+# grid::grid.draw(gt)
+# 
+# 
+# # From 'dfm', get the number of 'strain' for each 'type'.
+# # That is, the number x-breaks in each panel.
+# library(dplyr)
+# N <- df %>% group_by(asset) %>%  
+#   summarise(count = length(unique(charac))) %>% 
+#   `[[`(2)
+# 
+# # Get the column index in the gt layout corresponding to the panels.
+# panelI <- gt$layout$l[grepl("panel", gt$layout$name)]
+# 
+# # Replace the default panel widths with relative heights.
+# gt$heights[panelI] <- unit(N, "null")
+# 
+# ## Draw gt
+# grid::grid.newpage()
+# grid::grid.draw(gt)
+# 
+# ggplot(data = df, aes(x = Count, y = charac))+
+#   geom_col(position = position_dodge2(preserve = "single"))
+# 
+# ggplot()+
+#   geom_bar(data = df, aes(x = Count, y = charac), stat="identity") +
+#   facet_grid(asset ~ ., 
+#              space = "free",
+#              scales = "free") +
+#   theme(strip.text.y = element_text(angle=0),
+#         legend.position = "none")
+# 
+# 
+# 
+# 
+# 
+# q +
+#   facet_grid(~asset, scales = "free") +
+#   coord_flip()
+# 
+# 
+# +
+#   theme(strip.text.y = element_text(angle=0),
+#         legend.position = "none")
 
 
 
