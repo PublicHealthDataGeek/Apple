@@ -12,7 +12,7 @@ library(tmap)
 library(sf)
 # library(mapview)
 
-# library(cowplot)
+ library(cowplot)
 # library(patchwork)
 
 # library(tmaptools) # for palette explorer 
@@ -151,181 +151,14 @@ city_chloropleth_dataset = chloropleth_dataset %>%
 #                             Orientation maps                                #
 ###############################################################################
 
-# Create context for map
-
-# # 1) Borough boundaries and labelling
-# boroughs <- st_read("/home/bananafan/Documents/PhD/Paper1/map_data/London_Borough_Excluding_MHW.shp")
-# borough_areas <- rmapshaper::ms_simplify(boroughs, keep=0.015) #Simplify boroughs
-# borough_areas = rename(boroughs, BOROUGH = NAME)
-# 
-# borough_areas$B_numbered = fct_recode(borough_areas$BOROUGH, 
-#                                       "7" = "Kensington and Chelsea",
-#                                       "32" = "Barking and Dagenham",
-#                                       "8" = "Hammersmith and Fulham",
-#                                       "25" = "Kingston upon Thames",
-#                                       "24" = "Richmond upon Thames",
-#                                       "1" = "City of London",
-#                                       "15" = "Waltham Forest",
-#                                       "28" = "Croydon",
-#                                       "29" = "Bromley",
-#                                       "23" = "Hounslow",
-#                                       "20" = "Ealing",
-#                                       "31" = "Havering",
-#                                       "22" = "Hillingdon",
-#                                       "21" = "Harrow",
-#                                       "19" = "Brent",
-#                                       "18" = "Barnet",
-#                                       "10" = "Lambeth",
-#                                       "11" = "Southwark", 
-#                                       "12" = "Lewisham",
-#                                       "13" = "Greenwich",
-#                                       "30" = "Bexley",
-#                                       "17" = "Enfield",
-#                                       "33" = "Redbridge",
-#                                       "27" = "Sutton",
-#                                       "26" = "Merton",
-#                                       "9" = "Wandsworth",
-#                                       "6" = "Westminster",
-#                                       "5" = "Camden",
-#                                       "2" = "Tower Hamlets",
-#                                       "4" = "Islington",
-#                                       "3" = "Hackney",
-#                                       "16" = "Haringey",
-#                                       "14" = "Newham")
-# 
-# 
-# 
-# # Create Inner London Borough list
-# inn_lon_B_list = c("City of London", "Camden", "Greenwich", "Hackney", "Hammersmith and Fulham", 
-#                    "Islington", "Kensington and Chelsea", "Lambeth", "Lewisham", "Southwark",  
-#                    "Tower Hamlets", "Wandsworth", "Westminster") 
-# 
-# # Create inner London spatial object for boundary
-# inn_lon_union = borough_areas %>%
-#   filter(BOROUGH %in% inn_lon_B_list) %>%
-#   st_union()
-# # Create Outer London Spatial object for boundary
-# out_lon_union = borough_areas %>%
-#   filter(!BOROUGH %in% inn_lon_B_list) %>%
-#   st_union()
-# 
-# # 2) River thames
-# riverthames = st_read("/home/bananafan/Documents/PhD/Paper1/map_data/riverthames.shp")
-# riverthames_simplify = rmapshaper::ms_simplify(riverthames)
-# 
-# # 
-# # # 5) Create borough legend
-# # text1 = paste("1 City of London", "2 Tower Hamlets", "3 Hackney",
-# #               "4 Islington", "5 Camden", "6 Westminster",
-# #               "7 Kensington and Chelsea", "8 Hammersmith and Fulham",
-# #               "9 Wandsworth", "10 Lambeth", "11 Southwark", 
-# #               "12 Lewisham", "13 Greenwich", "14 Newham",
-# #               "15 Waltham Forest", "16 Haringey", sep = "\n")
-# # 
-# # text2 = paste("17 Enfield", "18 Barnet", "19 Brent", "20 Ealing", "21 Harrow", 
-# #               "22 Hillingdon", "23 Hounslow", "24 Richmond upon Thames",
-# #               "25 Kingston upon Thames", "26 Merton", "27 Sutton", 
-# #               "28 Croydon", "29 Bromley", "30 Bexley", "31 Havering", 
-# #               "32 Barking and Dagenham", "33 Redbridge", sep = "\n")
-# # 
-# # 
-# # text4 = paste("1 City of London, 2 Tower Hamlets, 3 Hackney, 4 Islington, 5 Camden, 6 Westminster, 
-# #               7 Kensington and Chelsea, 8 Hammersmith and Fulham, 9 Wandsworth, 
-# #               10 Lambeth, 11 Southwark, 12 Lewisham, 13 Greenwich, 14 Newham, 15 Waltham Forest",
-# #               "16 Haringey, 17 Enfield, 18 Barnet, 19 Brent, 20 Ealing, 21 Harrow, 22 Hillingdon", 
-# #              "23 Hounslow, 24 Richmond upon Thames, 25 Kingston upon Thames, 26 Merton, 27 Sutton, 
-# #              28 Croydon, 29 Bromley, 30 Bexley, 31 Havering, 32 Barking and Dagenham, 33 Redbridge",
-# #              sep = "\n")
-# 
-# text5 = paste("1 City of London, 2 Tower Hamlets, 3 Hackney, 4 Islington, 5 Camden, 6 Westminster, 
-#               7 Kensington and Chelsea, 8 Hammersmith and Fulham, 9 Wandsworth, 
-#               10 Lambeth, 11 Southwark, 12 Lewisham, 13 Greenwich, 14 Newham, 15 Waltham Forest,
-#               16 Haringey, 17 Enfield, 18 Barnet, 19 Brent, 20 Ealing, 21 Harrow, 22 Hillingdon, 
-#               23 Hounslow, 24 Richmond upon Thames, 25 Kingston upon Thames, 26 Merton, 27 Sutton, 
-#              28 Croydon, 29 Bromley, 30 Bexley, 31 Havering, 32 Barking and Dagenham, 33 Redbridge",
-#               sep = "\n")
-# 
-# # Create text grobs
-# # B1_grob = ggpubr::text_grob(text1, just = "left", size = 10)    
-# # B2_grob = ggpubr::text_grob(text2, just = "left", size = 10)   
-# # 
-# # labels_grob = ggpubr::text_grob(text, just = "left", size = 10) 
-# # labels_grob2 = ggpubr::text_grob(text4, just = "centre", size = 10) 
-# labels_grob3 = ggpubr::text_grob(text5, just = "centre", size = 10) 
-# 
-# # Convert text grobs to ggplot objects
-# # B1_ggplot = as_ggplot(B1_grob) + 
-# #   theme(plot.margin = unit(c(0.5, -1, -1, -15), "cm"))
-# # 
-# # B2_ggplot = as_ggplot(B2_grob) +
-# #   theme(plot.margin = unit(c(0.5, -1, 1, -15), "cm"))
-# # 
-# # labels_ggplot = as_ggplot(labels_grob) +
-# #   theme(plot.margin = unit(c(0.5, 0, 1, -15), "cm"))
-# # 
-# # labels_ggplot2 = as_ggplot(labels_grob2) +
-# #   theme(plot.margin = unit(c(0.5, 0, 1, -15), "cm"))
-# 
-# labels_ggplot3 = as_ggplot(labels_grob3) +
-#   theme(plot.margin = unit(c(-0, 0, 0, -1), "cm"))
-# 
-# # Create base maps
-# # with and without scales and arrows
-# basemap = ggplot()+
-#   geom_sf(data = out_lon_union, fill="white", colour = "black") +
-#   geom_sf(data = inn_lon_union, colour = "#991100") +
-#   geom_sf(data=borough_areas, fill="#d4d4d4",  colour="black", alpha=0.3, size=0.15)+
-#   geom_sf(data=riverthames_simplify, fill="#99CCEE",  colour="#99CCEE")+
-#   geom_sf_label(data = borough_areas, aes(label = B_numbered)) +
-#   theme_bw() +
-#   coord_sf(crs=st_crs(riverthames_simplify), datum=NA) +
-#   xlab(label = NULL) +
-#   ylab(label = NULL) +
-#   annotation_scale(location = "br", width_hint = 0.3, bar_cols = c("Gray83", "white"),
-#                    text_cex = 0.5, line_width = 0.5, line_col = "#222222") +
-#   annotation_north_arrow(location = "tr", which_north = "true", 
-#                          height = unit(1.3, "cm"), width = unit(1.3, "cm"),
-#                          style = north_arrow_fancy_orienteering(line_width = 0.5, 
-#                                                                 line_col = "#222222",
-#                                                                 fill = c("white", "Gray83"),
-#                                                                 text_size = 8))
-# 
-# 
-# # borough orientation plot
-# # basemap + labels_ggplot # needs tidying more
-# # basemap /(B1_ggplot + B2_ggplot)
-# # 
-# # basemap + (B1_ggplot + B2_ggplot)
-# 
-# boroughs_labelled_map = basemap / labels_ggplot3
-
 # 1) Boroughs areas
 area_chloro = tm_shape(chloropleth_dataset) +
   tm_polygons("Borough_Area_km2", 
-              #style = "cont",
+              style = "cont",
               breaks = c(0, 30, 60, 90, 120, 150, 180),
               palette = "Blues", 
               legend.show = FALSE) + 
-  tm_layout(frame = FALSE) 
-
-# tm_shape(chloropleth_dataset) +
-#   tm_polygons("Borough_Area_km2", 
-#               style = "cont",
-#               breaks = c(0, 30, 60, 90, 120, 150, 180),
-#               palette = "Blues", 
-#               legend.show = FALSE) + 
-#   tm_layout(frame = FALSE, title = "cont chloropleth") 
-# 
-# tm_shape(chloropleth_dataset) +
-#   tm_polygons("Borough_Area_km2", 
-#               #style = "cont",
-#               breaks = c(0, 30, 60, 90, 120, 150, 180),
-#               palette = "Blues", 
-#               legend.show = FALSE) + 
-#   tm_layout(frame = FALSE, title = "normal (noncont) chloropleth") 
-
-#  tm_layout(inner.margins = c(0.1,0.1,0.1,0.42), # creates wide right margin for barchart
-#           frame = FALSE) 
+  tm_layout(inner.margins = c(0.1,0.1,0.1,0.42), frame = FALSE) 
 
 # # convert chloro to grob
 area_chloro_grob = tmap_grob(area_chloro) 
@@ -334,152 +167,45 @@ area_chloro_grob = tmap_grob(area_chloro)
 # Drop units and round so that intervals are plotted ok
 chloropleth_dataset$Borough_Area_km2_no_units = round(units::drop_units(chloropleth_dataset$Borough_Area_km2), digits = 2)
 
-# Generate new column that divides area into groups
-chloropleth_dataset <- chloropleth_dataset %>%
-  mutate(area_group = cut(Borough_Area_km2,
-                         breaks = seq(0, 180, by = 30),
-                         labels = c(">0 < 30", "30 < 60", "60 < 90", "90 < 120", "120 < 150", "150 < 180"),
-                         right = FALSE)) 
-
-# Create vector of colours that match the chloropleth
-area_colours = c("#eff3ff", "#c6dbef", "#9ecae1", "#6baed6", "#08519c")  # 5 colours as no assests in group 120<150 but doesnt colour right
-
-# create Bar chart
-area_bar = ggplot(chloropleth_dataset, aes(x = reorder(Borough_number, -Borough_Area_km2_no_units), 
-                                                y = Borough_Area_km2_no_units, fill = area_group)) +
-    geom_bar(stat = "identity", color = "black", size = 0.1) +  # adds borders to bars
-    coord_flip() +
-    labs(y = "Area (km^2)", x = NULL) +
-    theme_classic() + 
-    scale_y_continuous(limits = c(0, 160), expand = c(0,0),
-                       breaks = c(0, 120)) +  
-    geom_hline(aes(yintercept = mean(Borough_Area_km2_no_units)),
-               linetype = "solid") +
-    geom_hline(aes(yintercept = median(Borough_Area_km2_no_units)),
-               linetype = "dashed") +
-    scale_fill_manual(values = area_colours) +
-    theme(axis.line.y = element_blank(), 
-          axis.ticks.y = element_blank(),
-          axis.line.x = element_blank(),
-          axis.text.y = element_blank(), 
-          axis.title.x = element_text(size = 20),
-          axis.text = element_text(size = 16, colour = "grey25"),
-          legend.position = "none")
-
-#testing scale_fill_distiller
-# area_bar = ggplot(chloropleth_dataset, aes(x = reorder(Borough_number, -Borough_Area_km2_no_units), 
-#                                            y = Borough_Area_km2_no_units, fill = Borough_Area_km2_no_units)) +
-#   geom_bar(stat = "identity", color = "black", size = 0.1) +  # adds borders to bars
-#   coord_flip() +
-#   labs(y = "Area (km^2)", x = NULL) +
-#   theme_classic() + 
-#   scale_y_continuous(limits = c(0, 160), expand = c(0,0),
-#                      breaks = c(0, 120)) +  
-#   geom_hline(aes(yintercept = mean(Borough_Area_km2_no_units)),
-#              linetype = "solid") +
-#   geom_hline(aes(yintercept = median(Borough_Area_km2_no_units)),
-#              linetype = "dashed") +
-#   scale_fill_distiller("Blues", direction = 1) +
-#   theme(axis.line.y = element_blank(), 
-#         axis.ticks.y = element_blank(),
-#         axis.line.x = element_blank(),
-#         axis.text.y = element_blank(), 
-#         axis.title.x = element_text(size = 20),
-#         axis.text = element_text(size = 16, colour = "grey25"),
-#         legend.position = "none")
-
+# plot bar chart
+area_bar = ggplot(chloropleth_dataset, aes(x = reorder(Borough_number, -Borough_Area_km2_no_units),
+                                           y = Borough_Area_km2_no_units, fill = Borough_Area_km2_no_units)) +
+  geom_bar(stat = "identity", color = "black", size = 0.1) +  # adds borders to bars
+  coord_flip() +
+  labs(y = NULL, x = NULL) +
+  theme_classic() +
+  scale_y_continuous(limits = c(0, 160), expand = c(0,0),
+                     breaks = c(0, 120)) +
+  geom_hline(aes(yintercept = mean(Borough_Area_km2_no_units)),
+             linetype = "solid") +
+  geom_hline(aes(yintercept = median(Borough_Area_km2_no_units)),
+             linetype = "dashed") +
+  scale_fill_distiller("Blues", direction = 1) +
+  theme(axis.line = element_blank(),
+        axis.ticks.y = element_blank(),
+        axis.text.y = element_blank(),
+        axis.text = element_text(size = 16, colour = "grey25"),
+        legend.position = "none")
 
 # Create cowplot of both plots
-area_chloro_bar = ggdraw() +
+ggdraw() +
   draw_plot(area_chloro_grob) +
   draw_plot(area_bar,
-            width = 0.3, height = 0.6,
-            x = 0.57, y = 0.19) 
+            width = 0.2, height = 0.6,
+            x = 0.57, y = 0.17) 
 
 
-###############################################################################
-#  TESTING IMPROVEMENTS SUGGESTED BY ROGER on the borough dataset
 
-# using continuous color scale for both chloropleth and bar chart - ? can get tmpa and ggplot to match colours
-# dropping numbers in bar chart and make really small
-# try tmpa histogram again
 
-# a1 = tm_shape(chloropleth_dataset) +
-#   tm_polygons("Borough_Area_km2", title = "Area (km^2)", 
-#               style = "order",  # style order = maps the order of values of col to a smooth gradient,
-#               breaks = c(0, 30, 60, 90, 120, 150, 180),
-#               palette = "Blues") + 
-#   tm_layout(title = "style order - apparantly better for skewed dist",
-#             legend.title.size = 1,
-#             legend.text.size = 0.7,
-#             legend.position = c("left","bottom"),
-#             legend.bg.alpha = 1,
-#             inner.margins = c(0.1,0.1,0.1,0.42), # creates wide right margin for barchart
-#             frame = FALSE) 
-# 
-# a2 = tm_shape(chloropleth_dataset) +
-#   tm_polygons("Borough_Area_km2", title = "Area (km^2)", 
-#               style = "cont", #maps the values of col to a smooth gradient, 
-#               breaks = c(0, 30, 60, 90, 120, 150, 180),
-#               palette = "Blues") + 
-#   tm_layout(title = "style cont with breaks defined",
-#             legend.title.size = 1,
-#             legend.text.size = 0.7,
-#             legend.position = c("left","bottom"),
-#             legend.bg.alpha = 1,
-#             inner.margins = c(0.1,0.1,0.1,0.42), # creates wide right margin for barchart
-#             frame = FALSE) 
-# 
-# a3 = tm_shape(chloropleth_dataset) +
-#   tm_polygons("Borough_Area_km2", title = "Area (km^2)", 
-#               style = "cont",
-#               palette = "Blues") + 
-#   tm_layout(title = "style cont with no breaks defined",
-#             legend.title.size = 1,
-#             legend.text.size = 0.7,
-#             legend.position = c("left","bottom"),
-#             legend.bg.alpha = 1,
-#             inner.margins = c(0.1,0.1,0.1,0.42), # creates wide right margin for barchart
-#             frame = FALSE) 
-# 
-# tm_shape(chloropleth_dataset) +
-#   tm_polygons("Borough_Area_km2", title = "Area (km^2)",
-#               legend.hist = TRUE,  # includes histogram
-#               palette = "Blues") +
-#   tm_layout(title = "histogram",
-#             legend.title.size = 1,
-#             legend.text.size = 0.7,
-#             legend.position = c("left","bottom"),
-#             legend.bg.alpha = 1,
-#             inner.margins = c(0.1,0.1,0.1,0.42), # creates wide right margin for barchart
-#             frame = FALSE)
-# 
-# 
-# 
-# 
-# # create Bar chart
-# bar = ggplot(chloropleth_dataset, aes(x = reorder(Borough_number, -Borough_Area_km2_no_units),
-#                                            y = Borough_Area_km2_no_units, fill = Borough_Area_km2_no_units)) +
-#   geom_bar(stat = "identity", color = "black", size = 0.1) +  # adds borders to bars
-#   coord_flip() +
-#   labs(y = "Area (km^2)", x = NULL) +
-#   theme_classic() +
-#   scale_y_continuous(limits = c(0, 160), expand = c(0,0),
-#                      breaks = c(0, 100)) +
-#   scale_fill_distiller(palette = "Blues", direction = + 1) +  # this should do the same palette colours and direction needs to be reversed
-#   theme(axis.line.y = element_blank(),
-#         axis.ticks.y = element_blank(),
-#         axis.text.y = element_blank(),
-#         axis.line.x = element_blank())
+
 ######################
 #  BACK TO MAIN CODE #
 ######################
 
-# 3) Raw population
+# 2) Raw population
 pop_chloro = tm_shape(chloropleth_dataset) +
   tm_polygons("Population", title = "Population", 
-              #breaks = c(0, 80000, 160000, 240000, 340000, 400000),
-              #legend.format = list(text.separator = "<"),
+              style = "cont",
               palette = "Greens") + 
   tm_layout(title = "Estimated population 2019 (ONS)",
             legend.title.size = 1,
