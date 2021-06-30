@@ -155,7 +155,6 @@ city_chloropleth_dataset = chloropleth_dataset %>%
 area_chloro = tm_shape(chloropleth_dataset) +
   tm_polygons("Borough_Area_km2", 
               style = "cont",
-              breaks = c(0, 30, 60, 90, 120, 150, 180),
               palette = "Blues", 
               legend.show = FALSE) + 
   tm_layout(inner.margins = c(0.1,0.1,0.1,0.42), frame = FALSE) 
@@ -166,6 +165,99 @@ area_chloro_grob = tmap_grob(area_chloro)
 # Generate barchart
 # Drop units and round so that intervals are plotted ok
 chloropleth_dataset$Borough_Area_km2_no_units = round(units::drop_units(chloropleth_dataset$Borough_Area_km2), digits = 2)
+
+# plot bar chart
+area_bar = ggplot(chloropleth_dataset, aes(x = reorder(Borough_number, -Borough_Area_km2_no_units),
+                                           y = Borough_Area_km2_no_units, fill = Borough_Area_km2_no_units)) +
+  geom_bar(stat = "identity", color = "black", size = 0.1) +  # adds borders to bars
+  coord_flip() +
+  labs(x = NULL, y = "scale_fill_distiller") +
+  theme_classic() +
+  scale_y_continuous(limits = c(0, 160), expand = c(0,0),
+                     breaks = c(0, 120)) +
+  geom_hline(aes(yintercept = mean(Borough_Area_km2_no_units)),
+             linetype = "solid") +
+  geom_hline(aes(yintercept = median(Borough_Area_km2_no_units)),
+             linetype = "dashed") +
+  scale_fill_distiller(palette = "Blues", direction = 1) +
+  theme(axis.line = element_blank(),
+        axis.ticks.y = element_blank(),
+        axis.text.y = element_blank(),
+        axis.text = element_text(size = 16, colour = "grey25"),
+        legend.position = "none")
+
+# Create cowplot of both plots
+ggdraw() +
+  draw_plot(area_chloro_grob) +
+  draw_plot(area_bar,
+            width = 0.2, height = 0.6,
+            x = 0.57, y = 0.17) 
+
+area_bar2 = ggplot(chloropleth_dataset, aes(x = reorder(Borough_number, -Borough_Area_km2_no_units),
+                                           y = Borough_Area_km2_no_units, fill = Borough_Area_km2_no_units)) +
+  geom_bar(stat = "identity", color = "black", size = 0.1) +  # adds borders to bars
+  coord_flip() +
+  scale_fill_distiller(palette = "Blues", direction = 1)
+
+ggplot(chloropleth_dataset, aes(x = reorder(Borough_number, -Borough_Area_km2_no_units),
+                                y = Borough_Area_km2_no_units, color = Borough_Area_km2_no_units)) +
+  geom_bar(stat = "identity", color = "black", size = 0.1) +  # adds borders to bars
+  coord_flip() +
+  scale_color_distiller(palette = "Blues")
+
+
+######################
+#  BACK TO MAIN CODE #
+######################
+
+# 2) Raw population
+pop_chloro = tm_shape(chloropleth_dataset) +
+  tm_polygons("Population", 
+              style = "cont",
+              palette = "Greens", # ? will need to have breaks too
+              legend.show = FALSE) + 
+  tm_layout(inner.margins = c(0.1,0.1,0.1,0.42), # creates wide right margin for barchart
+            frame = FALSE) 
+# area_chloro = tm_shape(chloropleth_dataset) +
+#   tm_polygons("Borough_Area_km2", 
+#               style = "cont",
+#               breaks = c(0, 30, 60, 90, 120, 150, 180),
+#               palette = "Blues", 
+#               legend.show = FALSE) + 
+#   tm_layout(inner.margins = c(0.1,0.1,0.1,0.42), frame = FALSE) 
+
+
+# convert to grob ?
+pop_chloro_grob = tmap_grob(pop_chloro) 
+
+# # Generate new column that divides ASL count into groups
+# chloropleth_dataset <- chloropleth_dataset %>%
+#   mutate(pop_group = cut(Population,
+#                           breaks = seq(0, 400000, by = 100000),
+#                           labels = c(">0 < 100000", "100000 < 200000", "200000 < 300000", "300000 < 400000"),
+#                           right = FALSE)) 
+# 
+# # # Create vector of colours that match the chloropleth
+# pop_colours = c("#edf8e9", "#bae4b3", "#74c476", "#238b45")
+
+# create Bar chart
+pop_bar = ggplot(chloropleth_dataset, aes(x = reorder(Borough_number, -Population_100000),
+                                           y = Population_100000, fill = Population_100000)) +
+  geom_bar(stat = "identity", color = "black", size = 0.1) +  # adds borders to bars
+  coord_flip() +
+  labs(y = NULL, x = NULL) +
+  theme_classic() +
+  scale_y_continuous(expand = c(0,0)) +  # ensures axis starts at 0 so no gap
+  geom_hline(aes(yintercept = mean(Population_100000)),
+             linetype = "solid") +
+  geom_hline(aes(yintercept = median(Population_100000)),
+             linetype = "dashed") +
+  scale_fill_distiller(palette = "Greens", direction = 1) +
+  theme(axis.line.y = element_blank(),
+        axis.ticks.y = element_blank(),
+        axis.line.x = element_blank(),
+        axis.text = element_text(size = 16, colour = "grey25"),
+        legend.position = "none")
 
 # plot bar chart
 area_bar = ggplot(chloropleth_dataset, aes(x = reorder(Borough_number, -Borough_Area_km2_no_units),
@@ -187,60 +279,6 @@ area_bar = ggplot(chloropleth_dataset, aes(x = reorder(Borough_number, -Borough_
         axis.text = element_text(size = 16, colour = "grey25"),
         legend.position = "none")
 
-# Create cowplot of both plots
-ggdraw() +
-  draw_plot(area_chloro_grob) +
-  draw_plot(area_bar,
-            width = 0.2, height = 0.6,
-            x = 0.57, y = 0.17) 
-
-
-
-
-
-######################
-#  BACK TO MAIN CODE #
-######################
-
-# 2) Raw population
-pop_chloro = tm_shape(chloropleth_dataset) +
-  tm_polygons("Population", title = "Population", 
-              style = "cont",
-              palette = "Greens") + 
-  tm_layout(title = "Estimated population 2019 (ONS)",
-            legend.title.size = 1,
-            legend.text.size = 0.7,
-            legend.position = c("left","bottom"),
-            legend.bg.alpha = 1,
-            inner.margins = c(0.1,0.1,0.1,0.42), # creates wide right margin for barchart
-            frame = FALSE) 
-
-# convert to grob ?
-pop_chloro_grob = tmap_grob(pop_chloro) 
-
-# Generate new column that divides ASL count into groups
-chloropleth_dataset <- chloropleth_dataset %>%
-  mutate(pop_group = cut(Population,
-                          breaks = seq(0, 400000, by = 100000),
-                          labels = c(">0 < 100000", "100000 < 200000", "200000 < 300000", "300000 < 400000"),
-                          right = FALSE)) 
-
-# # Create vector of colours that match the chloropleth
-pop_colours = c("#edf8e9", "#bae4b3", "#74c476", "#238b45")
-
-# create Bar chart
-pop_bar = ggplot(chloropleth_dataset, aes(x = reorder(Borough_number, -Population_100000),
-                                           y = Population_100000, fill = pop_group)) +
-  geom_bar(stat = "identity", color = "black", size = 0.1) +  # adds borders to bars
-  coord_flip() +
-  labs(y = "Population of 100,000 people ", x = NULL) +
-  theme_classic() +
-  scale_y_continuous(expand = c(0,0)) +  # ensures axis starts at 0 so no gap
-  scale_fill_manual(values = pop_colours) +
-  theme(axis.line.y = element_blank(),
-        axis.ticks.y = element_blank(),
-        axis.line.x = element_blank(),
-        legend.position = "none")
 
 # Create cowplot of both plots
 pop_chloro_bar = ggdraw() +
