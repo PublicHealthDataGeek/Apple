@@ -260,7 +260,11 @@ summary(c_trafficcalming$length)
 # density plots for length - this is to replace a table with the actual figures
 # plus histograms of length/width
 
-# create dataframes for count % comparison 
+# Histograms of count and %  
+
+# width when saving 690
+# height asl- 330, cross 300, clt 670, sig 300, tc 400.
+
 # 1) ASL
 asl_charac = c_asl %>%
   st_drop_geometry() %>%
@@ -303,22 +307,26 @@ asl_nil = filter_all(asl_charac, all_vars(. == "FALSE")) #= 224
 ASL_NIL = c("ASL_NIL", nrow(asl_nil), round((nrow(asl_nil)/nrow(c_asl)*100), digits = 1))
 
 ASL = rbind(ASL_FDR, ASL_NIL,ASL_FDRLFT, ASL_COLOUR_F, ASL_FDCENT, ASL_FDRIGH, ASL_SHARED) %>%
-  mutate(pct = round(as.numeric(pct), digits = 1)) %>%  # convert pct from character to numeric
+  mutate(pct = round(as.numeric(pct))) %>%  # convert pct from character to numeric
   mutate(Percentage = paste0(pct, "%")) %>%   # create new text version of %
   mutate(Count = as.numeric(freq)) %>%  # convert to numeric for plotting
   mutate(charac = factor(charac,
                          levels = c("ASL_SHARED", "ASL_FDRIGH","ASL_FDCENT", "ASL_COLOUR_F", 
                                     "ASL_NIL", "ASL_FDRLFT", "ASL_FDR"),
-                         labels = c("Shared e.g. with buses", "Right feeder lane", 
+                         labels = c("  Shared e.g. with buses", "Right feeder lane", 
                                     "Centre feeder lane", "Coloured tarmac", 
                                     "No characteristics", "Left feeder lane",  
-                                    "Feeder lane present"))) %>% # factor and order correctly
-  mutate(asset = "ASL")
+                                    "Feeder lane present"))) # factor and order correctly
+  
+#manually recode
+ASL[6,4] = "0.7%" # manually recode
+ASL[7,4] = "0.2%"
 
 # # create stacked bar chart of ASL count with % in text
 ggplot() +
   geom_bar(data = ASL,
-           aes(x = Count, y = charac), stat = "identity") +
+           aes(x = Count, y = charac), stat = "identity",
+           colour = "black", fill = "grey", width = 0.5) +
   theme_minimal() +
   theme(panel.grid = element_blank(),  # removes all grid lines
         axis.line.x = element_line(size=0.1, color="black"), # adds axis line back in
@@ -330,72 +338,6 @@ ggplot() +
             hjust = -0.3, size = 5) +
   scale_y_discrete(labels = wrap_format(30))
 
-# Create density plot df
-asl_df = c_asl %>%
-  mutate(length = st_length(geometry)) # gives me the length of all ASL
-summary(asl_df$length)
-# Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
-# 1.222   3.897   4.503   4.597   5.082  20.633 
-
-asl_nil = asl_df %>%
-  filter(ASL_FDR == FALSE & ASL_FDRLFT == FALSE & ASL_FDCENT == FALSE & ASL_FDRIGH == FALSE &
-           ASL_SHARED == FALSE & ASL_COLOUR == "NONE") %>%
-  mutate(charac = "ASL_NIL")  # create df of just asl_nil and their assoc length
-asl_feeder = asl_df %>%
-  filter(ASL_FDR == TRUE) %>%
-  mutate(charac = "ASL_FDR")
-asl_left = asl_df %>%
-  filter(ASL_FDRLFT == TRUE) %>%
-  mutate(charac = "ASL_FDRLFT")
-asl_centre = asl_df %>%
-  filter(ASL_FDCENT == TRUE) %>%
-  mutate(charac = "ASL_FDCENT")
-asl_right = asl_df %>%
-  filter(ASL_FDRIGH == TRUE) %>%
-  mutate(charac = "ASL_FDRIGH")
-asl_shared = asl_df %>%
-  filter(ASL_SHARED == TRUE) %>%
-  mutate(charac = "ASL_SHARED")
-asl_colour = asl_df %>%
-  filter(ASL_COLOUR != "NONE") %>%
-  mutate(charac = "ASL_COLOUR_F")
-asl_density_df = rbind(asl_feeder, asl_nil, asl_left, asl_colour, asl_centre, asl_right, asl_shared) %>%
-  st_drop_geometry() %>%
-  mutate(charac = factor(charac,
-                         levels = c("ASL_FDR", "ASL_FDRLFT", "ASL_NIL", "ASL_COLOUR_F", "ASL_FDCENT",
-                                    "ASL_FDRIGH", "ASL_SHARED"),
-                         labels = c("Feeder lane present", "Left feeder lane", "No characteristics", 
-                                    "Coloured tarmac", "Centre feeder lane", "Right feeder lane", 
-                                    "Shared e.g. with buses"))) %>%
-  select(c(length, charac)) %>%
-  units::drop_units()  # finalise density plot df with rows for every characteristic (contains 6220 obs)
-
-# Obtain summary stats by grouped characteristics
-asl_gp_med = asl_density_df %>%
-  group_by(charac) %>%
-  summarise(grp_median = median(length))
-# asl_gp_mean = asl_density_df %>%
-#   group_by(charac) %>%
-#   summarise(grp_mean = mean(length))
-
-
-# Create density plot of ASL length with median 
-ggplot(asl_density_df) +
-  geom_density(aes(x = length, fill = "grey"), fill = "grey") +
-  facet_wrap(~charac, ncol = 1) +
-  scale_x_continuous(expand = c(0,0), breaks = c(0, 5, 10), limits = c(0, 10.4)) +
-  geom_vline(data = asl_gp_med, aes(xintercept = grp_median),
-             linetype = "longdash") +
-  xlab(label = "Length (m)") +
-  theme_minimal() +
-  theme(panel.grid = element_blank(),  # removes all grid lines
-        axis.title.y = element_blank(), 
-        axis.text.y = element_blank(),
-        strip.text = element_blank(),
-        axis.text = element_text(size = 16),
-        axis.title.x = element_text(size = 20))
-
-rm(list = ls())
 
 # 2) Crossings
 cross_charac = c_crossings %>%
@@ -431,23 +373,21 @@ crs_nil = filter_all(cross_charac, all_vars(. == "FALSE"))
 CRS_NIL = c("CRS_NIL", nrow(crs_nil), round((nrow(crs_nil)/nrow(c_crossings)*100), digits = 1))
 
 CRS = rbind(CRS_SIGNAL, CRS_SEGREG, CRS_NIL, CRS_CYGAP, CRS_PEDEST, CRS_LEVEL) %>%
-  mutate(pct = round(as.numeric(pct), digits = 1)) %>%  # convert pct from character to numeric
+  mutate(pct = round(as.numeric(pct))) %>%  # convert pct from character to numeric
   mutate(Percentage = paste0(pct, "%")) %>%   # create new text version of %
   mutate(Count = as.numeric(freq)) %>%  # convert to numeric for plotting
   mutate(charac = factor(charac,
                          levels = c("CRS_LEVEL", "CRS_PEDEST", "CRS_CYGAP", "CRS_NIL", 
                                     "CRS_SEGREG", "CRS_SIGNAL"),
-                         labels = c("Crossing over rail or tram tracks", "Pedestrian-only crosssing (Cyclists dismount)",
-                                    "Gap in island or kerb for cyclists", "No characteristics", 
-                                    "Cyclists segregated from other users", "Signal controlled crossing"))) %>%
-  mutate(asset = "Crossings")
-CRS[2,4] = "17.0%" # manually recode
+                         labels = c("Crossing over rail or tram tracks", "Cyclists must dismount)",
+                                    "Gap in island or kerb", "No characteristics", 
+                                    "Cyclists segregated", "Signal controlled crossing")))
 
 # Create stacked bar chart of CRS count with % in text
 ggplot() +
   geom_bar(data = CRS,
            aes(x = Count, y = charac), stat = "identity",
-           width = 0.5) +
+           colour = "black", fill = "grey", width = 0.5) +
   theme_minimal() +
   theme(panel.grid = element_blank(),  # removes all grid lines
         axis.line.x = element_line(size=0.1, color="black"), # adds axis line back in
@@ -455,68 +395,9 @@ ggplot() +
         axis.text = element_text(size = 16, colour = "grey25"),
         axis.title.x = element_text(size = 20)) +
   scale_x_continuous(expand = c(0,0), breaks = c(0, 800, 1600), limits = c(0, 2100)) +
-  scale_y_discrete(labels = wrap_format(28)) +
+  scale_y_discrete(labels = wrap_format(30)) +
   geom_text(data = CRS, aes(x = Count, label = Percentage, y = charac),
             hjust = -0.3, size = 5)
-
-# Create density plot df
-cross_df = c_crossings %>%
-  mutate(width = st_length(geometry)) # gives me the width of all Crossings
-
-cross_nil = cross_df %>%
-  filter(CRS_SIGNAL == FALSE & CRS_SEGREG == FALSE & CRS_CYGAP == FALSE & CRS_PEDEST == FALSE &
-           CRS_LEVEL == FALSE) %>%
-  mutate(charac = "CRS_NIL")  # create df of just crossing_nil and their assoc length
-cross_sig = cross_df %>%
-  filter(CRS_SIGNAL == TRUE) %>%
-  mutate(charac = "CRS_SIGNAL")
-cross_seg = cross_df %>%
-  filter(CRS_SEGREG == TRUE) %>%
-  mutate(charac = "CRS_SEGREG")
-cross_gap = cross_df %>%
-  filter(CRS_CYGAP == TRUE) %>%
-  mutate(charac = "CRS_CYGAP")
-cross_ped = cross_df %>%
-  filter(CRS_PEDEST == TRUE) %>%
-  mutate(charac = "CRS_PEDEST")
-cross_level = cross_df %>%
-  filter(CRS_LEVEL == TRUE) %>%
-  mutate(charac = "CRS_LEVEL")
-
-cross_density_df = rbind(cross_level, cross_ped, cross_gap, cross_nil, cross_seg, cross_sig) %>%
-  st_drop_geometry() %>%
-  mutate(charac = factor(charac,
-                         levels = c("CRS_SIGNAL", "CRS_SEGREG", "CRS_NIL", "CRS_CYGAP",
-                                    "CRS_PEDEST", "CRS_LEVEL"),
-                         labels = c("Signal controlled crossing", "Cyclists segregated from other users",
-                                    "No characteristics", "Gap in island or kerb for cyclists", 
-                                    "Pedestrian-only crosssing (Cyclists dismount)", 
-                                    "Crossing over rail or tram tracks"))) %>%
-  select(c(width, charac)) %>%
-  units::drop_units()  # finalise density plot df with rows for every characteristic (contains 2285 obs)
-
-# # Obtain summary stats by grouped characteristics
-cross_gp_med = cross_density_df %>%
-  group_by(charac) %>%
-  summarise(grp_median = median(width))
-
-# Create density plot of crossing length with median
-ggplot(cross_density_df) +
-  geom_density(aes(x = width, fill = "grey"), fill = "grey") +
-  facet_wrap(~charac, ncol = 1) +
-  scale_x_continuous(expand = c(0,0), breaks = c(0, 10, 20), limits = c(0, 25)) +
-  geom_vline(data = cross_gp_med, aes(xintercept = grp_median),
-             linetype = "longdash") +
-  xlab(label = "Width (m)") +
-  theme_minimal() +
-  theme(panel.grid = element_blank(),  # removes all grid lines
-        axis.title.y = element_blank(),
-        axis.text.y = element_blank(),
-        strip.text = element_blank(),
-        axis.text = element_text(size = 16),
-        axis.title.x = element_text(size = 20))
-
-rm(list = ls())
 
 # 3) CLT
 clt_charac = c_cyclelanetrack %>%
@@ -618,7 +499,7 @@ clt_nil = filter_all(clt_charac, all_vars(. == "FALSE")) #= nil so no obs have n
 CLT = rbind(CLT_CARR, CLT_BIDIRE, CLT_SHARED, CLT_ADVIS, CLT_COLOUR_F, CLT_PARKR, 
             CLT_PARSEG, CLT_PTIME, CLT_PRIORI, CLT_SEGREG, CLT_MANDAT, CLT_CONTRA, 
             CLT_WATERR, CLT_BBYPAS, CLT_STEPP, CLT_CBYPAS) %>%
-  mutate(pct = round(as.numeric(pct), digits = 1)) %>%  # convert pct from character to numeric
+  mutate(pct = round(as.numeric(pct))) %>%  # convert pct from character to numeric
   mutate(Percentage = paste0(pct, "%")) %>%   # create new text version of %
   mutate(Count = as.numeric(freq)) %>%  # convert to numeric for plotting
   mutate(charac = factor(charac,
@@ -628,22 +509,23 @@ CLT = rbind(CLT_CARR, CLT_BIDIRE, CLT_SHARED, CLT_ADVIS, CLT_COLOUR_F, CLT_PARKR
                                     "CLT_ADVIS", "CLT_SHARED", "CLT_BIDIRE","CLT_CARR"),
                          labels = c("Cycle bypass at traffic signals", "Stepped segregation", 
                                     "Continuous cycle facilities at bus stop", 
-                                    "Route by river, canal or water feature", 
-                                    "Contraflow cycle lane/track", "Mandatory cycle lane (painted line)", 
-                                    "Fully segregated", "Cycle lane/track has priority over other users", 
-                                    "Part-time cycle cycle lane/track", "Partially segregated", 
+                                    "Route by water", 
+                                    "Contraflow cycle lane/track", "Mandatory cycle lane", 
+                                    "Fully segregated", "Cycle lane/track has priority", 
+                                    "Part-time cycle lane/track", "Partially segregated", 
                                     "Route by or through a Park", "Coloured tarmac", 
-                                    "Advisory cycle lane (painted line)", "Shared e.g. with buses", 
-                                    "Bi-directional (two-way flow)", "On-carriageway"))) %>%
-  mutate(asset = "cyclelanestracks") # factor and order correctly
+                                    "Advisory cycle lane", "Shared e.g. with buses", 
+                                    "Bi-directional (two-way flow)", "On-carriageway"))) 
 
-CLT[3,4] = "41.0%" # manually recode
-CLT[9,4] = "9.0%"
+CLT[14,4] = "0.5%" # manually recode
+CLT[15,4] = "0.4%"
+CLT[16,4] = "0.2%"
 
 # # create stacked bar chart of CLT count with % in text
-ggplot() +
+clt_bar = ggplot() +
   geom_bar(data = CLT,
-           aes(x = Count, y = charac), stat = "identity") +
+           aes(x = Count, y = charac), stat = "identity", 
+           colour = "black", fill = "grey", width = 0.5) +
   theme_minimal() +
   theme(panel.grid = element_blank(),  # removes all grid lines
         axis.line.x = element_line(size=0.1, color="black"), # adds axis line back in
@@ -653,9 +535,279 @@ ggplot() +
   scale_x_continuous(expand = c(0,0), breaks = c(0, 5000, 10000), limits = c(0, 16100)) +
   geom_text(data = CLT, aes(x = Count, label = Percentage, y = charac),
             hjust = -0.3, size = 5) +
-  scale_y_discrete(labels = wrap_format(28))
+  scale_y_discrete(labels = wrap_format(30))
 
-# # Create density plot df
+
+# 4) Signals
+sig_charac = c_signals %>%
+  st_drop_geometry() %>%
+  select(contains("SIG")) # create df of just SIG characteristics 
+
+SIG_HEAD = sig_charac$SIG_HEAD %>%freq(cumul = FALSE, report.nas = FALSE) %>% tb() %>%
+  filter(SIG_HEAD == "TRUE") %>%
+  rename(charac = SIG_HEAD)  # create df of characteristic with freq and %
+SIG_HEAD[1] <- "SIG_HEAD" # relabel 'TRUE' with characteristic
+
+SIG_SEPARA = sig_charac$SIG_SEPARA %>%freq(cumul = FALSE, report.nas = FALSE) %>% tb() %>%
+  filter(SIG_SEPARA == "TRUE") %>%
+  rename(charac = SIG_SEPARA)  
+SIG_SEPARA[1] <- "SIG_SEPARA" 
+
+SIG_EARLY = sig_charac$SIG_EARLY %>%freq(cumul = FALSE, report.nas = FALSE) %>% tb() %>%
+  filter(SIG_EARLY == "TRUE") %>%
+  rename(charac = SIG_EARLY)  
+SIG_EARLY[1] <- "SIG_EARLY" 
+
+SIG_TWOSTG = sig_charac$SIG_TWOSTG%>%freq(cumul = FALSE, report.nas = FALSE) %>% tb() %>%
+  filter(SIG_TWOSTG == "TRUE") %>%
+  rename(charac = SIG_TWOSTG)  
+SIG_TWOSTG[1] <- "SIG_TWOSTG" 
+
+SIG_GATE= sig_charac$SIG_GATE %>%freq(cumul = FALSE, report.nas = FALSE) %>% tb() %>%
+  filter(SIG_GATE == "TRUE") %>%
+  rename(charac = SIG_GATE)  
+SIG_GATE[1] <- "SIG_GATE" 
+
+sig_nil = filter_all(sig_charac, all_vars(. == "FALSE")) #= 4
+SIG_NIL = c("SIG_NIL", nrow(sig_nil), round((nrow(sig_nil)/nrow(c_signals)*100), digits = 1))
+
+SIG = rbind(SIG_EARLY, SIG_GATE, SIG_HEAD, SIG_NIL, SIG_SEPARA, SIG_TWOSTG) %>%
+  mutate(pct = round(as.numeric(pct))) %>%  # convert pct from character to numeric
+  mutate(Percentage = paste0(pct, "%")) %>%   # create new text version of %
+  mutate(Count = as.numeric(freq)) %>%  # convert to numeric for plotting
+  mutate(charac = factor(charac,
+                         levels = c("SIG_NIL", "SIG_TWOSTG", "SIG_GATE", "SIG_EARLY", "SIG_SEPARA", "SIG_HEAD"),
+                         labels = c("No characteristics", "Two-stage right turn", 
+                                    "Cycle/bus gate allowing cycles through",
+                                    "Early release for cyclists", "Separate stage for cyclists", 
+                                    "Cycle symbol on signal lights"))) 
+SIG[4,4] = "0.9%"
+
+# # create stacked bar chart of Signal count with % in text
+ggplot() +
+  geom_bar(data = SIG,
+           aes(x = Count, y = charac), stat = "identity",
+           colour = "black", fill = "grey", width = 0.5) +
+  theme_minimal() +
+  theme(panel.grid = element_blank(),  # removes all grid lines
+        axis.line.x = element_line(size=0.1, color="black"), # adds axis line back in
+        axis.title.y = element_blank(),
+        axis.text = element_text(size = 16),
+        axis.title.x = element_text(size = 20)) +
+  scale_x_continuous(expand = c(0,0), breaks = c(0, 300), limits = c(0, 525)) +
+  geom_text(data = SIG, aes(x = Count, label = Percentage, y = charac),
+            hjust = -0.3, size = 5) +
+  scale_y_discrete(labels = wrap_format(30))
+
+
+#5) Traffic calming
+tc_charac = c_trafficcalming %>%
+  st_drop_geometry() %>%
+  select(contains("TRF"))
+
+TRF_RAISED = tc_charac$TRF_RAISED %>% freq(cumul = FALSE, report.nas = FALSE) %>% tb() %>%
+  filter(TRF_RAISED == "TRUE") %>%
+  rename(charac = TRF_RAISED)  # create df of characteristic with freq and %
+TRF_RAISED[1] <- "TRF_RAISED" # relabel 'TRUE' with characteristic
+
+TRF_ENTRY = tc_charac$TRF_ENTRY %>% freq(cumul = FALSE, report.nas = FALSE) %>% tb() %>%
+  filter(TRF_ENTRY == "TRUE") %>%
+  rename(charac = TRF_ENTRY)  
+TRF_ENTRY[1] <- "TRF_ENTRY" 
+
+TRF_CUSHI = tc_charac$TRF_CUSHI %>% freq(cumul = FALSE, report.nas = FALSE) %>% tb() %>%
+  filter(TRF_CUSHI == "TRUE") %>%
+  rename(charac = TRF_CUSHI)  
+TRF_CUSHI[1] <- "TRF_CUSHI" 
+
+TRF_HUMP = tc_charac$TRF_HUMP %>% freq(cumul = FALSE, report.nas = FALSE) %>% tb() %>%
+  filter(TRF_HUMP == "TRUE") %>%
+  rename(charac = TRF_HUMP)  
+TRF_HUMP[1] <- "TRF_HUMP" 
+
+TRF_SINUSO = tc_charac$TRF_SINUSO %>% freq(cumul = FALSE, report.nas = FALSE) %>% tb() %>%
+  filter(TRF_SINUSO == "TRUE") %>%
+  rename(charac = TRF_SINUSO)  
+TRF_SINUSO[1] <- "TRF_SINUSO" 
+
+TRF_BARIER = tc_charac$TRF_BARIER %>% freq(cumul = FALSE, report.nas = FALSE) %>% tb() %>%
+  filter(TRF_BARIER == "TRUE") %>%
+  rename(charac = TRF_BARIER)  
+TRF_BARIER[1] <- "TRF_BARIER"
+
+TRF_NAROW = tc_charac$TRF_NAROW %>% freq(cumul = FALSE, report.nas = FALSE) %>% tb() %>%
+  filter(TRF_NAROW == "TRUE") %>%
+  rename(charac = TRF_NAROW)  
+TRF_NAROW[1] <- "TRF_NAROW"
+
+TRF_CALM = tc_charac$TRF_CALM%>% freq(cumul = FALSE, report.nas = FALSE) %>% tb() %>%
+  filter(TRF_CALM == "TRUE") %>%
+  rename(charac = TRF_CALM)  
+TRF_CALM[1] <- "TRF_CALM"
+
+tc_nil = filter_all(tc_charac, all_vars(. == "FALSE")) 
+TRF_NIL = c("TRF_NIL", nrow(tc_nil), round((nrow(tc_nil)/nrow(c_trafficcalming)*100), digits = 2))
+
+
+TC = rbind(TRF_BARIER, TRF_CALM, TRF_CUSHI, TRF_ENTRY, TRF_HUMP, TRF_NAROW, TRF_NIL, TRF_RAISED, TRF_SINUSO) %>%
+  mutate(pct = round(as.numeric(pct))) %>%  # convert pct from character to numeric
+  mutate(Percentage = paste0(pct, "%")) %>%   # create new text version of %
+  mutate(Count = as.numeric(freq)) %>%
+  mutate(charac = factor(charac,
+                         levels = c("TRF_NIL", "TRF_NAROW", "TRF_CALM", "TRF_BARIER", 
+                                    "TRF_RAISED", "TRF_SINUSO", "TRF_ENTRY", 
+                                    "TRF_CUSHI", "TRF_HUMP"),
+                         labels = c("No characteristics", "Carriageway narrowing e.g. chicane", 
+                                    "Other traffic calming measure", "Barrier cyclists can pass", 
+                                    "Raised table at junction", "Hump/cushion is sinusoidal", 
+                                    "Side road entry treatment e.g. raised", "Speed cushion", "Speed hump"))) 
+TC[7,4] = "0.02%" # manually recode
+
+# # create stacked bar chart of traffic count with % in text
+tc_bar = ggplot() +
+  geom_bar(data = TC,
+           aes(x = Count, y = charac), stat = "identity",
+           colour = "black", fill = "grey", width = 0.5) +
+  theme_minimal() +
+  theme(panel.grid = element_blank(),  # removes all grid lines
+        axis.line.x = element_line(size=0.1, color="black"), # adds axis line back in
+        axis.title.y = element_blank(),
+        axis.text = element_text(size = 16),
+        axis.title.x = element_text(size = 20)) +
+  scale_x_continuous(expand = c(0,0), breaks = c(0, 20000), limits = c(0, 39000)) +
+  geom_text(data = TC, aes(x = Count, label = Percentage, y = charac),
+            hjust = -0.3, size = 5) +
+  scale_y_discrete(labels = wrap_format(30))
+
+
+
+
+
+# Part 2: Create density plots of characteristics for ASL, crossings and CLT 
+# width when saving 190
+# height asl- 330, cross 300, clt 670
+
+
+# 1) ASL
+asl_df = c_asl %>%
+  mutate(length = st_length(geometry)) # gives me the length of all ASL
+summary(asl_df$length)
+# Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+# 1.222   3.897   4.503   4.597   5.082  20.633 
+
+asl_nil = asl_df %>%
+  filter(ASL_FDR == FALSE & ASL_FDRLFT == FALSE & ASL_FDCENT == FALSE & ASL_FDRIGH == FALSE &
+           ASL_SHARED == FALSE & ASL_COLOUR == "NONE") %>%
+  mutate(charac = "ASL_NIL")  # create df of just asl_nil and their assoc length
+asl_feeder = asl_df %>%
+  filter(ASL_FDR == TRUE) %>%
+  mutate(charac = "ASL_FDR")
+asl_left = asl_df %>%
+  filter(ASL_FDRLFT == TRUE) %>%
+  mutate(charac = "ASL_FDRLFT")
+asl_centre = asl_df %>%
+  filter(ASL_FDCENT == TRUE) %>%
+  mutate(charac = "ASL_FDCENT")
+asl_right = asl_df %>%
+  filter(ASL_FDRIGH == TRUE) %>%
+  mutate(charac = "ASL_FDRIGH")
+asl_shared = asl_df %>%
+  filter(ASL_SHARED == TRUE) %>%
+  mutate(charac = "ASL_SHARED")
+asl_colour = asl_df %>%
+  filter(ASL_COLOUR != "NONE") %>%
+  mutate(charac = "ASL_COLOUR_F")
+asl_density_df = rbind(asl_feeder, asl_nil, asl_left, asl_colour, asl_centre, asl_right, asl_shared) %>%
+  st_drop_geometry() %>%
+  mutate(charac = factor(charac,
+                         levels = c("ASL_FDR", "ASL_FDRLFT", "ASL_NIL", "ASL_COLOUR_F", "ASL_FDCENT",
+                                    "ASL_FDRIGH", "ASL_SHARED"),
+                         labels = c("Feeder lane present", "Left feeder lane", "No characteristics", 
+                                    "Coloured tarmac", "Centre feeder lane", "Right feeder lane", 
+                                    "Shared e.g. with buses"))) %>%
+  select(c(length, charac)) %>%
+  units::drop_units()  # finalise density plot df with rows for every characteristic (contains 6220 obs)
+
+# Obtain summary stats by grouped characteristics
+asl_gp_med = asl_density_df %>%
+  group_by(charac) %>%
+  summarise(grp_median = median(length))
+
+# Create density plot of ASL length with median 
+ggplot(asl_density_df) +
+  geom_density(aes(x = length, fill = "grey"), fill = "grey") +
+  facet_wrap(~charac, ncol = 1) +
+  scale_x_continuous(expand = c(0,0), breaks = c(0, 5, 10), limits = c(0, 10.4)) +
+  geom_vline(data = asl_gp_med, aes(xintercept = grp_median),
+             linetype = "longdash") +
+  xlab(label = "Length (m)") +
+  theme_minimal() +
+  theme(panel.grid = element_blank(),  # removes all grid lines
+        axis.title.y = element_blank(), 
+        axis.text.y = element_blank(),
+        strip.text = element_blank(),
+        axis.text = element_text(size = 16),
+        axis.title.x = element_text(size = 20))
+
+# 2) Crossings
+cross_df = c_crossings %>%
+  mutate(width = st_length(geometry)) # gives me the width of all Crossings
+
+cross_nil = cross_df %>%
+  filter(CRS_SIGNAL == FALSE & CRS_SEGREG == FALSE & CRS_CYGAP == FALSE & CRS_PEDEST == FALSE &
+           CRS_LEVEL == FALSE) %>%
+  mutate(charac = "CRS_NIL")  # create df of just crossing_nil and their assoc length
+cross_sig = cross_df %>%
+  filter(CRS_SIGNAL == TRUE) %>%
+  mutate(charac = "CRS_SIGNAL")
+cross_seg = cross_df %>%
+  filter(CRS_SEGREG == TRUE) %>%
+  mutate(charac = "CRS_SEGREG")
+cross_gap = cross_df %>%
+  filter(CRS_CYGAP == TRUE) %>%
+  mutate(charac = "CRS_CYGAP")
+cross_ped = cross_df %>%
+  filter(CRS_PEDEST == TRUE) %>%
+  mutate(charac = "CRS_PEDEST")
+cross_level = cross_df %>%
+  filter(CRS_LEVEL == TRUE) %>%
+  mutate(charac = "CRS_LEVEL")
+
+cross_density_df = rbind(cross_level, cross_ped, cross_gap, cross_nil, cross_seg, cross_sig) %>%
+  st_drop_geometry() %>%
+  mutate(charac = factor(charac,
+                         levels = c("CRS_SIGNAL", "CRS_SEGREG", "CRS_NIL", "CRS_CYGAP",
+                                    "CRS_PEDEST", "CRS_LEVEL"),
+                         labels = c("Signal controlled crossing", "Cyclists segregated from other users",
+                                    "No characteristics", "Gap in island or kerb for cyclists", 
+                                    "Pedestrian-only crosssing (Cyclists dismount)", 
+                                    "Crossing over rail or tram tracks"))) %>%
+  select(c(width, charac)) %>%
+  units::drop_units()  # finalise density plot df with rows for every characteristic (contains 2285 obs)
+
+# # Obtain summary stats by grouped characteristics
+cross_gp_med = cross_density_df %>%
+  group_by(charac) %>%
+  summarise(grp_median = median(width))
+
+# Create density plot of crossing length with median
+ggplot(cross_density_df) +
+  geom_density(aes(x = width, fill = "grey"), fill = "grey") +
+  facet_wrap(~charac, ncol = 1) +
+  scale_x_continuous(expand = c(0,0), breaks = c(0, 10, 20), limits = c(0, 25)) +
+  geom_vline(data = cross_gp_med, aes(xintercept = grp_median),
+             linetype = "longdash") +
+  xlab(label = "Width (m)") +
+  theme_minimal() +
+  theme(panel.grid = element_blank(),  # removes all grid lines
+        axis.title.y = element_blank(),
+        axis.text.y = element_blank(),
+        strip.text = element_blank(),
+        axis.text = element_text(size = 16),
+        axis.title.x = element_text(size = 20))
+
+
+# 3) CLT
 clt_df = c_cyclelanetrack %>%
   mutate(length = st_length(geometry))
 
@@ -751,279 +903,10 @@ ggplot(clt_density_df) +
         axis.text = element_text(size = 16),
         axis.title.x = element_text(size = 20))
 
-rm(list = ls())
 
 
-# 4) Signals
-sig_charac = c_signals %>%
-  st_drop_geometry() %>%
-  select(contains("SIG")) # create df of just SIG characteristics 
-
-SIG_HEAD = sig_charac$SIG_HEAD %>%freq(cumul = FALSE, report.nas = FALSE) %>% tb() %>%
-  filter(SIG_HEAD == "TRUE") %>%
-  rename(charac = SIG_HEAD)  # create df of characteristic with freq and %
-SIG_HEAD[1] <- "SIG_HEAD" # relabel 'TRUE' with characteristic
-
-SIG_SEPARA = sig_charac$SIG_SEPARA %>%freq(cumul = FALSE, report.nas = FALSE) %>% tb() %>%
-  filter(SIG_SEPARA == "TRUE") %>%
-  rename(charac = SIG_SEPARA)  
-SIG_SEPARA[1] <- "SIG_SEPARA" 
-
-SIG_EARLY = sig_charac$SIG_EARLY %>%freq(cumul = FALSE, report.nas = FALSE) %>% tb() %>%
-  filter(SIG_EARLY == "TRUE") %>%
-  rename(charac = SIG_EARLY)  
-SIG_EARLY[1] <- "SIG_EARLY" 
-
-SIG_TWOSTG = sig_charac$SIG_TWOSTG%>%freq(cumul = FALSE, report.nas = FALSE) %>% tb() %>%
-  filter(SIG_TWOSTG == "TRUE") %>%
-  rename(charac = SIG_TWOSTG)  
-SIG_TWOSTG[1] <- "SIG_TWOSTG" 
-
-SIG_GATE= sig_charac$SIG_GATE %>%freq(cumul = FALSE, report.nas = FALSE) %>% tb() %>%
-  filter(SIG_GATE == "TRUE") %>%
-  rename(charac = SIG_GATE)  
-SIG_GATE[1] <- "SIG_GATE" 
-
-sig_nil = filter_all(sig_charac, all_vars(. == "FALSE")) #= 4
-SIG_NIL = c("SIG_NIL", nrow(sig_nil), round((nrow(sig_nil)/nrow(c_signals)*100), digits = 1))
-
-SIG = rbind(SIG_EARLY, SIG_GATE, SIG_HEAD, SIG_NIL, SIG_SEPARA, SIG_TWOSTG) %>%
-  mutate(pct = round(as.numeric(pct), digits = 1)) %>%  # convert pct from character to numeric
-  mutate(Percentage = paste0(pct, "%")) %>%   # create new text version of %
-  mutate(Count = as.numeric(freq)) %>%  # convert to numeric for plotting
-  mutate(charac = factor(charac,
-                         levels = c("SIG_NIL", "SIG_TWOSTG", "SIG_GATE", "SIG_EARLY", "SIG_SEPARA", "SIG_HEAD"),
-                         labels = c("No characteristics", "Two-stage right turn", 
-                                    "Cycle/bus gate allowing cycles to get ahead of other traffic",
-                                    "Early release for cyclists", "Separate stage for cyclists", 
-                                    "Cycle symbol on signal lights"))) %>%
-  mutate(asset = "signals")
-
-# # create stacked bar chart of Signal count with % in text
-ggplot() +
-  geom_bar(data = SIG,
-           aes(x = Count, y = charac), stat = "identity") +
-  theme_minimal() +
-  theme(panel.grid = element_blank(),  # removes all grid lines
-        axis.line.x = element_line(size=0.1, color="black"), # adds axis line back in
-        axis.title.y = element_blank(),
-        axis.text = element_text(size = 16),
-        axis.title.x = element_text(size = 20)) +
-  scale_x_continuous(expand = c(0,0), breaks = c(0, 300), limits = c(0, 525)) +
-  geom_text(data = SIG, aes(x = Count, label = Percentage, y = charac),
-            hjust = -0.3, size = 5) +
-  scale_y_discrete(labels = wrap_format(30))
-
-rm(list = ls())
 
 
-#5) Traffic calming
-tc_charac = c_trafficcalming %>%
-  st_drop_geometry() %>%
-  select(contains("TRF"))
-
-TRF_RAISED = tc_charac$TRF_RAISED %>% freq(cumul = FALSE, report.nas = FALSE) %>% tb() %>%
-  filter(TRF_RAISED == "TRUE") %>%
-  rename(charac = TRF_RAISED)  # create df of characteristic with freq and %
-TRF_RAISED[1] <- "TRF_RAISED" # relabel 'TRUE' with characteristic
-
-TRF_ENTRY = tc_charac$TRF_ENTRY %>% freq(cumul = FALSE, report.nas = FALSE) %>% tb() %>%
-  filter(TRF_ENTRY == "TRUE") %>%
-  rename(charac = TRF_ENTRY)  
-TRF_ENTRY[1] <- "TRF_ENTRY" 
-
-TRF_CUSHI = tc_charac$TRF_CUSHI %>% freq(cumul = FALSE, report.nas = FALSE) %>% tb() %>%
-  filter(TRF_CUSHI == "TRUE") %>%
-  rename(charac = TRF_CUSHI)  
-TRF_CUSHI[1] <- "TRF_CUSHI" 
-
-TRF_HUMP = tc_charac$TRF_HUMP %>% freq(cumul = FALSE, report.nas = FALSE) %>% tb() %>%
-  filter(TRF_HUMP == "TRUE") %>%
-  rename(charac = TRF_HUMP)  
-TRF_HUMP[1] <- "TRF_HUMP" 
-
-TRF_SINUSO = tc_charac$TRF_SINUSO %>% freq(cumul = FALSE, report.nas = FALSE) %>% tb() %>%
-  filter(TRF_SINUSO == "TRUE") %>%
-  rename(charac = TRF_SINUSO)  
-TRF_SINUSO[1] <- "TRF_SINUSO" 
-
-TRF_BARIER = tc_charac$TRF_BARIER %>% freq(cumul = FALSE, report.nas = FALSE) %>% tb() %>%
-  filter(TRF_BARIER == "TRUE") %>%
-  rename(charac = TRF_BARIER)  
-TRF_BARIER[1] <- "TRF_BARIER"
-
-TRF_NAROW = tc_charac$TRF_NAROW %>% freq(cumul = FALSE, report.nas = FALSE) %>% tb() %>%
-  filter(TRF_NAROW == "TRUE") %>%
-  rename(charac = TRF_NAROW)  
-TRF_NAROW[1] <- "TRF_NAROW"
-
-TRF_CALM = tc_charac$TRF_CALM%>% freq(cumul = FALSE, report.nas = FALSE) %>% tb() %>%
-  filter(TRF_CALM == "TRUE") %>%
-  rename(charac = TRF_CALM)  
-TRF_CALM[1] <- "TRF_CALM"
-
-tc_nil = filter_all(tc_charac, all_vars(. == "FALSE")) 
-TRF_NIL = c("TRF_NIL", nrow(tc_nil), round((nrow(tc_nil)/nrow(c_trafficcalming)*100), digits = 2))
-
-
-TC = rbind(TRF_BARIER, TRF_CALM, TRF_CUSHI, TRF_ENTRY, TRF_HUMP, TRF_NAROW, TRF_NIL, TRF_RAISED, TRF_SINUSO) %>%
-  mutate(pct = round(as.numeric(pct), digits = 1)) %>%  # convert pct from character to numeric
-  mutate(Percentage = paste0(pct, "%")) %>%   # create new text version of %
-  mutate(Count = as.numeric(freq)) %>%
-  mutate(charac = factor(charac,
-                         levels = c("TRF_NIL", "TRF_NAROW", "TRF_CALM", "TRF_BARIER", 
-                                    "TRF_RAISED", "TRF_SINUSO", "TRF_ENTRY", 
-                                    "TRF_CUSHI", "TRF_HUMP"),
-                         labels = c("No characteristics", "Carriageway narrowing e.g. chicane", 
-                                    "Other traffic calming measure", "Barrier cyclists can pass", 
-                                    "Raised table at junction", "Hump/cushion is sinusoidal", 
-                                    "Side road entry treatment e.g. raised", "Speed cushion", "Speed hump"))) %>%
-  mutate(asset = "trafficcalming")
-TC[7,4] = "0.02%" # manually recode
-
-# # create stacked bar chart of traffic count with % in text
-ggplot() +
-  geom_bar(data = TC,
-           aes(x = Count, y = charac), stat = "identity") +
-  theme_minimal() +
-  theme(panel.grid = element_blank(),  # removes all grid lines
-        axis.line.x = element_line(size=0.1, color="black"), # adds axis line back in
-        axis.title.y = element_blank(),
-        axis.text = element_text(size = 16),
-        axis.title.x = element_text(size = 20)) +
-  scale_x_continuous(expand = c(0,0), breaks = c(0, 20000), limits = c(0, 39000)) +
-  geom_text(data = TC, aes(x = Count, label = Percentage, y = charac),
-            hjust = -0.3, size = 5) +
-  scale_y_discrete(labels = wrap_format(30))
-
-
-# # Join dataframes together to do faceted characteristics plot
-# df = rbind(ASL, CRS, CLT, SIG, TC)
-# 
-# ggplot() +
-#   geom_bar(data = df,
-#            aes(x = Count, y = charac), stat = "identity") +
-#   #theme_minimal() +
-#   facet_grid(asset ~., scales = "free") +
-#   theme(panel.grid = element_blank(),  # removes all grid lines
-#         axis.line.x = element_line(size=0.1, color="black"), # adds axis line back in
-#         axis.title.y = element_blank(),
-#         axis.text = element_text(size = 16),
-#         axis.title.x = element_text(size = 20)) +
-#  # scale_x_continuous(expand = c(0,0), breaks = c(0, 20000), limits = c(0, 39000)) +
-#   geom_text(data = df, aes(x = Count, label = Percentage, y = charac),
-#             hjust = -0.3, size = 5) +
-#   scale_y_discrete(labels = wrap_format(30))
-# 
-# ggplot()+
-#   geom_bar(data = df, aes(x = Count, y = charac), stat="identity") +
-#   facet_grid(asset ~ ., 
-#              space = "free",
-#              scales = "free") +
-#   theme(strip.text.y = element_text(angle=0),
-#         legend.position = "none")
-# 
-# q = ggplot()+
-#   geom_bar(data = df, aes(x = Count, y = charac), stat="identity") +
-#   facet_wrap(asset ~ ., 
-#              scales = "free", ncol = 1) +
-#   theme(strip.text.y = element_text(angle=0),
-#         legend.position = "none")
-# gt = ggplotGrob(q)
-# gt$widths
-# gt$widths[5] = unit(7, "null")
-# 
-# 
-# mdf <- read.table(text="
-#    strain val     type
-# 1       1 0.0000  sample
-# 2       1 0.0140  sample
-# 3       1 0.0175  sample
-# 4       2 0.0025  sample
-# 5       2 0.0260  sample
-# 6       2 0.0105  sample
-# 7       3 0.0190  sample
-# 8       3 0.0725  sample
-# 9       3 0.0390  sample
-# 10      4 0.0560  sample
-# 11      4 0.0695  sample
-# 12      4 0.0605  sample
-# 13      5 0.0735  sample
-# 14      5 0.1065  sample
-# 15      5 0.0890  sample
-# 16      6 0.1135  sample
-# 17      6 0.2105  sample
-# 18      6 0.1410  sample
-# 19      7 0.1360  sample
-# 20      7 0.2610  sample
-# 21      7 0.1740  sample
-# 22      8 0.3850 control
-# 23      8 0.7580 control
-# 24      8 0.5230 control
-# 25      9 0.5230 control
-# 26      9 0.5860 control
-# 27      9 0.7240 control")
-# 
-# q <- ggplot(mdf, aes(factor(strain), val)) +
-#   labs(x = "Strain", y = "intensity") +
-#   geom_boxplot() +
-#   geom_point() +
-#   facet_wrap( ~ type, scales = "free")
-# # Get the ggplot grob
-# gt = ggplotGrob(q)
-# 
-# # Check for the widths - you need to change the two that are set to 1null
-# gt$widths
-# 
-# # Replace the default widths with relative widths:
-# gt$widths[4] = unit(2, "null")
-# gt$widths[8] = unit(7, "null")
-# gt$widths[5] = unit(1, "cm")
-# # Draw the plot
-# grid::grid.newpage()
-# grid::grid.draw(gt)
-# 
-# 
-# # From 'dfm', get the number of 'strain' for each 'type'.
-# # That is, the number x-breaks in each panel.
-# library(dplyr)
-# N <- df %>% group_by(asset) %>%  
-#   summarise(count = length(unique(charac))) %>% 
-#   `[[`(2)
-# 
-# # Get the column index in the gt layout corresponding to the panels.
-# panelI <- gt$layout$l[grepl("panel", gt$layout$name)]
-# 
-# # Replace the default panel widths with relative heights.
-# gt$heights[panelI] <- unit(N, "null")
-# 
-# ## Draw gt
-# grid::grid.newpage()
-# grid::grid.draw(gt)
-# 
-# ggplot(data = df, aes(x = Count, y = charac))+
-#   geom_col(position = position_dodge2(preserve = "single"))
-# 
-# ggplot()+
-#   geom_bar(data = df, aes(x = Count, y = charac), stat="identity") +
-#   facet_grid(asset ~ ., 
-#              space = "free",
-#              scales = "free") +
-#   theme(strip.text.y = element_text(angle=0),
-#         legend.position = "none")
-# 
-# 
-# 
-# 
-# 
-# q +
-#   facet_grid(~asset, scales = "free") +
-#   coord_flip()
-# 
-# 
-# +
-#   theme(strip.text.y = element_text(angle=0),
-#         legend.position = "none")
 
 
 
