@@ -206,19 +206,19 @@ summary_URL_NAs = left_join(totals, photo_1_na_count) %>%
   mutate(prop_P1_NA = round((photo_1_na_count/total*100), digit = 1)) %>%
   mutate(prop_P2_NA = round((photo_2_na_count/total*100), digit = 1)) %>%
   mutate(total_2 = 2*total) %>%
-  mutate(overall_prop_NA = round(((photo_1_na_count + photo_2_na_count)/total_2 * 100), digit = 1))
+  mutate(overall_prop_with_2_photos = 100 - round(((photo_1_na_count + photo_2_na_count)/total_2 * 100)))
 
-# type          total photo_1_na_count photo_2_na_count prop_P1_NA prop_P2_NA total_2 overall_prop_NA
-# <chr>         <int>            <int>            <int>      <dbl>      <dbl>   <dbl>           <dbl
-# 1 asl            3775               48               51        1.3        1.4    7550             1.3
-# 2 crossings      1687               31               32        1.8        1.9    3374             1.9
-# 3 cyclelanetr…  24976              588              605        2.4        2.4   49952             2.4
-# 4 parking       23758              299              298        1.3        1.3   47516             1.3
-# 5 restrictedp…    180               12               12        6.7        6.7     360             6.7
-# 6 restrictedr…   1378               71               52        5.2        3.8    2756             4.5
-# 7 signage      118826             1347             1336        1.1        1.1  237652             1.1
-# 8 signals         443                8                8        1.8        1.8     886             1.8
-# 9 trafficcalm…  58565              805              810        1.4        1.4  117130             1.4
+# type              total photo_1_na_count photo_2_na_count prop_P1_NA prop_P2_NA total_2 overall_prop_with_2_photos
+# <chr>             <int>            <int>            <int>      <dbl>      <dbl>   <dbl>           <dbl>
+# 1 asl                3775               48               51        1.3        1.4    7550              99
+# 2 crossings          1687               31               32        1.8        1.9    3374              98
+# 3 cyclelanetrack    24976              588              605        2.4        2.4   49952              98
+# 4 parking           23758              299              298        1.3        1.3   47516              99
+# 5 restrictedpoints    180               12               12        6.7        6.7     360              93
+# 6 restrictedroutes   1378               71               52        5.2        3.8    2756              96
+# 7 signage          118826             1347             1336        1.1        1.1  237652              99
+# 8 signals             443                8                8        1.8        1.8     886              98
+# 9 trafficcalming    58565              805              810        1.4        1.4  117130              99
 
 
 
