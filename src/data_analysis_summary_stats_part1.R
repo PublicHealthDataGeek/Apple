@@ -1258,7 +1258,7 @@ ggplot() +
         axis.text = element_text(size = 16, colour = "grey25"),
         axis.title.x = element_text(size = 20))
 
-# create stacked bar chart of length - matching table graphics  
+# create stacked bar chart of length - matching table graphics  400x550
 ggplot() +
   geom_bar(data = on_off_comparison_lengths4ggplot_order,
            aes(x = round_length, y = variable_order, fill = on_off_order), stat = "identity",
