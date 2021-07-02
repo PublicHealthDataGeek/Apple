@@ -206,6 +206,16 @@ ggplot(chloropleth_dataset, aes(x = reorder(Borough_number, -Borough_Area_km2_no
   scale_color_distiller(palette = "Blues")
 
 
+# test code to see if can get charts same colour - this seems to work.  
+ggplot(chloropleth_dataset, 
+       aes(fill = Borough_Area_km2_no_units)) + 
+  geom_sf(show.legend = F) +
+  # Indicate fill palette and set NA values to transparent
+  scale_fill_distiller(type = "seq",
+                       palette = "Blues",
+                       na.value = "transparent", direction = 1) +
+  theme_void()
+
 ######################
 #  BACK TO MAIN CODE #
 ######################
