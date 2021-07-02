@@ -1210,7 +1210,7 @@ on_off_comparison_lengths4ggplot_order = on_off_comparison_lengths4ggplot %>%
 
 
 
-# Stacked bar chart of % of characteristics on/off road
+# Stacked bar chart of % of characteristics on/off road - brown/grey
 ggplot() +
   geom_bar(data = on_off_comparison_lengths4ggplot_order,
            aes(x = perc, y = variable_order, fill = on_off_order), stat = "identity") +
@@ -1224,7 +1224,7 @@ ggplot() +
         axis.text = element_text(size = 16, colour = "grey25"),
         axis.title.x = element_text(size = 20))
 
-# create stacked bar chart of length
+# create stacked bar chart of length - brown/grey
 ggplot() +
   geom_bar(data = on_off_comparison_lengths4ggplot_order,
            aes(x = round_length, y = variable_order, fill = on_off_order), stat = "identity") +
@@ -1243,3 +1243,36 @@ ggplot() +
 # save with width at 439
 
 
+# Stacked bar chart of % of characteristics on/off road - matching table graphics 650x550
+ggplot() +
+  geom_bar(data = on_off_comparison_lengths4ggplot_order,
+           aes(x = perc, y = variable_order, fill = on_off_order), stat = "identity",
+           colour = "black") +
+  scale_fill_manual(values = c("white", "grey")) +
+  scale_x_continuous(expand = c(0,0), breaks = c(0, 50, 100), limits = c(0, 105)) + 
+  labs(x = paste0("Percentage", "\n", "of Length")) +
+  theme_minimal() +
+  theme(axis.title.y = element_blank(),
+        panel.grid = element_blank(), # removes y axis lines
+        legend.position = "none",
+        axis.text = element_text(size = 16, colour = "grey25"),
+        axis.title.x = element_text(size = 20))
+
+# create stacked bar chart of length - matching table graphics  
+ggplot() +
+  geom_bar(data = on_off_comparison_lengths4ggplot_order,
+           aes(x = round_length, y = variable_order, fill = on_off_order), stat = "identity",
+           colour = "black") +
+  scale_fill_manual(values = c("white", "grey")) +
+  labs(x = paste0("Length in km", "\n", "")) +
+  theme_minimal() +
+  theme(axis.title.y = element_blank(),
+        axis.text.y = element_blank(), 
+        axis.text = element_text(size = 16, colour = "grey25"),
+        panel.grid = element_blank(),  # removes all grid lines
+        axis.line.x = element_line(size=0.1, color="black"),
+        legend.title = element_blank(), # adds axis line back in
+        legend.text = element_text(size = 20),
+        axis.title.x = element_text(size = 20)) +
+  scale_x_continuous(expand = c(0,0), breaks = c(0, 1500), limits = c(0, 2050))   
+# save with width at 439
