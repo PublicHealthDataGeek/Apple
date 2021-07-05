@@ -129,14 +129,6 @@ out_lon_union = borough_areas %>%
   filter(!BOROUGH %in% inn_lon_B_list) %>%
   st_union()
 
-
-### using short names in tmap
-# mapped_boroughs1 = tm_shape(mapping_boroughs) +
-#   tm_fill(col = "ivory2") +
-#   tm_borders() +
-#   tm_text("SHORT", size = 0.7) +
-#   tm_layout(bg.color = "lightblue")
-
 # 2) River thames
 riverthames = st_read("/home/bananafan/Documents/PhD/Paper1/map_data/riverthames.shp")
 riverthames_simplify = rmapshaper::ms_simplify(riverthames)
@@ -274,5 +266,92 @@ all_assets_map = gridExtra::grid.arrange(p0, p1, p2, p3, p4, p5, ncol = 3)
 ## GGSAVE NOT WORKING HAD SIMILAT ISSUE WHEN DOING INTERNSHIP
 ##ggsave("/home/bananafan/Documents/PhD/Paper1/output/locations_map_plot.pdf", plot = locations_plot, 
 ##       dpi = 1000, width = 190 * (14/5), height = 142 * (14/5), units = "mm")
+
+
+# Create 6 panel maps in black 
+# Create Orientation map
+# b0 = ggplot()+
+#   geom_sf(data = out_lon_union, colour = "black", fill="white") +
+#   geom_sf(data = motorways, colour = "#b77107", size = 0.14) +
+#   geom_sf(data = inn_lon_union, colour = "#991100") +
+#   geom_sf(data = borough_areas, fill="#d4d4d4",  colour="black", alpha=0.3, size=0.15) +
+#   geom_sf(data = riverthames_simplify, colour = "#99CCEE", fill="#99CCEE") +
+#   geom_sf_label(data = borough_areas, aes(label = b_acronym), label.padding = unit(0.15, "lines"), 
+#                 label.size = 0.1, size = 2.8) +
+#   theme_classic() +
+#   theme(plot.margin = unit(c(0.1, 0.1, 0.1, 0.1), "cm"),
+#         text = element_text(family = "Arial")) + 
+#   coord_sf(crs=st_crs(riverthames_simplify), datum=NA) +
+#   ggtitle("a) Geographical features of London") +
+#   xlab(label = NULL) +
+#   ylab(label = NULL) +
+#   annotation_scale(location = "br", width_hint = 0.3, bar_cols = c("Gray83", "white"),
+#                    text_cex = 0.65, line_width = 0.5, line_col = "#222222",
+#                    text_family = "Arial") +
+#   annotation_north_arrow(location = "tr", which_north = "true", 
+#                          height = unit(1.3, "cm"), width = unit(1.3, "cm"),
+#                          style = north_arrow_fancy_orienteering(line_width = 0.5, 
+#                                                                 line_col = "#222222",
+#                                                                 fill = c("white", "Gray83"),
+#                                                                 text_size = 8, text_family = "Arial"))
+# 
+# 
+# b1 = ggplot()+
+#   geom_sf(data = motorways, fill = "#EEEEEE",  colour = "#EEEEEE") +
+#   geom_sf(data = borough_areas, fill = "#d4d4d4",  colour = "#444444", alpha = 0.3, size = 0.05) +
+#   geom_sf(data = riverthames_simplify, fill = "#99CCEE",  colour = "#99CCEE") +
+#   geom_sf(data = c_asl_point, colour = alpha("black", 0.2), size = 0.1) +
+#   theme_classic() +
+#   theme(plot.margin = unit(c(0.1, 0.1, 0.1, 0.1), "cm"), 
+#         text = element_text(family = "Arial")) +
+#   ggtitle("b) ASL") +
+#   coord_sf(crs = st_crs(riverthames_simplify), datum = NA) 
+# 
+# b2 = ggplot()+
+#   geom_sf(data = motorways, fill = "#EEEEEE",  colour = "#EEEEEE") +
+#   geom_sf(data = borough_areas, fill = "#d4d4d4",  colour = "#444444", alpha = 0.3, size = 0.05) +
+#   geom_sf(data = riverthames_simplify, fill = "#99CCEE",  colour = "#99CCEE") +
+#   geom_sf(data = c_crossings_point, colour = alpha("black", 0.2), size = 0.1) +
+#   theme_classic() +
+#   theme(plot.margin = unit(c(0.1, 0.1, 0.1, 0.1), "cm"), 
+#         text = element_text(family = "Arial")) + 
+#   ggtitle("c) Cycle crossings") +
+#   coord_sf(crs = st_crs(riverthames_simplify), datum = NA) 
+# 
+# b3 = ggplot()+
+#   geom_sf(data = motorways, fill = "#EEEEEE",  colour = "#EEEEEE") +
+#   geom_sf(data = borough_areas, fill = "#d4d4d4",  colour = "#444444", alpha = 0.3, size = 0.05) +
+#   geom_sf(data = riverthames_simplify, fill = "#99CCEE",  colour = "#99CCEE") +
+#   geom_sf(data = c_cyclelanetrack, colour = alpha("black", 0.2)) +
+#   theme_classic() +
+#   theme(plot.margin = unit(c(0.1, 0.1, 0.1, 0.1), "cm"), 
+#         text = element_text(family = "Arial")) + 
+#   ggtitle("d) Cycle lanes and tracks") +
+#   coord_sf(crs = st_crs(riverthames_simplify), datum = NA) 
+# 
+# b4 = ggplot()+
+#   geom_sf(data=motorways, fill="#EEEEEE",  colour="#EEEEEE")+
+#   geom_sf(data=borough_areas, fill="#d4d4d4",  colour="#444444", alpha=0.3, size=0.05)+
+#   geom_sf(data=riverthames_simplify, fill="#99CCEE",  colour="#99CCEE") +
+#   geom_sf(data = c_trafficcalming, colour = alpha("black", 0.05), size = 0.1) +
+#   theme_classic() +
+#   theme(plot.margin = unit(c(0.1, 0.1, 0.1, 0.1), "cm"), 
+#         text = element_text(family = "Arial")) +
+#   ggtitle("e) Traffic calming measures") +
+#   coord_sf(crs=st_crs(riverthames_simplify), datum=NA) 
+# 
+# b5 = ggplot()+
+#   geom_sf(data = motorways, fill = "#EEEEEE",  colour = "#EEEEEE") +
+#   geom_sf(data = borough_areas, fill = "#d4d4d4",  colour = "#444444", alpha = 0.3, size = 0.05) +
+#   geom_sf(data = riverthames_simplify, fill = "#99CCEE",  colour = "#99CCEE") +
+#   geom_sf(data = c_signals_point, colour = alpha("black", 0.2), size = 0.1) +
+#   theme_classic() +
+#   theme(plot.margin = unit(c(0.1, 0.1, 0.1, 0.1), "cm"),
+#         text = element_text(family = "Arial")) + 
+#   ggtitle("f) Cycle signals") +
+#   coord_sf(crs = st_crs(riverthames_simplify), datum = NA) 
+# 
+# 
+# gridExtra::grid.arrange(b0, b1, b2, b3, b4, b5, ncol = 3)
 
 
