@@ -125,6 +125,7 @@ chloropleth_dataset = left_join(denominators, CID_counts)
 chloropleth_dataset$Borough_Area_km2_no_units = round(units::drop_units(chloropleth_dataset$Borough_Area_km2), digits = 2)
 chloropleth_dataset$clt_raw_numeric = round(units::drop_units(chloropleth_dataset$CycleLaneTrack_km), digits = 2)
 chloropleth_dataset$clt_area_numeric = round(units::drop_units(chloropleth_dataset$CycleLaneTrack_km_by_area), digits = 2)
+chloropleth_dataset$clt_pop_numeric = round(units::drop_units(chloropleth_dataset$CycleLaneTrack_km_per_100000pop), digits = 2)
 #? need to do for cycle commuting too
 
 # produce counts by area and per 100000 head population
@@ -420,9 +421,11 @@ signals_raw_bar = ggplot(chloropleth_dataset,
 # Create cowplot of both plots
 five_one = plot_grid(signals_raw_chloro, signals_raw_bar, rel_widths = c(1, 0.5), scale = c(1, 0.55))
 
+
 ###################
 # Traffic calming #   
 ###################
+
 # create chloropleth
 tc_raw_chloro = ggplot(chloropleth_dataset, 
                           aes(fill = TrafficCalming)) + 
@@ -482,20 +485,11 @@ asl_area_chloro = ggplot() +
   theme_void() +
   theme(plot.margin = unit(c(0, 0, 0, 0), "cm"))
 
-
-
-# create Bar chart
-# drop_city_reorder = drop_city %>%
-#   arrange(ASL_by_area) %>%
-#   mutate(Borough_number = row_number())
-# drop_city_reorder2 = drop_city %>%
-#   arrange(desc(ASL_by_area)) %>%
-#   mutate(Borough_number = row_number())
+#Create barchart
 drop_city_reorder = drop_city %>%
   arrange(desc(ASL_by_area)) %>%
-  mutate(Borough_number = (row_number() + 1))
+  mutate(Borough_number = (row_number() + 1))  # this ensures that there is 'spare' bar space for the city one to drop into when plotted
 
-#FINAL BAR CHART CODE!!!!
 asl_area_bar = ggplot() +
   geom_bar(data = city_chloropleth_dataset, aes(x = Borough_number, y = ASL_by_area),
            stat = "identity", color = "black", size = 0.1, fill = "black") +
@@ -519,78 +513,6 @@ asl_area_bar = ggplot() +
 
 # Create cowplot of both plots
 two_two = plot_grid(asl_area_chloro, asl_area_bar, rel_widths = c(1, 0.5), scale = c(1, 0.55))
-
-
-# ggplot() +
-#   geom_bar(data = drop_city_reorder, aes(x = Borough_number, y = ASL_by_area, fill = ASL_by_area),
-#            stat = "identity", color = "black", size = 0.1) +
-#   scale_fill_distiller(palette = "Blues", direction = 1) +
-#   geom_bar(data = city_chloropleth_dataset, aes(x = Borough_number, y = ASL_by_area, fill = ASL_by_area),
-#            stat = "identity", size = 0.1, fill = "black") +
-#   coord_flip() +
-#   theme_classic() +
-# 
-# # This works but the order of the non-city things are missed
-# ggplot() +
-#   geom_bar(data = city_chloropleth_dataset, aes(x = Borough_number, y = ASL_by_area),
-#            stat = "identity", color = "black", size = 0.1) +
-#   geom_bar(data = drop_city, aes(x = reorder(Borough_number, -ASL_by_area), y = ASL_by_area, fill = ASL_by_area),
-#            stat = "identity", color = "black", size = 0.1) +
-#   coord_flip() +
-#   theme_classic()
-# 
-# # This returns an erro saysing can add gplot to ggplot!!!
-# ggplot() +
-#   geom_bar(data = city_chloropleth_dataset, aes(x = Borough_number, y = ASL_by_area),
-#            stat = "identity", color = "black", size = 0.1) +
-#   geom_bar(data = drop_city_reorder, aes(x = reorder(Borough_number, -ASL_by_area), y = ASL_by_area, fill = ASL_by_area),
-#            stat = "identity", color = "black", size = 0.1) +
-#   coord_flip() +
-#   theme_classic()
-# 
-# # this works but one bar overlaps city
-# ggplot() +
-#   geom_bar(data = city_chloropleth_dataset, aes(x = Borough_number, y = ASL_by_area),
-#            stat = "identity", color = "black", size = 0.1) +
-#   geom_bar(data = drop_city_reorder2, aes(x = Borough_number, y = ASL_by_area, fill = ASL_by_area),
-#            stat = "identity", color = "black", size = 0.1) +
-#   coord_flip() +
-#   theme_classic()
-# 
-# # this works!
-# ggplot() +
-#   geom_bar(data = city_chloropleth_dataset, aes(x = Borough_number, y = ASL_by_area),
-#            stat = "identity", color = "black", size = 0.1) +
-#   scale_fill_distiller(palette = "Blues", direction = 1) +
-#   geom_bar(data = drop_city_reorder3, aes(x = Borough_number, y = ASL_by_area, fill = ASL_by_area),
-#            stat = "identity", color = "black", size = 0.1) +
-#   coord_flip() +
-#   theme_classic()
-# 
-# #this works but city bar is grey
-# ggplot() +
-#   geom_bar(data = city_chloropleth_dataset, aes(x = Borough_number, y = ASL_by_area),
-#            stat = "identity", color = "black", size = 0.1) +
-#   scale_fill_distiller(palette = "Blues", direction = 1) +
-#   geom_bar(data = drop_city_reorder3, aes(x = Borough_number, y = ASL_by_area, fill = ASL_by_area),
-#            stat = "identity", color = "black", size = 0.1) +
-#   coord_flip() +
-#   theme_classic() +
-#   scale_y_continuous(limits = c(0, 45), expand = c(0,0), breaks = c(0, 20)) +
-#   geom_hline(data = chloropleth_dataset, aes(yintercept = mean(ASL_by_area)),
-#              linetype = "solid") +
-#   geom_hline(data = chloropleth_dataset, aes(yintercept = median(ASL_by_area)),
-#              linetype = "dashed") +
-#   theme(axis.line = element_blank(),
-#         axis.ticks.y = element_blank(),
-#         axis.text.y = element_blank(),
-#         axis.text = element_text(size = 16, colour = "grey25"),
-#         legend.position = "none",
-#         axis.title = element_blank(),
-#         plot.margin = unit(c(0, 0, 0, 0), "cm"))
-
-
-
 
 #############
 # Crossings #
@@ -713,26 +635,9 @@ five_two = plot_grid(sig_area_chloro, sig_area_bar, rel_widths = c(1, 0.5), scal
 
 
 # ###################
-# # Traffic calming #   THIS ONE WILL NEED CHANGING AS IT DOESNT WORK QUITE RIGHT ? worth changing bbox for all chloropleths? 
+# # Traffic calming #   
 # ###################
-# 
-# # # make some bbox magic
-# # bbox_new <- st_bbox(safety_borough_counts) # current bounding box
-# # 
-# # xrange <- bbox_new$xmax - bbox_new$xmin # range of x values
-# # yrange <- bbox_new$ymax - bbox_new$ymin # range of y values
-# # 
-# # bbox_new[1] <- bbox_new[1] - (0.5 * xrange) # xmin - left
-# # bbox_new[3] <- bbox_new[3] + (0.2 * xrange) # xmax - right
-# # #bbox_new[2] <- bbox_new[2] - (0.2 * yrange) # ymin - bottom
-# # bbox_new[4] <- bbox_new[4] + (0.25 * yrange) # ymax - top
-# # 
-# # bbox_new <- bbox_new %>%  # take the bounding box ...
-# #   st_as_sfc() # ... and make it a sf polygon
-# 
-# #and will need this in the chloropleth code if use bbox
-# #tc_raw_chloro = tm_shape(chloropleth_dataset, bbox = bbox_new) +
-# 
+ 
 # create chloropleth
 tc_area_chloro = ggplot(chloropleth_dataset, 
                        aes(fill = TrafficCalming_by_area)) + 
@@ -742,38 +647,6 @@ tc_area_chloro = ggplot(chloropleth_dataset,
   theme_void() +
   theme(plot.margin = unit(c(0, 0, 0, 0), "cm"))
 
-
-
-
-# tc_area_chloro = tm_shape(chloropleth_dataset) +
-#   tm_polygons("TrafficCalming_by_area", title = "Count by km^2", palette = "Blues",
-#               breaks = (c(0, 40, 80, 120, 160)),
-#               legend.format = list(text.separator = "<")) +
-#   tm_layout(title = "Traffic calming",
-#             legend.title.size = 1,
-#             legend.text.size = 0.7,
-#             legend.position = c("left","bottom"),
-#             legend.bg.alpha = 1,
-#             inner.margins = c(0.1,0.1,0.1,0.42), # creates wide right margin for barchart
-#             frame = FALSE)
-# 
-# # # convert chloro to grob
-# tc_area_chloro_grob = tmap_grob(tc_area_chloro)
-# 
-# # # Generate barchart
-# # # Drop units and round so that intervals are plotted ok
-# chloropleth_dataset$TrafficCalming_by_area_numeric = round(units::drop_units(chloropleth_dataset$TrafficCalming_by_area), digits = 2)
-# 
-# # Generate new column that divides traffic calming count into groups
-# chloropleth_dataset <- chloropleth_dataset %>%
-#   mutate(tc_area_group = cut(TrafficCalming_by_area_numeric,
-#                              breaks = seq(0, 160, by = 40),
-#                              labels = c("> 0 < 40", "40 < 80", "80 < 120", "120 < 140"),
-#                              right = FALSE))
-# 
-# # # Create vector of colours that match the chloropleth
-# tc_area_colours = c("#eff3ff", "#bdd7e7", "#6baed6", "#2171b5")
-# # 
 # # create Bar chart
 tc_area_bar = ggplot(chloropleth_dataset, 
                         aes(x = reorder(Borough_number, -TrafficCalming_by_area), y = TrafficCalming_by_area, 
@@ -812,58 +685,44 @@ six_two = plot_grid(tc_area_chloro, tc_area_bar, rel_widths = c(1, 0.5), scale =
 # ASL - Population #
 ####################
 
-# # create chloropleth
-asl_pop_chloro = tm_shape(chloropleth_dataset) +
-  tm_polygons("ASL_per_100000pop", title = "Count per 100,000 population", palette = "Greens",
-              breaks = c(0, 20, 40, 60, 80, 100, 120),
-              legend.format = list(text.separator = "<")) +
-  tm_shape(city_chloropleth_dataset) + # city is an outlier
-  tm_polygons("ASL_per_100000pop", title = "", palette = "inferno", breaks = c(1240, 1260),
-              legend.format = list(text.separator = "<")) +
-  tm_layout(title = "ASL",
-            legend.title.size = 1,
-            legend.text.size = 0.7,
-            legend.position = c("left","bottom"),
-            legend.bg.alpha = 1,
-            inner.margins = c(0.1,0.1,0.1,0.42), # creates wide right margin for barchart
-            frame = FALSE) 
+# Create chloropleth
+asl_pop_chloro = ggplot() + 
+  geom_sf(data = drop_city, aes(fill = ASL_per_100000pop), show.legend = F) +
+  geom_sf(data = city_chloropleth_dataset, aes(fill = ASL_per_100000pop), fill = "black") +
+  scale_fill_distiller(type = "seq",
+                       palette = "Greens",
+                       na.value = "light grey", direction = 1) +
+  theme_void() +
+  theme(plot.margin = unit(c(0, 0, 0, 0), "cm"))
 
-# # convert chloro to grob
-asl_pop_chloro_grob = tmap_grob(asl_pop_chloro) 
- 
-##  Generate barchart
-#Generate new column that divides ASL count into groups
-chloropleth_dataset <- chloropleth_dataset %>%
-  mutate(asl_pop_group = cut(ASL_per_100000pop,
-                              breaks = c(0, 20, 40, 60, 80, 100, 120, 1240, 1260),
-                              labels = c("0 < 20", "20 < 40", "40 < 60", "60 < 80",
-                                         "80 < 100", "100 < 120", "120 < 140", "1240 < 1260"),
-                              right = FALSE))
+# Create barchart
+drop_city_reorder = drop_city %>%
+  arrange(desc(ASL_per_100000pop)) %>%
+  mutate(Borough_number = (row_number() + 1))  # this ensures that there is 'spare' bar space for the city one to drop into when plotted
 
-# # # Create vector of colours that match the chloropleth
-asl_pop_colours = c("#edf8e9", "#c7e9c0", "#a1d99b", "#74c476", "#31a354", "#006d2c", "black")
- 
-asl_pop_bar = ggplot(chloropleth_dataset, 
-                      aes(x = reorder(Borough_number, -ASL_per_100000pop), 
-                          y = ASL_per_100000pop, fill = asl_pop_group)) +
-  geom_bar(stat = "identity", color = "black", size = 0.1) +  
+asl_pop_bar = ggplot() +
+  geom_bar(data = city_chloropleth_dataset, aes(x = Borough_number, y = ASL_per_100000pop),
+           stat = "identity", color = "black", size = 0.1, fill = "black") +
+  scale_fill_distiller(palette = "Greens", direction = 1) +
+  geom_bar(data = drop_city_reorder, aes(x = Borough_number, y = ASL_per_100000pop, fill = ASL_per_100000pop),
+           stat = "identity", color = "black", size = 0.1) +
   coord_flip() +
-  labs(y = "Count", x = NULL) +
   theme_classic() +
-  scale_y_continuous(expand = c(0,0)) +  # ensures axis starts at 0 so no gap
-  scale_fill_manual(values = asl_pop_colours) +
-  theme(axis.line.y = element_blank(),
+  scale_y_continuous(limits = c(0, 1300), expand = c(0,0), breaks = c(0, 400)) +
+  geom_hline(data = chloropleth_dataset, aes(yintercept = mean(ASL_per_100000pop)),
+             linetype = "solid") +
+  geom_hline(data = chloropleth_dataset, aes(yintercept = median(ASL_per_100000pop)),
+             linetype = "dashed") +
+  theme(axis.line = element_blank(),
         axis.ticks.y = element_blank(),
-        axis.line.x = element_blank(),
+        axis.text.y = element_blank(),
+        axis.text = element_text(size = 16, colour = "grey25"),
         legend.position = "none",
-        strip.text.x = element_blank())
-# 
-# # # Create cowplot of both plots
-asl_pop_chloro_bar = ggdraw() +
-  draw_plot(asl_pop_chloro_grob) +
-  draw_plot(asl_pop_bar,
-            width = 0.3, height = 0.6,
-            x = 0.57, y = 0.19)
+        axis.title = element_blank(),
+        plot.margin = unit(c(0, 0, 0, 0), "cm"))
+
+# Create cowplot of both plots
+two_three = plot_grid(asl_pop_chloro, asl_pop_bar, rel_widths = c(1, 0.5), scale = c(1, 0.55))
 
 
 ##########################
@@ -871,246 +730,144 @@ asl_pop_chloro_bar = ggdraw() +
 ##########################
 
 # create chloropleth
-crossings_pop_chloro = tm_shape(chloropleth_dataset) +
-  tm_polygons("Crossings_per_100000pop", title = "Count per 100,000 population", palette = "Greens", 
-              breaks = c(0, 10, 20, 30, 40),
-              legend.format = list(text.separator = "<")) +
-  tm_shape(city_chloropleth_dataset) +
-  tm_polygons("Crossings_per_100000pop", title = "", palette = "inferno", breaks = c(140, 150),
-              legend.format = list(text.separator = "<")) +
-  tm_layout(title = "Crossings",
-            legend.title.size = 1,
-            legend.text.size = 0.7,
-            legend.position = c("left","bottom"),
-            legend.bg.alpha = 1,
-            inner.margins = c(0.1,0.1,0.1,0.42), # creates wide right margin for barchart
-            frame = FALSE)
+cross_pop_chloro = ggplot() + 
+  geom_sf(data = drop_city, aes(fill = Crossings_per_100000pop), show.legend = F) +
+  geom_sf(data = city_chloropleth_dataset, aes(fill = Crossings_per_100000pop), fill = "black") +
+  scale_fill_distiller(type = "seq",
+                       palette = "Greens",
+                       na.value = "light grey", direction = 1) +
+  theme_void() +
+  theme(plot.margin = unit(c(0, 0, 0, 0), "cm"))
 
-# # convert chloro to grob
-crossings_pop_chloro_grob = tmap_grob(crossings_pop_chloro) 
- 
-# # Generate barchart
+# Create barchart
+drop_city_reorder = drop_city %>%
+  arrange(desc(Crossings_per_100000pop)) %>%
+  mutate(Borough_number = (row_number() + 1))  # this ensures that there is 'spare' bar space for the city one to drop into when plotted
 
-# Generate new column that divides Crossing count into groups
-chloropleth_dataset <- chloropleth_dataset %>%
-  mutate(crossings_pop_group = cut(Crossings_per_100000pop,
-                                    breaks = c(0,10,20,30,40,140, 150),
-                                    labels = c(">0 < 10", "10 < 20", "20 < 30", "30 < 40", "40 < 140", "140 < 150"),
-                                    right = FALSE))
- 
-# # # Create vector of colours that match the chloropleth 
-crossings_pop_colours = c("#edf8e9","#bae4b3", "#74c476", "#238b45", "black")
-
-# create Bar chart
-crossings_pop_bar = ggplot(chloropleth_dataset, aes(x = reorder(Borough_number, -Crossings_per_100000pop), 
-                                                    y = Crossings_per_100000pop,
-                                                    fill = crossings_pop_group)) +
-  geom_bar(stat = "identity", color = "black", size = 0.1) +  # adds borders to bars
+cross_pop_bar = ggplot() +
+  geom_bar(data = city_chloropleth_dataset, aes(x = Borough_number, y = Crossings_per_100000pop),
+           stat = "identity", color = "black", size = 0.1, fill = "black") +
+  scale_fill_distiller(palette = "Greens", direction = 1) +
+  geom_bar(data = drop_city_reorder, aes(x = Borough_number, y = Crossings_per_100000pop, fill = Crossings_per_100000pop),
+           stat = "identity", color = "black", size = 0.1) +
   coord_flip() +
-  labs(y = "Count per 100,000 population", x = NULL) +
   theme_classic() +
-  scale_y_continuous(limits = c(0, 150), expand = c(0,0)) +
-  scale_fill_manual(values = crossings_pop_colours) +
-  theme(axis.line.y = element_blank(),
+  scale_y_continuous(limits = c(0, 180), expand = c(0,0), breaks = c(0, 50)) +
+  geom_hline(data = chloropleth_dataset, aes(yintercept = mean(Crossings_per_100000pop)),
+             linetype = "solid") +
+  geom_hline(data = chloropleth_dataset, aes(yintercept = median(Crossings_per_100000pop)),
+             linetype = "dashed") +
+  theme(axis.line = element_blank(),
         axis.ticks.y = element_blank(),
-        axis.line.x = element_blank(),
-        legend.position = "none")
+        axis.text.y = element_blank(),
+        axis.text = element_text(size = 16, colour = "grey25"),
+        legend.position = "none",
+        axis.title = element_blank(),
+        plot.margin = unit(c(0, 0, 0, 0), "cm"))
 
-# # # Create cowplot of both plots
-crossings_pop_chloro_bar = ggdraw() +
-  draw_plot(crossings_pop_chloro_grob) +
-  draw_plot(crossings_pop_bar,
-            width = 0.3, height = 0.6,
-            x = 0.57, y = 0.19)
+# Create cowplot of both plots
+three_three = plot_grid(cross_pop_chloro, cross_pop_bar, rel_widths = c(1, 0.5), scale = c(1, 0.55))
 
+################################################
+# Cycle lanes and Tracks (length) - Population #
+################################################
+
+# Create chloropleth
+clt_pop_chloro = ggplot() + 
+  geom_sf(data = drop_city, aes(fill = clt_pop_numeric), show.legend = F) +
+  geom_sf(data = city_chloropleth_dataset, aes(fill = clt_pop_numeric), fill = "black") +
+  scale_fill_distiller(type = "seq",
+                       palette = "Greens", direction = 1) +
+  theme_void() +
+  theme(plot.margin = unit(c(0, 0, 0, 0), "cm"))
+
+# Create barchart
+drop_city_reorder = drop_city %>%
+  arrange(desc(clt_pop_numeric)) %>%
+  mutate(Borough_number = (row_number() + 1))  # this ensures that there is 'spare' bar space for the city one to drop into when plotted
+
+clt_pop_bar = ggplot() +
+  geom_bar(data = city_chloropleth_dataset, aes(x = Borough_number, y = clt_pop_numeric),
+           stat = "identity", color = "black", size = 0.1, fill = "black") +
+  scale_fill_distiller(palette = "Greens", direction = 1) +
+  geom_bar(data = drop_city_reorder, aes(x = Borough_number, y = clt_pop_numeric, fill = clt_pop_numeric),
+           stat = "identity", color = "black", size = 0.1) +
+  coord_flip() +
+  theme_classic() +
+  scale_y_continuous(limits = c(0, 235), expand = c(0,0), breaks = c(0, 50)) +
+  geom_hline(data = chloropleth_dataset, aes(yintercept = mean(clt_pop_numeric)),
+             linetype = "solid") +
+  geom_hline(data = chloropleth_dataset, aes(yintercept = median(clt_pop_numeric)),
+             linetype = "dashed") +
+  theme(axis.line = element_blank(),
+        axis.ticks.y = element_blank(),
+        axis.text.y = element_blank(),
+        axis.text = element_text(size = 16, colour = "grey25"),
+        legend.position = "none",
+        axis.title = element_blank(),
+        plot.margin = unit(c(0, 0, 0, 0), "cm"))
+
+# Create cowplot of both plots
+four_three = plot_grid(clt_pop_chloro, clt_pop_bar, rel_widths = c(1, 0.5), scale = c(1, 0.55))
 
 
 ########################
 # Signals - Population #
 ########################
 
-# # create chloropleth - use SignalsNA as the polygon as this then colours the NAs grey (missing)
-signals_pop_chloro = tm_shape(chloropleth_dataset) +
-  tm_polygons("SignalsNA_per_100000pop", palette = "Greens", 
-              breaks = c(0, 10, 20, 30, 40), legend.show = FALSE) +
-  tm_shape(city_chloropleth_dataset) + # city is an outlier so add as separate shape to control colour
-  tm_polygons("SignalsNA_per_100000pop", title = "", palette = "inferno", breaks = c(580, 600),
-              legend.show = FALSE) +
-  tm_layout(title = "Signals",
-            legend.title.size = 1,
-            legend.text.size = 0.7,
-            legend.position = c("left","bottom"),
-            legend.bg.alpha = 1,
-            inner.margins = c(0.1,0.1,0.1,0.42), # creates wide right margin for barchart
-            frame = FALSE) +
-  tm_add_legend(type = "fill", 
-                labels = c("0", "> 0 < 10", "10 < 20", "20 < 30", "30 < 40", "580 < 600"), # enables relabelling of 'Missing/NA' as 0
-                col = c("grey", "#edf8e9", "#bae4b3", "#74c476", "#238b45", "black"),
-                border.lwd = 0.5,
-                title = "Signals per 100,000 population")
+# create chloropleth - 
+sig_pop_chloro = ggplot() + 
+  geom_sf(data = drop_city, aes(fill = SignalsNA_per_100000pop), show.legend = F) +
+  geom_sf(data = city_chloropleth_dataset, aes(fill = Signals_per_100000pop), fill = "black") +
+  scale_fill_distiller(type = "seq",
+                       palette = "Greens",
+                       na.value = "light grey", direction = 1) +
+  theme_void() +
+  theme(plot.margin = unit(c(0, 0, 0, 0), "cm"))
 
-# convert chloro to grob
-signals_pop_chloro_grob = tmap_grob(signals_pop_chloro)
+# Create bar chart
+drop_city_reorder = drop_city %>%
+  arrange(desc(Signals_per_100000pop)) %>%
+  mutate(Borough_number = (row_number() + 1))
 
-
-# Generate barchart
-# Generate new column that divides signal count into groups
-chloropleth_dataset <- chloropleth_dataset %>%
-  mutate(signals_pop_group = cut(SignalsNA_per_100000pop,
-                                 breaks = c(0, 10, 20, 30, 40, 600),
-                                 labels = c("> 0 < 10", "10 < 20", "20 < 30", "30 < 40", "580 < 600"),
-                                 right = FALSE))
-
-
-# # # Create vector of colours that match the chloropleth
-signals_pop_colours = c("#edf8e9", "#bae4b3", "#238b45", "black")
-
-# # # create Bar chart
-signals_pop_bar = ggplot(chloropleth_dataset, aes(x = reorder(Borough_number, -SignalsNA_per_100000pop),
-                                                  y = SignalsNA_per_100000pop, # this means those that are missing are shown with no bars
-                                                  fill = signals_pop_group)) +
-  geom_bar(stat = "identity", color = "black", size = 0.1) +
+sig_pop_bar = ggplot() +
+  geom_bar(data = city_chloropleth_dataset, aes(x = Borough_number, y = Signals_per_100000pop),
+           stat = "identity", color = "black", size = 0.1, fill = "black") +
+  scale_fill_distiller(palette = "Greens", direction = 1) +
+  geom_bar(data = drop_city_reorder, aes(x = Borough_number, y = Signals_per_100000pop, fill = Signals_per_100000pop),
+           stat = "identity", color = "black", size = 0.1) +
   coord_flip() +
-  labs(y = "Count", x = NULL) +
   theme_classic() +
-  scale_y_continuous(limits = c(0, 600), expand = c(0,0)) +  # ensures axis starts at 0 so no gap
-  scale_fill_manual(values = signals_pop_colours) +
-  theme(axis.ticks.y = element_blank(),
-        axis.line.y = element_blank(),
-        axis.line.x = element_blank(),
-        legend.position = "none")
-#axis.line.y = element_line(size = 0.2),
-
-# # Create cowplot of both plots
-signals_pop_chloro_bar = ggdraw() +
-  draw_plot(signals_pop_chloro_grob) +
-  draw_plot(signals_pop_bar,
-            width = 0.3, height = 0.6,
-            x = 0.57, y = 0.19)
-
-
-
-################################################
-# Cycle lanes and Tracks (length) - Population #
-################################################
-
-# create chloropleth
-clt_pop_chloro = tm_shape(chloropleth_dataset) +
-  tm_polygons("CycleLaneTrack_km_per_100000pop", title = "Total length (km) per 100,000 population", 
-              legend.show = FALSE,
-              breaks = c(10, 20, 30, 40, 50, 60, 70),
-              palette = "Greens") +
-  tm_shape(city_chloropleth_dataset) + # city is an outlier so add as separate shape to control colour
-  tm_polygons("CycleLaneTrack_km_per_100000pop", title = "", palette = "inferno", breaks = c(220, 240),
-              legend.show = FALSE) +
-  tm_add_legend(type = "fill", 
-                labels = c("10 < 20", "20 < 30", "30 < 40", "40 < 50", "50 < 60", "60 < 70", "220 < 240"), # enables relabelling of 'Missing/NA' as 0
-                col = c("#edf8e9", "#c7e9c0", "#a1d99b", "#74c476", "#31a354", "#006d2c", "black"),
-                border.lwd = 0.5,
-                title = "Total length (km) per 100,000 population") +
-  tm_layout(title = "Cycle lanes and tracks",
-            legend.title.size = 1,
-            legend.text.size = 0.7,
-            legend.position = c("left","bottom"),
-            legend.bg.alpha = 1,
-            inner.margins = c(0.1,0.1,0.1,0.42), # creates wide right margin for barchart
-            frame = FALSE)
-
-# # # convert chloro to grob
-clt_pop_chloro_grob = tmap_grob(clt_pop_chloro) 
-
-# # Generate barchart
-
-# create new column where units (km^2) are removed (need units to be removed to draw bar chart)
-chloropleth_dataset$clt_pop_numeric = round(units::drop_units(chloropleth_dataset$CycleLaneTrack_km_per_100000pop), digits = 2)
-
-chloropleth_dataset <- chloropleth_dataset %>%
-  mutate(clt_pop_group = cut(clt_pop_numeric,
-                              breaks = c(0, 10, 20, 30, 40, 50, 60, 70, 220, 240),
-                              labels = c("0 < 10", "10 < 20", "20 < 30", "30 < 40", "40 < 50",
-                                         "50 < 60", "60 < 70", " 70 < 220", "220 < 240"),
-                              right = FALSE))
-
-# Create vector of colours that match the chloropleth
-clt_pop_colours = c("#edf8e9", "#c7e9c0", "#a1d99b", "#74c476", "#31a354", "#006d2c", "black")
-
-# create Bar chart
-clt_pop_bar = ggplot(chloropleth_dataset, aes(x = reorder(Borough_number, -clt_pop_numeric),
-                                               y = clt_pop_numeric, fill = clt_pop_group)) +
-  geom_bar(stat = "identity", color = "black", size = 0.1) +  # adds borders to bars
-  coord_flip() +
-  labs(y = "Total length (km) per 100,000 population", x = NULL) +
-  theme_classic() +
-  scale_y_continuous(limits = c(0, 240), expand = c(0,0)) +  # ensures axis starts at 0 so no gap
-  scale_fill_manual(values = clt_pop_colours) +
-  theme(axis.line.y = element_blank(),
+  scale_y_continuous(limits = c(0, 600), expand = c(0,0), breaks = c(0, 300)) +
+  geom_hline(data = chloropleth_dataset, aes(yintercept = mean(Signals_per_100000pop)),
+             linetype = "solid") +
+  geom_hline(data = chloropleth_dataset, aes(yintercept = median(Signals_per_100000pop)),
+             linetype = "dashed") +
+  theme(axis.line = element_blank(),
         axis.ticks.y = element_blank(),
-        axis.line.x = element_blank(),
-        legend.position = "none")
+        axis.text.y = element_blank(),
+        axis.text = element_text(size = 16, colour = "grey25"),
+        legend.position = "none",
+        axis.title = element_blank(),
+        plot.margin = unit(c(0, 0, 0, 0), "cm"))
 
 # Create cowplot of both plots
-clt_pop_chloro_bar = ggdraw() +
-  draw_plot(clt_pop_chloro_grob) +
-  draw_plot(clt_pop_bar,
-            width = 0.3, height = 0.6,
-            x = 0.57, y = 0.19)
-
-
+five_three = plot_grid(sig_pop_chloro, sig_pop_bar, rel_widths = c(1, 0.5), scale = c(1, 0.55))
 
 # #########################################
 # # Traffic calming - Population (greens) # 
 # #########################################
 
-# # create chloropleth
-tc_pop_chloro = tm_shape(chloropleth_dataset) +
-  tm_polygons("TrafficCalming_per_100000pop", title = "Count per 100,000 population", palette = "Greens",
-              breaks = c(0, 400, 800, 1200, 1600, 2000),
-              legend.format = list(text.separator = "<")) +
-  tm_layout(title = "Traffic calming",
-            legend.title.size = 1,
-            legend.text.size = 0.7,
-            legend.position = c("left","bottom"),
-            legend.bg.alpha = 1,
-            inner.margins = c(0.1,0.1,0.1,0.42), # creates wide right margin for barchart
-            frame = FALSE)
- 
-# convert chloro to grob
-tc_pop_chloro_grob = tmap_grob(tc_pop_chloro)
+# create chloropleth
+tc_pop_chloro = ggplot(chloropleth_dataset, 
+                        aes(fill = TrafficCalming_per_100000pop)) + 
+  geom_sf(show.legend = F) +
+  scale_fill_distiller(type = "seq",
+                       palette = "Greens", direction = 1) +
+  theme_void() +
+  theme(plot.margin = unit(c(0, 0, 0, 0), "cm"))
 
-# # Generate barchart
-# Generate new column that divides traffic calming count into groups
-chloropleth_dataset <- chloropleth_dataset %>%
-  mutate(tc_pop_group = cut(TrafficCalming_per_100000pop,
-                             breaks = seq(0, 2000, by = 400),
-                             labels = c("> 0 < 400", "400 < 800", "800 < 1200", "1200 < 1600", "1600 < 2000"),
-                             right = FALSE))
-
-# # Create vector of colours that match the chloropleth
-tc_pop_colours = c("#edf8e9", "#bae4b3", "#74c476", "#006d2c") # only 4 colours as none in 1200<1600 group
-#
-# # create Bar chart
-tc_pop_bar = ggplot(chloropleth_dataset, aes(x = reorder(Borough_number, -TrafficCalming_per_100000pop),
-                                              y = TrafficCalming_per_100000pop,
-                                              fill = tc_pop_group)) +
-  geom_bar(stat = "identity", color = "black", size = 0.1) + # adds borders to bars
-  coord_flip() +
-  labs(y = "Count per 100,000 population", x = NULL) +
-  theme_classic() +
-  scale_y_continuous(limits = c(0, 1900), expand = c(0,0),
-                     breaks = c(0, 400, 800, 1200, 1600, 2000)) +  # ensures axis starts at 0 so no gap
-  scale_fill_manual(values = tc_pop_colours) +
-  theme(axis.line.y = element_blank(),
-        axis.ticks.y = element_blank(),
-        axis.line.x = element_blank(),
-        legend.position = "none")
-# 
-# # Create cowplot of both plots
-tc_pop_chloro_bar = ggdraw() +
-  draw_plot(tc_pop_chloro_grob) +
-  draw_plot(tc_pop_bar,
-            width = 0.3, height = 0.6,
-            x = 0.57, y = 0.19)
-
+##THIS IS WHERE I GOT TO
 
 
 
