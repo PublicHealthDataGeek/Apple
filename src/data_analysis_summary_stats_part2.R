@@ -682,7 +682,7 @@ write_csv2(calming_characteristics, file = "/home/bananafan/Downloads/calming_ch
 
 # Load datasets - these datasets were created 2_3_2021 from TFL datasets downloaded 25/2/21
 CID_count = readRDS(file = "/home/bananafan/Documents/PhD/Paper1/data/CID_count_by_borough")
-CID_length = readRDS(file = "/home/bananafan/Documents/PhD/Paper1/data/CID_length_by_borough")
+CID_length = readRDS(file = "/home/bananafan/Documents/PhD/Paper1/data/CID_length_by_borough_on_off")
 
 
 
@@ -690,7 +690,7 @@ CID_length = readRDS(file = "/home/bananafan/Documents/PhD/Paper1/data/CID_lengt
 safe_cnt = CID_count %>%
   select(c(BOROUGH, ASL, Crossings, Signals, TrafficCalming))
 safe_ln = CID_length %>%
-  select(BOROUGH, CycleLaneTrack_km) %>%
+  select(BOROUGH, clt_total_length_km, length_km_onroad, length_km_offroad) %>%
   drop_units()
 safe_df = left_join(safe_cnt, safe_ln, by = "BOROUGH")
 
@@ -716,59 +716,6 @@ borough_summary_table = data.table::transpose(summary, keep.names = "Summary_sta
 
 
 
-### boxplot
-# get df ready
-safe_df_box = pivot_longer(safe_df, 
-                    cols = c("ASL", "Crossings", "Signals", "TrafficCalming", 
-                             "CycleLaneTrack_km"),
-                    names_to = "Asset", 
-                    values_to = "Value")
-
-safe_df_box %>%
-  filter(Asset != "TrafficCalming") %>%
-  ggplot() +
-  geom_boxplot(aes(x = Asset, y = Value), fill = "grey", color = "black") +
-  geom_label(data = safe_df_box %>%
-               filter(Asset != "TrafficCalming") %>%
-               filter(BOROUGH == "City of London"),
-             aes(x = Asset, y = Value, label = "City"), nudge_x = 0.19) +
-  scale_x_discrete(labels = c("ASL", "Crossings", "Cycle lanes and tracks", "Cyclist signals")) +
-  theme_classic() +
-  theme(axis.title = element_blank())
-
-safe_df_box %>%
-  filter(Asset == "TrafficCalming") %>%
-  ggplot() +
-  geom_boxplot(aes(x = Asset, y = Value), fill = "grey", color = "black") +
-  geom_label(data = safe_df_box %>%
-               filter(Asset == "TrafficCalming") %>%
-               filter(BOROUGH == "City of London"),
-             aes(x = Asset, y = Value, label = "City"), nudge_x = 0.05) +
-  scale_x_discrete(labels = c("Traffic calming")) +
-  theme_classic() +
-  theme(axis.title = element_blank())
-
-# violin plot - to see how it looks 
-safe_df_box %>%
-  filter(Asset != "TrafficCalming") %>%
-  ggplot() +
-  geom_violin(aes(x = Asset, y = Value), fill = "grey", color = "black") +
-  geom_label(data = safe_df_box %>%
-               filter(Asset != "TrafficCalming") %>%
-               filter(BOROUGH == "City of London"),
-             aes(x = Asset, y = Value, label = "City"), nudge_x = 0.19) +
-  scale_x_discrete(labels = c("ASL", "Crossings", "Cycle lanes and tracks", "Cyclist signals")) +
-  theme_classic() +
-  theme(axis.title = element_blank())
-
-
-# Plot
-ggplot(data, aes(x=wt, y=mpg)) +
-  geom_point() + 
-  geom_label( 
-    data=data %>% filter(mpg>20 & wt>3), # Filter data first
-    aes(label=carName)
-  )
 
 
 ###############################################################################
