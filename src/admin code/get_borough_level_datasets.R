@@ -147,16 +147,35 @@ restricted_route_borough_length = c_Rroutes %>%
 # it needs to be dropped to make dataset manageable
 restricted_route_borough_length = st_drop_geometry(restricted_route_borough_length) 
 
-
 cycle_lane_track_borough_length = c_cyclelanetrack %>%
-   group_by(BOROUGH) %>%
-   summarise(across(c(length_m, length_km), sum))
- # drop geometry cant be done within the pipe as it causes weirdness in the measurements (see issue 1)
- # it needs to be dropped to make dataset manageable
+  group_by(BOROUGH) %>%
+  summarise(across(c(length_m, length_km), sum))
 cycle_lane_track_borough_length = st_drop_geometry(cycle_lane_track_borough_length) 
- 
 
-#3) Create dataset for lengths
+
+# create new variable which is clearly on/off road
+c_cyclelanetrack = c_cyclelanetrack %>%
+  mutate(on_off = case_when(CLT_CARR == 'TRUE' ~ "onroad", 
+                            TRUE ~ "offroad")) 
+
+overall_clt_length = c_cyclelanetrack %>%
+  group_by(BOROUGH) %>%
+  summarise(across(c(length_m, length_km), sum)) %>%
+  rename(clt_total_length_m = length_m) %>%
+  rename(clt_total_length_km = length_km) 
+overall_clt_length = st_drop_geometry(overall_clt_length) 
+
+on_off_clt_length = c_cyclelanetrack %>%
+  group_by(BOROUGH, on_off) %>%
+  summarise(across(c(length_m, length_km), sum)) 
+on_off_clt_length = st_drop_geometry(on_off_clt_length) 
+
+on_off_clt_length = on_off_clt_length %>%
+  pivot_wider(names_from = on_off, values_from = c(length_m, length_km))
+
+
+
+#3) Create datasets for lengths
 length_CID_by_borough = list(cycle_lane_track_borough_length,
                              restricted_route_borough_length) %>%
   reduce(left_join, by = "BOROUGH") %>%
@@ -164,6 +183,15 @@ length_CID_by_borough = list(cycle_lane_track_borough_length,
   rename(c(CycleLaneTrack_km = length_km.x, RestrictedRoute_km = length_km.y,
            CycleLaneTrack_m = length_m.x, RestrictedRoute_m = length_m.y))
 
+length_CID_by_borough_on_off = list(overall_clt_length, on_off_clt_length,
+                                    restricted_route_borough_length) %>%
+  reduce(left_join, by = "BOROUGH") %>%
+  mutate(across(2:9, round, 1)) %>%
+  rename(c(RestrictedRoute_km = length_km, RestrictedRoute_m = length_m))
+
+
+
+
 # 4) Save dataset
 saveRDS(length_CID_by_borough, file = "/home/bananafan/Documents/PhD/Paper1/data/CID_length_by_borough")
-
+saveRDS(length_CID_by_borough_on_off, file = "/home/bananafan/Documents/PhD/Paper1/data/CID_length_by_borough_on_off")
