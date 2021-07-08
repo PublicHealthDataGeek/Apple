@@ -111,7 +111,7 @@ lon_pop_estimates_2019$BOROUGH[lon_pop_estimates_2019$BOROUGH == "Hammersmith an
 # 4) PCT data
 # The code for obtaining this data is in: get_pct_km_cycled.R file
 pct_borough_commuting = readRDS(file = "/home/bananafan/Documents/PhD/Paper1/data/Borough_commuting.rds") %>%
-  mutate(total_100000km_cycled_for_commuting_per_year_estimated = total_km_cycled_for_commuting_per_year_estimated / 100000) 
+  mutate(total_mil_km_cycled_for_commuting_per_year_estimated = total_km_cycled_for_commuting_per_year_estimated / 1000000) 
 
 
 # Join datasets together
@@ -123,9 +123,7 @@ chloropleth_dataset = left_join(denominators, CID_counts)
 
 # Create variables with dropped units (ggplot doesnt like units)
 chloropleth_dataset$Borough_Area_km2_no_units = round(units::drop_units(chloropleth_dataset$Borough_Area_km2), digits = 2)
-chloropleth_dataset$clt_raw_numeric = round(units::drop_units(chloropleth_dataset$CycleLaneTrack_km), digits = 2)
-chloropleth_dataset$clt_area_numeric = round(units::drop_units(chloropleth_dataset$CycleLaneTrack_km_by_area), digits = 2)
-chloropleth_dataset$clt_pop_numeric = round(units::drop_units(chloropleth_dataset$CycleLaneTrack_km_per_100000pop), digits = 2)
+
 #? need to do for cycle commuting too
 
 # produce counts by area and per 100000 head population
@@ -137,8 +135,15 @@ chloropleth_dataset <- chloropleth_dataset %>%
                 .fns = ~.x/Population_100000,
                 .names = "{.col}_per_100000pop")) %>%
   mutate(across(.cols = c("ASL", "Crossings", "CycleLaneTrack_km", "Signals","SignalsNA", "TrafficCalming"),
-                .fns = ~.x/total_100000km_cycled_for_commuting_per_year_estimated,
-                .names = "{.col}_per_100000km_cycled"))
+                .fns = ~.x/total_mil_km_cycled_for_commuting_per_year_estimated,
+                .names = "{.col}_per_mil_km_cycled"))
+
+# Create variables with dropped units (ggplot doesnt like units)
+chloropleth_dataset$clt_raw_numeric = round(units::drop_units(chloropleth_dataset$CycleLaneTrack_km), digits = 2)
+chloropleth_dataset$clt_area_numeric = round(units::drop_units(chloropleth_dataset$CycleLaneTrack_km_by_area), digits = 2)
+chloropleth_dataset$clt_pop_numeric = round(units::drop_units(chloropleth_dataset$CycleLaneTrack_km_per_100000pop), digits = 2)
+chloropleth_dataset$clt_pct_numeric = round(units::drop_units(chloropleth_dataset$CycleLaneTrack_km_per_mil_km_cycled), digits = 2)
+
 
 # Create df of just City of London data as this is an outlier and often needs to be handled differently in the visualisations
 city_chloropleth_dataset = chloropleth_dataset %>%
@@ -149,7 +154,7 @@ drop_city = chloropleth_dataset %>%
   filter(BOROUGH != "City of London") 
 
 ###############################################################################
-#                             Orientation maps                                #
+#                             Reference data maps                             #
 ###############################################################################
 
 # 1) Boroughs areas
@@ -223,7 +228,7 @@ one_three = plot_grid(pop_chloro, pop_bar, rel_widths = c(1, 0.5), scale = c(1, 
 
 # 3) PCT cycling chloropleth 
 pct_chloro = ggplot(chloropleth_dataset, 
-                    aes(fill = total_km_cycled_for_commuting_per_year_estimated)) + 
+       aes(fill = total_mil_km_cycled_for_commuting_per_year_estimated)) + 
   geom_sf(show.legend = F) +
   scale_fill_distiller(type = "seq",
                        palette = "Reds",
@@ -232,16 +237,16 @@ pct_chloro = ggplot(chloropleth_dataset,
   theme(plot.margin = unit(c(0, 0, 0, 0), "cm"))
 
 # create Bar chart
-pct_bar = ggplot(chloropleth_dataset, aes(x = reorder(Borough_number, -total_km_cycled_for_commuting_per_year_estimated),
-                                             y = total_km_cycled_for_commuting_per_year_estimated,
-                                             fill = total_km_cycled_for_commuting_per_year_estimated)) +
+pct_bar = ggplot(chloropleth_dataset, aes(x = reorder(Borough_number, -total_mil_km_cycled_for_commuting_per_year_estimated),
+                                y = total_mil_km_cycled_for_commuting_per_year_estimated,
+                                fill = total_mil_km_cycled_for_commuting_per_year_estimated)) +
   geom_bar(stat = "identity", color = "black", size = 0.1) +
   coord_flip() +
   theme_classic() +
-  scale_y_continuous(limits = c(0, 25000000), expand = c(0,0), breaks = c(0, 12500000), labels = c("0", "12.5mil")) +
-  geom_hline(aes(yintercept = mean(total_km_cycled_for_commuting_per_year_estimated)),
+  scale_y_continuous(limits = c(0, 25), expand = c(0,0), breaks = c(0, 12.5), labels = c("0", "12.5")) +
+  geom_hline(aes(yintercept = mean(total_mil_km_cycled_for_commuting_per_year_estimated)),
              linetype = "solid") +
-  geom_hline(aes(yintercept = median(total_km_cycled_for_commuting_per_year_estimated)),
+  geom_hline(aes(yintercept = median(total_mil_km_cycled_for_commuting_per_year_estimated)),
              linetype = "dashed") +
   scale_fill_distiller(palette = "Reds", direction = 1) +
   theme(axis.line = element_blank(),
@@ -271,7 +276,6 @@ one_four = plot_grid(pct_chloro, pct_bar, rel_widths = c(1, 0.5), scale = c(1, 0
 ###############################################################################
 #                                   RAW COUNTS                                # 
 ###############################################################################
-
 
 #######
 # ASL #
@@ -465,8 +469,6 @@ six_one = plot_grid(tc_raw_chloro, tc_raw_bar, rel_widths = c(1, 0.5), scale = c
 
 
 
-
-
 ###############################################################################
 #                         Standardised to Borough Area -Blues                 # 
 ###############################################################################
@@ -513,6 +515,7 @@ asl_area_bar = ggplot() +
 
 # Create cowplot of both plots
 two_two = plot_grid(asl_area_chloro, asl_area_bar, rel_widths = c(1, 0.5), scale = c(1, 0.55))
+
 
 #############
 # Crossings #
@@ -867,7 +870,31 @@ tc_pop_chloro = ggplot(chloropleth_dataset,
   theme_void() +
   theme(plot.margin = unit(c(0, 0, 0, 0), "cm"))
 
-##THIS IS WHERE I GOT TO
+# # create Bar chart
+tc_pop_bar = ggplot(chloropleth_dataset, 
+                     aes(x = reorder(Borough_number, -TrafficCalming_per_100000pop), y = TrafficCalming_per_100000pop, 
+                         fill = TrafficCalming_per_100000pop)) +
+  geom_bar(stat = "identity", color = "black", size = 0.1) +
+  coord_flip() +
+  theme_classic() +
+  scale_y_continuous(limits = c(0, 2000), expand = c(0,0), breaks = c(0, 1000)) +
+  geom_hline(aes(yintercept = mean(TrafficCalming_per_100000pop)),
+             linetype = "solid") +
+  geom_hline(aes(yintercept = median(TrafficCalming_per_100000pop)),
+             linetype = "dashed") +
+  scale_fill_distiller(palette = "Greens", direction = 1) +
+  theme(axis.line = element_blank(),
+        axis.ticks.y = element_blank(),
+        axis.text.y = element_blank(),
+        axis.text = element_text(size = 16, colour = "grey25"),
+        legend.position = "none",
+        axis.title = element_blank(),
+        plot.margin = unit(c(0, 0, 0, 0), "cm"))
+
+# Create cowplot of both plots
+six_three = plot_grid(tc_pop_chloro, tc_pop_bar, rel_widths = c(1, 0.5), scale = c(1, 0.55))
+
+
 
 
 
@@ -875,178 +902,81 @@ tc_pop_chloro = ggplot(chloropleth_dataset,
 #       Standardised to PCT data(km cycled trhough borough) - Reds            # 
 ###############################################################################
 
-
 #############
 # ASL - PCT #
 #############
 
 # # create chloropleth
-asl_pct_chloro = tm_shape(chloropleth_dataset) +
-  tm_polygons("ASL_per_100000km_cycled", title = "Count per 100,000 km cycle commute", palette = "Reds",
-              breaks = c(0, 2, 4, 6, 8, 10, 12, 14),
-              legend.format = list(text.separator = "<")) +
-  tm_layout(title = "ASL",
-            legend.title.size = 1,
-            legend.text.size = 0.7,
-            legend.position = c("left","bottom"),
-            legend.bg.alpha = 1,
-            inner.margins = c(0.1,0.1,0.1,0.42), # creates wide right margin for barchart
-            frame = FALSE) 
+asl_pct_chloro = ggplot(chloropleth_dataset, 
+                        aes(fill = ASL_per_mil_km_cycled)) + 
+  geom_sf(show.legend = F) +
+  scale_fill_distiller(type = "seq",
+                       palette = "Reds",
+                       na.value = "transparent", direction = 1) +
+  theme_void() +
+  theme(plot.margin = unit(c(0, 0, 0, 0), "cm"))
 
-# convert chloro to grob
-asl_pct_chloro_grob = tmap_grob(asl_pct_chloro) 
-
-# ##  Generate barchart
-
-# Generate new column that divides ASL count into groups
-chloropleth_dataset <- chloropleth_dataset %>%
-  mutate(asl_pct_group = cut(ASL_per_100000km_cycled,
-                              breaks = c(0, 2, 4, 6, 8, 10, 12, 14),
-                              labels = c("> 0 < 2", "2 < 4", "4 < 6", "6 < 8",
-                                         "8 < 10", "10 < 12", "12 < 14"),
-                              right = FALSE))
-
-# # Create vector of colours that match the chloropleth
-asl_pct_colours = c("#fee5d9","#fcbba1", "#fc9272", "#fb6a4a",
-                     "#ef3b2c", "#cb181d", "#99000d")
-
+# # create Bar chart
 asl_pct_bar = ggplot(chloropleth_dataset, 
-                      aes(x = reorder(Borough_number, -ASL_per_100000km_cycled), y = ASL_per_100000km_cycled, 
-                          fill = asl_pct_group)) +
-  geom_bar(stat = "identity", color = "black", size = 0.1) +  # adds borders to bars )
+                    aes(x = reorder(Borough_number, -ASL_per_mil_km_cycled), y = ASL_per_mil_km_cycled, 
+                        fill = ASL_per_mil_km_cycled)) +
+  geom_bar(stat = "identity", color = "black", size = 0.1) +
   coord_flip() +
-  labs(y = "Count per 100,000km cycle commute", x = NULL) +
   theme_classic() +
-  scale_y_continuous(expand = c(0,0)) +  # ensures axis starts at 0 so no gap
-  scale_fill_manual(values = asl_pct_colours) +
-  theme(axis.line.y = element_blank(),
+  scale_y_continuous(limits = c(0, 140), expand = c(0,0), breaks = c(0, 70)) +
+  geom_hline(aes(yintercept = mean(ASL_per_mil_km_cycled)),
+             linetype = "solid") +
+  geom_hline(aes(yintercept = median(ASL_per_mil_km_cycled)),
+             linetype = "dashed") +
+  scale_fill_distiller(palette = "Reds", direction = 1) +
+  theme(axis.line = element_blank(),
         axis.ticks.y = element_blank(),
-        axis.line.x = element_blank(),
+        axis.text.y = element_blank(),
+        axis.text = element_text(size = 16, colour = "grey25"),
         legend.position = "none",
-        strip.text.x = element_blank())
+        axis.title = element_blank(),
+        plot.margin = unit(c(0, 0, 0, 0), "cm"))
 
-# # Create cowplot of both plots
-asl_pct_chloro_bar = ggdraw() +
-  draw_plot(asl_pct_chloro_grob) +
-  draw_plot(asl_pct_bar,
-            width = 0.3, height = 0.6,
-            x = 0.57, y = 0.19)
-
+# Create cowplot of both plots
+two_four = plot_grid(asl_pct_chloro, asl_pct_bar, rel_widths = c(1, 0.5), scale = c(1, 0.55))
 
 ##########################
 # Crossings - PCT - reds #
 ##########################
 
 # create chloropleth
-crossings_pct_chloro = tm_shape(chloropleth_dataset) +
-  tm_polygons("Crossings_per_100000km_cycled", title = "Count per 100,000 km cycle commute", palette = "Reds", 
-              legend.format = list(text.separator = "<")) +
-  tm_layout(title = "Crossings",
-            legend.title.size = 1,
-            legend.text.size = 0.7,
-            legend.position = c("left","bottom"),
-            legend.bg.alpha = 1,
-            inner.margins = c(0.1,0.1,0.1,0.42), # creates wide right margin for barchart
-            frame = FALSE)
+cross_pct_chloro = ggplot(chloropleth_dataset, 
+                        aes(fill = Crossings_per_mil_km_cycled)) + 
+  geom_sf(show.legend = F) +
+  scale_fill_distiller(type = "seq",
+                       palette = "Reds",
+                       na.value = "transparent", direction = 1) +
+  theme_void() +
+  theme(plot.margin = unit(c(0, 0, 0, 0), "cm"))
 
-# # convert chloro to grob
-crossings_pct_chloro_grob = tmap_grob(crossings_pct_chloro) 
-
-# # Generate barchart
-# Generate new column that divides Crossing count into groups
-chloropleth_dataset <- chloropleth_dataset %>%
-  mutate(crossings_pct_group = cut(Crossings_per_100000km_cycled,
-                                   breaks = c(0,2,4,6,8,10),
-                                   labels = c(">0 < 2", "2 < 4", "4 < 6", "6 < 8", "8 < 10"),
-                                   right = FALSE))
-
-# # # Create vector of colours that match the chloropleth
-crossings_pct_colours = c("#fee5d9","#fcae91", "#fb6a4a", "#de2d26", "#a50f15")
-
-# create Bar chart
-crossings_pct_bar = ggplot(chloropleth_dataset, aes(x = reorder(Borough_number, -Crossings_per_100000km_cycled),
-                                                    y = Crossings_per_100000km_cycled,
-                                                    fill = crossings_pct_group)) +
-  geom_bar(stat = "identity", color = "black", size = 0.1) +  # adds borders to bars
-  coord_flip() +
-  labs(y = "Count per 100,000 km cycle commute", x = NULL) +
-  theme_classic() +
-  scale_y_continuous(limits = c(0, 10), expand = c(0,0)) +
-  scale_fill_manual(values = crossings_pct_colours) +
-  theme(axis.line.y = element_blank(),
-        axis.ticks.y = element_blank(),
-        axis.line.x = element_blank(),
-        legend.position = "none")
-
-# # # Create cowplot of both plots
-crossings_pct_chloro_bar = ggdraw() +
-  draw_plot(crossings_pct_chloro_grob) +
-  draw_plot(crossings_pct_bar,
-            width = 0.3, height = 0.6,
-            x = 0.57, y = 0.19)
-
-
-########################
-# Signals - PCT - reds #
-########################
-
-# # create chloropleth - use SignalsNA as the polygon as this then colours the NAs grey (missing)
-signals_pct_chloro = tm_shape(chloropleth_dataset) +
-  tm_polygons("SignalsNA_per_100000km_cycled", palette = "Reds",
-              breaks = c(0, 0.25, 0.5, 0.75, 1, 1.25, 1.5),
-              legend.show = FALSE) + 
-  tm_layout(title = "Signals",
-            legend.title.size = 1,
-            legend.text.size = 0.7,
-            legend.position = c("left","bottom"),
-            legend.bg.alpha = 1,
-            inner.margins = c(0.1,0.1,0.1,0.42), # creates wide right margin for barchart
-            frame = FALSE) +
-  tm_add_legend(type = "fill", 
-                labels = c("0", "> 0 < 0.25", "0.25 < 0.50", "0.50 < 0.75", "0.75 < 1.00", 
-                           "1.00 < 1.25", "1.25 < 1.50"), # enables relabelling of 'Missing/NA' as 0
-                col = c("grey", "#fee5d9", "#fcbba1", "#fc9272", "#fb6a4a", "#de2d26", "#a50f15"),
-                border.lwd = 0.5,
-                title = "Count per 100,000 km cycle commute")
-
-# convert chloro to grob
-signals_pct_chloro_grob = tmap_grob(signals_pct_chloro)
-
-
-# Generate barchart
-# Generate new column that divides signal count into groups
-chloropleth_dataset <- chloropleth_dataset %>%
-  mutate(signals_pct_group = cut(SignalsNA_per_100000km_cycled,
-                                 breaks = c(0, 0.25, 0.5, 0.75, 1, 1.25, 1.5),
-                                 labels = c("> 0 < 0.25", "0.25 < 0.50", "0.50 < 0.75", "0.75 < 1.00", 
-                                            "1.00 < 1.25", "1.25 < 1.50"),
-                                 right = FALSE))
-
-
-# Create vector of colours that match the chloropleth
-signals_pct_colours = c("#fee5d9", "#fcbba1", "#fc9272", "#fb6a4a", "#a50f15")
-
-# # # create Bar chart
-signals_pct_bar = ggplot(chloropleth_dataset, aes(x = reorder(Borough_number, -SignalsNA_per_100000km_cycled),
-                                                  y = SignalsNA_per_100000km_cycled, # this means those that are missing are shown with no bars
-                                                  fill = signals_pct_group)) +
+# # create Bar chart
+cross_pct_bar = ggplot(chloropleth_dataset, 
+                     aes(x = reorder(Borough_number, -Crossings_per_mil_km_cycled), y = Crossings_per_mil_km_cycled, 
+                         fill = Crossings_per_mil_km_cycled)) +
   geom_bar(stat = "identity", color = "black", size = 0.1) +
   coord_flip() +
-  labs(y = "Count per 100,000 km cycle commute", x = NULL) +
   theme_classic() +
-  scale_y_continuous(limits = c(0, 1.5), expand = c(0,0)) +  # ensures axis starts at 0 so no gap
-  scale_fill_manual(values = signals_pct_colours) +
-  theme(axis.ticks.y = element_blank(),
-        axis.line.y = element_blank(),
-        axis.line.x = element_blank(),
-        legend.position = "none")
+  scale_y_continuous(limits = c(0, 110), expand = c(0,0), breaks = c(0, 50)) +
+  geom_hline(aes(yintercept = mean(Crossings_per_mil_km_cycled)),
+             linetype = "solid") +
+  geom_hline(aes(yintercept = median(Crossings_per_mil_km_cycled)),
+             linetype = "dashed") +
+  scale_fill_distiller(palette = "Reds", direction = 1) +
+  theme(axis.line = element_blank(),
+        axis.ticks.y = element_blank(),
+        axis.text.y = element_blank(),
+        axis.text = element_text(size = 16, colour = "grey25"),
+        legend.position = "none",
+        axis.title = element_blank(),
+        plot.margin = unit(c(0, 0, 0, 0), "cm"))
 
-# # Create cowplot of both plots
-signals_pct_chloro_bar = ggdraw() +
-  draw_plot(signals_pct_chloro_grob) +
-  draw_plot(signals_pct_bar,
-            width = 0.3, height = 0.6,
-            x = 0.57, y = 0.19)
+# Create cowplot of both plots
+three_four = plot_grid(cross_pct_chloro, cross_pct_bar, rel_widths = c(1, 0.5), scale = c(1, 0.55))
 
 
 ################################################
@@ -1054,56 +984,78 @@ signals_pct_chloro_bar = ggdraw() +
 ################################################
 
 # create chloropleth
-clt_pct_chloro = tm_shape(chloropleth_dataset) +
-  tm_polygons("CycleLaneTrack_km_per_100000km_cycled", title = "Total length (km) per 100,000km cycle commute", 
-              breaks = c(0, 4, 8, 12, 16, 20, 24),
-              palette = "Reds") +
-  tm_layout(title = "Cycle lanes and tracks",
-            legend.title.size = 1,
-            legend.text.size = 0.7,
-            legend.position = c("left","bottom"),
-            legend.bg.alpha = 1,
-            inner.margins = c(0.1,0.1,0.1,0.42), # creates wide right margin for barchart
-            frame = FALSE)
+clt_pct_chloro = ggplot(chloropleth_dataset, 
+                          aes(fill = clt_pct_numeric)) + 
+  geom_sf(show.legend = F) +
+  scale_fill_distiller(type = "seq",
+                       palette = "Reds",
+                       na.value = "transparent", direction = 1) +
+  theme_void() +
+  theme(plot.margin = unit(c(0, 0, 0, 0), "cm"))
 
-# # # convert chloro to grob
-clt_pct_chloro_grob = tmap_grob(clt_pct_chloro) 
-
-# # Generate barchart
-# create new column where units (km^2) are removed (need units to be removed to draw bar chart)
-chloropleth_dataset$clt_pct_numeric = round(units::drop_units(chloropleth_dataset$CycleLaneTrack_km_per_100000km_cycled), digits = 2)
-
-chloropleth_dataset <- chloropleth_dataset %>%
-  mutate(clt_pct_group = cut(clt_pct_numeric,
-                             breaks = c(0, 4, 8, 12, 16, 20, 24),
-                             labels = c("> 0 < 4", "4 < 8", "8 < 12", "12 < 16", "16 < 20",
-                                        "20 < 24"),
-                             right = FALSE))
-
-# Create vector of colours that match the chloropleth
-clt_pct_colours = c("#fee5d9","#fcbba1", "#fc9272", "#fb6a4a",
-                      "#de2d26", "#a50f15")
-
-# create Bar chart
-clt_pct_bar = ggplot(chloropleth_dataset, aes(x = reorder(Borough_number, -clt_pct_numeric),
-                                              y = clt_pct_numeric, fill = clt_pct_group)) +
-  geom_bar(stat = "identity", color = "black", size = 0.1) +  # adds borders to bars
+# # create Bar chart
+clt_pct_bar = ggplot(chloropleth_dataset, 
+                       aes(x = reorder(Borough_number, -clt_pct_numeric), y = clt_pct_numeric, 
+                           fill = clt_pct_numeric)) +
+  geom_bar(stat = "identity", color = "black", size = 0.1) +
   coord_flip() +
-  labs(y = "Total length (km) per 100,000km cycle commute", x = NULL) +
   theme_classic() +
-  scale_y_continuous(limits = c(0, 24), expand = c(0,0)) +  # ensures axis starts at 0 so no gap
-  scale_fill_manual(values = clt_pct_colours) +
-  theme(axis.line.y = element_blank(),
+  scale_y_continuous(limits = c(0, 205), expand = c(0,0), breaks = c(0, 100)) +
+  geom_hline(aes(yintercept = mean(clt_pct_numeric)),
+             linetype = "solid") +
+  geom_hline(aes(yintercept = median(clt_pct_numeric)),
+             linetype = "dashed") +
+  scale_fill_distiller(palette = "Reds", direction = 1) +
+  theme(axis.line = element_blank(),
         axis.ticks.y = element_blank(),
-        axis.line.x = element_blank(),
-        legend.position = "none")
+        axis.text.y = element_blank(),
+        axis.text = element_text(size = 16, colour = "grey25"),
+        legend.position = "none",
+        axis.title = element_blank(),
+        plot.margin = unit(c(0, 0, 0, 0), "cm"))
 
-# # Create cowplot of both plots
-clt_pct_chloro_bar = ggdraw() +
-  draw_plot(clt_pct_chloro_grob) +
-  draw_plot(clt_pct_bar,
-            width = 0.3, height = 0.6,
-            x = 0.57, y = 0.19)
+# Create cowplot of both plots
+four_four = plot_grid(clt_pct_chloro, clt_pct_bar, rel_widths = c(1, 0.5), scale = c(1, 0.55))
+
+
+########################
+# Signals - PCT - reds #
+########################
+
+# create chloropleth - 
+sig_pct_chloro = ggplot() + 
+  geom_sf(data = chloropleth_dataset, aes(fill = SignalsNA_per_mil_km_cycled), show.legend = F) +
+    scale_fill_distiller(type = "seq",
+                       palette = "Reds",
+                       na.value = "light grey", direction = 1) +
+  theme_void() +
+  theme(plot.margin = unit(c(0, 0, 0, 0), "cm"))
+
+# Create bar chart
+sig_pct_bar = ggplot(chloropleth_dataset, 
+                     aes(x = reorder(Borough_number, -Signals_per_mil_km_cycled), y = Signals_per_mil_km_cycled, 
+                         fill =Signals_per_mil_km_cycled)) +
+  geom_bar(stat = "identity", color = "black", size = 0.1) +
+  coord_flip() +
+  theme_classic() +
+  scale_y_continuous(limits = c(0, 15), expand = c(0,0), breaks = c(0, 7)) +
+  geom_hline(aes(yintercept = mean(Signals_per_mil_km_cycled)),
+             linetype = "solid") +
+  geom_hline(aes(yintercept = median(Signals_per_mil_km_cycled)),
+             linetype = "dashed") +
+  scale_fill_distiller(palette = "Reds", direction = 1) +
+  theme(axis.line = element_blank(),
+        axis.ticks.y = element_blank(),
+        axis.text.y = element_blank(),
+        axis.text = element_text(size = 16, colour = "grey25"),
+        legend.position = "none",
+        axis.title = element_blank(),
+        plot.margin = unit(c(0, 0, 0, 0), "cm"))
+
+# Create cowplot of both plots
+five_four = plot_grid(sig_pct_chloro, sig_pct_bar, rel_widths = c(1, 0.5), scale = c(1, 0.55))
+
+
 
 
 # ################################
@@ -1111,54 +1063,37 @@ clt_pct_chloro_bar = ggdraw() +
 # ################################
 
 # # create chloropleth
-tc_pct_chloro = tm_shape(chloropleth_dataset) +
-  tm_polygons("TrafficCalming_per_100000km_cycled", title = "Count per 100,000km cycle commute", palette = "Reds",
-              legend.format = list(text.separator = "<")) +
-  tm_layout(title = "Traffic calming",
-            legend.title.size = 1,
-            legend.text.size = 0.7,
-            legend.position = c("left","bottom"),
-            legend.bg.alpha = 1,
-            inner.margins = c(0.1,0.1,0.1,0.42), # creates wide right margin for barchart
-            frame = FALSE)
+tc_pct_chloro = ggplot() + 
+  geom_sf(data = chloropleth_dataset, aes(fill = TrafficCalming_per_mil_km_cycled), show.legend = F) +
+  scale_fill_distiller(type = "seq",
+                       palette = "Reds",
+                       na.value = "light grey", direction = 1) +
+  theme_void() +
+  theme(plot.margin = unit(c(0, 0, 0, 0), "cm"))
 
-# convert chloro to grob
-tc_pct_chloro_grob = tmap_grob(tc_pct_chloro)
-
-# # Generate barchart
-# Generate new column that divides traffic calming count into groups
-chloropleth_dataset <- chloropleth_dataset %>%
-  mutate(tc_pct_group = cut(TrafficCalming_per_100000km_cycled,
-                            breaks = seq(0, 350, by = 50),
-                            labels = c("> 0 < 50", "50 < 100", "100 < 150", 
-                                       "150 < 200", "200 < 250", "250 < 300", "300 < 350"),
-                            right = FALSE))
-
-# # Create vector of colours that match the chloropleth
-tc_pct_colours = c("#fee5d9","#fcbba1", "#fc9272", "#fb6a4a",
-                   "#ef3b2c", "#99000d")
-#
-# # create Bar chart
-tc_pct_bar = ggplot(chloropleth_dataset, aes(x = reorder(Borough_number, -TrafficCalming_per_100000km_cycled),
-                                             y = TrafficCalming_per_100000km_cycled,
-                                             fill = tc_pct_group)) +
-  geom_bar(stat = "identity", color = "black", size = 0.1) + # adds borders to bars
+# Create bar chart
+tc_pct_bar = ggplot(chloropleth_dataset, 
+                     aes(x = reorder(Borough_number, -TrafficCalming_per_mil_km_cycled), y = TrafficCalming_per_mil_km_cycled, 
+                         fill = TrafficCalming_per_mil_km_cycled)) +
+  geom_bar(stat = "identity", color = "black", size = 0.1) +
   coord_flip() +
-  labs(y = " Count per 100,000km cycle commute", x = NULL) +
   theme_classic() +
-  scale_y_continuous(limits = c(0, 350), expand = c(0,0)) +
-  scale_fill_manual(values = tc_pct_colours) +
-  theme(axis.line.y = element_blank(),
+  scale_y_continuous(limits = c(0, 3200), expand = c(0,0), breaks = c(0, 1500)) +
+  geom_hline(aes(yintercept = mean(TrafficCalming_per_mil_km_cycled)),
+             linetype = "solid") +
+  geom_hline(aes(yintercept = median(TrafficCalming_per_mil_km_cycled)),
+             linetype = "dashed") +
+  scale_fill_distiller(palette = "Reds", direction = 1) +
+  theme(axis.line = element_blank(),
         axis.ticks.y = element_blank(),
-        axis.line.x = element_blank(),
-        legend.position = "none")
-#
-# # Create cowplot of both plots
-tc_pct_chloro_bar = ggdraw() +
-  draw_plot(tc_pct_chloro_grob) +
-  draw_plot(tc_pct_bar,
-            width = 0.3, height = 0.6,
-            x = 0.57, y = 0.19)
+        axis.text.y = element_blank(),
+        axis.text = element_text(size = 16, colour = "grey25"),
+        legend.position = "none",
+        axis.title = element_blank(),
+        plot.margin = unit(c(0, 0, 0, 0), "cm"))
+
+# Create cowplot of both plots
+six_four = plot_grid(tc_pct_chloro, tc_pct_bar, rel_widths = c(1, 0.5), scale = c(1, 0.55))
 
 
 ###############################################################################
@@ -1441,169 +1376,4 @@ ggsave("/home/bananafan/Documents/PhD/Paper1/output/maps/all_clt_chlorobar.pdf",
 
 
 
-
-
-#Colour schemes
-# 
-# use palette_explorer() in tmap
-# tm_polygons(..., palette = "YlOrBr", n = 7, ...)
-# 
-# # and then this webpage to get the correct colour codes
-# https://loading.io/color/feature/
-# $palette-name: 'YlOrBr / 7'
-# $palette-color1: #ffffd4;
-#   $palette-color2: #fee391;
-#   $palette-color3: #fec44f;
-#   $palette-color4: #fe9929;
-#   $palette-color5: #ec7014;
-#   $palette-color6: #cc4c02;
-#   $palette-color7: #8c2d04;
-
-
-
-#Initial code - probably can be deleted
-
-# # create ggplot - use geom_col
-# asl_bar1 = ggplot(safety_borough_counts) +
-#   geom_col(aes(reorder(BOROUGH_short, -ASL), y = ASL)) +
-#   coord_flip() +
-#   labs(y = "Count", x = NULL) +
-#   theme_classic() + 
-#   scale_y_continuous(limits = c(0, 350), expand = c(0,0)) +
-#   theme(axis.line.y = element_blank(), 
-#         axis.ticks.y = element_blank(),
-#         axis.line.x = element_blank())
-# 
-# # convert chloro to grob
-# asl_chloro = tmap_grob(asl_chloro) 
-# 
-# # combine chlorpleth and bar chart using cowplot
-# asl1 = ggdraw() +
-#   draw_plot(asl_chloro) +
-#   draw_plot(asl_bar1,
-#             width = 0.3, height = 0.6,
-#             x = 0.58, y = 0.16) # position bar chart to the right of the chloropleth
-# asl1
-
-
-
-
-# # Generate barchart ATEEMPT 1
-# # Generate new column that divides signal count into groups
-# safety_borough_counts$Signals[is.na(safety_borough_counts$Signals)] = 0 # convert NA to 0
-# safety_borough_counts <- safety_borough_counts %>%
-#   mutate(signals_group = cut(Signals,
-#                              breaks = c(0, 1, 20, 40, 60, 80, 100),
-#                              labels = c("0", "1 to 20", "21 to 40", "41 to 60", "61 to 80",
-#                                         "81 to 100"),
-#                              right = FALSE))
-# 
-# 
-# # # Create vector of colours that match the chloropleth
-# my_colours_signals = c("#ffffd4", "#fed98e", "#fe9929", "#d95f0e", "#993404")
-# # create Bar chart  ### THIS DOESNT WORK AS THE COLOURS ARE WRONG DUE TO 0 (zeros are dropped)
-# ggplot(safety_borough_counts, aes(x = reorder(BOROUGH_short, -Signals), y = Signals, fill = signals_group)) +
-#   geom_bar(stat = "identity", color = "black", size = 0.1) +
-#   coord_flip() +
-#   labs(y = "Count", x = NULL) +
-#   theme_classic() +
-#   scale_y_continuous(limits = c(0, 100), expand = c(0,0), 
-#                      breaks = c(0, 20, 40, 60, 80, 100)) +  # ensures axis starts at 0 so no gap
-#   scale_fill_manual(values = my_colours_signals) +
-#   theme(axis.line.y = element_line(size = 0.2),
-#         axis.ticks.y = element_blank(),
-#         axis.line.x = element_line(size = 0.1),
-#         legend.position = "none")
-
-
-# facet plots to cope with difference in scale of values
-# https://stackoverflow.com/questions/7194688/using-ggplot2-can-i-insert-a-break-in-the-axis?noredirect=1&lq=1
-
-# df <- data.frame(myLetter=LETTERS[1:4], myValue=runif(12) + rep(c(4,0,0),2))  # cluster a few values well above 1
-# df$myFacet <- df$myValue > 3
-# (ggplot(df, aes(y=myLetter, x=myValue)) 
-#   + geom_point() 
-#   + facet_grid(. ~ myFacet, scales="free", space="free")
-#   + scale_x_continuous(breaks = seq(0, 5, .25)) # this gives both facets equal interval spacing.
-#   + theme(strip.text.x = element_blank()) # get rid of the facet labels
-# 
-
-# other code that might enable split axis
-# 
-# library(plotrix)
-# gap.barplot(df$a, gap=c(5,495),horiz=T)
-# 
-# scale_x_discrete(labels=c("5", "", "","", "Extremely\ndifficult")) # this can alter the axis label
-
-
-###############################################################################
-###############################################################################
-# Problem solving code for managing NAs, units etc
-
-# # FOr ASL all values > 0
-# # For raw - we cut from 1 upwards for bar chart
-# # for area, units are in km^2 so had to drop units and round to 2dp in order to do the cut into categories for the bar chart
-# # the parameters for cut were:
-# #breaks = c(0, 2, 4, 6, 8, 10, 12, 14, 43),
-# #labels = c("0 < 2", "2 < 4", "4 < 6", "6 < 8",
-# #           "8 < 10", "10 < 12", "12 < 14", "42 < 44"),
-# 
-# # FOr signals, we have values of 0 (signals) and NA (signalsNA)
-# # can chloropleth SignalsNA_by_area ok with breaks at 0, 1 and then adding a legend that relabels grey missing as 0
-# # Issue is then with generating the bar chart
-# # PLan is to try different ways of cutting and potentially converting to numeric etc to see what works to generate bar chart
-# 
-# # atttempt 1)
-# 
-# smaller_dataset <- smaller_dataset %>%
-#   mutate(signals_group1 = cut(Signals_by_area,
-#                               breaks = c(0, 1, 2, 3, 4, 5, 21),
-#                               labels = c("> 0 < 1", "1 < 2", "2 < 3", "3 < 4", "4 < 5", "20 < 21"),
-#                               right = FALSE)) 
-# 
-# # attempt 2)
-# # Drop units and round so that intervals are plotted ok
-# smaller_dataset$Signals_by_area_numeric = round(units::drop_units(smaller_dataset$Signals_by_area), digits = 2)
-# 
-# smaller_dataset <- smaller_dataset %>%
-#   mutate(signals_group2 = cut(Signals_by_area_numeric ,
-#                               breaks = c(0, 1, 2, 3, 4, 5, 21),
-#                               labels = c("> 0 < 1", "1 < 2", "2 < 3", "3 < 4", "4 < 5", "20 < 21"),
-#                               right = FALSE)) 
-# 
-# # attempts 1 and 2 result in the right groups for everything > 1 but values of 0 and <1 are grouped together
-# 
-# # attemp 3) using SIgnalsNA_by_narea
-# smaller_dataset <- smaller_dataset %>%
-#   mutate(signals_group3 = cut(SignalsNA_by_area,
-#                               breaks = c(0, 1, 2, 3, 4, 5, 21),
-#                               labels = c("> 0 < 1", "1 < 2", "2 < 3", "3 < 4", "4 < 5", "20 < 21"),
-#                               right = FALSE))  
-# #-> 0s labelled as NA, but other groups done ok.  
-# 
-# # try barchar with this
-# ggplot(smaller_dataset, 
-#        aes(x = reorder(Borough_number, -SignalsNA_by_area), 
-#            y = SignalsNA_by_area, fill = signals_group3)) +
-#   geom_bar(stat = "identity", color = "black", size = 0.1)   # adds borders to bars )
-# # Don't know how to automatically pick scale for object of type units. Defaulting to continuous.
-# # Error in Ops.units(x, range[1]) : 
-# #   both operands of the expression should be "units" objects
-# 
-# # attempt 4)
-# # as above doesnt work as SignalsNA_by_area is in units then remove units
-# smaller_dataset$SignalsNA_by_area_numeric = round(units::drop_units(smaller_dataset$SignalsNA_by_area), digits = 2) 
-# 
-# # now need to recut
-# smaller_dataset <- smaller_dataset %>%
-#   mutate(signals_group4 = cut(SignalsNA_by_area_numeric,
-#                               breaks = c(0, 1, 2, 3, 4, 5, 21),
-#                               labels = c("> 0 < 1", "1 < 2", "2 < 3", "3 < 4", "4 < 5", "20 < 21"),
-#                               right = FALSE))
-# 
-# # now try bar chart again
-# ggplot(smaller_dataset, 
-#        aes(x = reorder(Borough_number, -SignalsNA_by_area_numeric), 
-#            y = SignalsNA_by_area_numeric, fill = signals_group3)) +
-#   geom_bar(stat = "identity", color = "black", size = 0.1)   # adds borders to bars ) # THis looks to work
 
