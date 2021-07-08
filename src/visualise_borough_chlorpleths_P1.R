@@ -10,7 +10,7 @@
 library(tidyverse)
 library(tmap)
 library(sf)
- library(cowplot)
+library(cowplot)
 
 
 ################################
@@ -76,7 +76,9 @@ lon_lad_2020_c2c_reduced = lon_lad_2020_c2c %>%
 
 # Import CID borough counts 
 CID_count = readRDS(file = "/home/bananafan/Documents/PhD/Paper1/data/CID_count_by_borough")
-CID_length = readRDS(file = "/home/bananafan/Documents/PhD/Paper1/data/CID_length_by_borough")
+#CID_length = readRDS(file = "/home/bananafan/Documents/PhD/Paper1/data/CID_length_by_borough")
+CID_length = readRDS(file = "/home/bananafan/Documents/PhD/Paper1/data/CID_length_by_borough_on_off")
+
 
 # Create new column (SignalsNA) where 0 are changed to NA - Signals is the only dataset where some Boroughs have 0 assets
 CID_count$SignalsNA = CID_count$Signals
@@ -86,7 +88,7 @@ CID_count$SignalsNA[CID_count$SignalsNA == 0] = NA
 CID_count_safety = CID_count %>%
   select(c("BOROUGH", "ASL", "Crossings", "Signals", "SignalsNA", "TrafficCalming"))
 CID_length_safety = CID_length %>%
-  select(c("BOROUGH", "CycleLaneTrack_km"))
+  select(c("BOROUGH", "clt_total_length_km", "length_km_offroad", "length_km_onroad"))
 
 
 # 3) Population estimates
@@ -128,22 +130,35 @@ chloropleth_dataset$Borough_Area_km2_no_units = round(units::drop_units(chloropl
 
 # produce counts by area and per 100000 head population
 chloropleth_dataset <- chloropleth_dataset %>%
-  mutate(across(.cols = c("ASL", "Crossings", "CycleLaneTrack_km", "Signals", "SignalsNA", "TrafficCalming"),
+  mutate(across(.cols = c("ASL", "Crossings", "clt_total_length_km", "length_km_offroad", 
+                          "length_km_onroad", "Signals", "SignalsNA", "TrafficCalming"),
                 .fns = ~.x/Borough_Area_km2_no_units,
                 .names = "{.col}_by_area")) %>%
-  mutate(across(.cols = c("ASL", "Crossings", "CycleLaneTrack_km", "Signals", "SignalsNA", "TrafficCalming"),
+  mutate(across(.cols = c("ASL", "Crossings", "clt_total_length_km", "length_km_offroad",
+                          "length_km_onroad", "Signals", "SignalsNA", "TrafficCalming"),
                 .fns = ~.x/Population_100000,
                 .names = "{.col}_per_100000pop")) %>%
-  mutate(across(.cols = c("ASL", "Crossings", "CycleLaneTrack_km", "Signals","SignalsNA", "TrafficCalming"),
+  mutate(across(.cols = c("ASL", "Crossings", "clt_total_length_km", "length_km_offroad", 
+                          "length_km_onroad", "Signals","SignalsNA", "TrafficCalming"),
                 .fns = ~.x/total_mil_km_cycled_for_commuting_per_year_estimated,
                 .names = "{.col}_per_mil_km_cycled"))
 
 # Create variables with dropped units (ggplot doesnt like units)
-chloropleth_dataset$clt_raw_numeric = round(units::drop_units(chloropleth_dataset$CycleLaneTrack_km), digits = 2)
-chloropleth_dataset$clt_area_numeric = round(units::drop_units(chloropleth_dataset$CycleLaneTrack_km_by_area), digits = 2)
-chloropleth_dataset$clt_pop_numeric = round(units::drop_units(chloropleth_dataset$CycleLaneTrack_km_per_100000pop), digits = 2)
-chloropleth_dataset$clt_pct_numeric = round(units::drop_units(chloropleth_dataset$CycleLaneTrack_km_per_mil_km_cycled), digits = 2)
+chloropleth_dataset$clt_raw_numeric = round(units::drop_units(chloropleth_dataset$clt_total_length_km), digits = 2)
+chloropleth_dataset$on_clt_raw_numeric = round(units::drop_units(chloropleth_dataset$length_km_onroad), digits = 2)
+chloropleth_dataset$off_clt_raw_numeric = round(units::drop_units(chloropleth_dataset$length_km_offroad), digits = 2)
 
+chloropleth_dataset$clt_area_numeric = round(units::drop_units(chloropleth_dataset$clt_total_length_km_by_area), digits = 2)
+chloropleth_dataset$on_clt_area_numeric = round(units::drop_units(chloropleth_dataset$length_km_onroad_by_area), digits = 2)
+chloropleth_dataset$off_clt_area_numeric = round(units::drop_units(chloropleth_dataset$length_km_offroad_by_area), digits = 2)
+
+chloropleth_dataset$clt_pop_numeric = round(units::drop_units(chloropleth_dataset$clt_total_length_km_per_100000pop), digits = 2)
+chloropleth_dataset$on_clt_pop_numeric = round(units::drop_units(chloropleth_dataset$length_km_onroad_per_100000pop), digits = 2)
+chloropleth_dataset$off_clt_pop_numeric = round(units::drop_units(chloropleth_dataset$length_km_offroad_per_100000pop), digits = 2)
+
+chloropleth_dataset$clt_pct_numeric = round(units::drop_units(chloropleth_dataset$clt_total_length_km_per_mil_km_cycled), digits = 2)
+chloropleth_dataset$on_clt_pct_numeric = round(units::drop_units(chloropleth_dataset$length_km_onroad_per_mil_km_cycled), digits = 2)
+chloropleth_dataset$off_clt_pct_numeric = round(units::drop_units(chloropleth_dataset$length_km_offroad_per_mil_km_cycled), digits = 2)
 
 # Create df of just City of London data as this is an outlier and often needs to be handled differently in the visualisations
 city_chloropleth_dataset = chloropleth_dataset %>%
@@ -353,7 +368,7 @@ three_one = plot_grid(cross_raw_chloro, cross_raw_bar, rel_widths = c(1, 0.5), s
 # Cycle lanes and Tracks - LENGTH #
 ###################################
 
-# create chloropleth
+# create chloropleth - all CLT
 clt_raw_chloro = ggplot(chloropleth_dataset, 
                         aes(fill = clt_raw_numeric)) + 
   geom_sf(show.legend = F) +
@@ -362,7 +377,7 @@ clt_raw_chloro = ggplot(chloropleth_dataset,
   theme_void() +
   theme(plot.margin = unit(c(0, 0, 0, 0), "cm"))
 
-# create Bar chart
+# create Bar chart - all CLT
 clt_raw_bar = ggplot(chloropleth_dataset, 
                      aes(x = reorder(Borough_number, -clt_raw_numeric), y = clt_raw_numeric, 
                          fill = clt_raw_numeric)) +
@@ -385,6 +400,77 @@ clt_raw_bar = ggplot(chloropleth_dataset,
 
 # Create cowplot of both plots
 four_one = plot_grid(clt_raw_chloro, clt_raw_bar, rel_widths = c(1, 0.5), scale = c(1, 0.55))
+
+#------
+
+# create chloropleth - on road clt
+clt_on_raw_chloro = ggplot(chloropleth_dataset, 
+                        aes(fill = on_clt_raw_numeric)) + 
+  geom_sf(show.legend = F) +
+  scale_fill_distiller(type = "seq",
+                       palette = "YlOrBr", direction = 1) +
+  theme_void() +
+  theme(plot.margin = unit(c(0, 0, 0, 0), "cm"))
+
+# create Bar chart - on road clt
+clt_on_raw_bar = ggplot(chloropleth_dataset, 
+                     aes(x = reorder(Borough_number, -on_clt_raw_numeric), y = on_clt_raw_numeric, 
+                         fill = on_clt_raw_numeric)) +
+  geom_bar(stat = "identity", color = "black", size = 0.1) +
+  coord_flip() +
+  theme_classic() +
+  scale_y_continuous(limits = c(0, 60), expand = c(0,0), breaks = c(0, 30)) +
+  geom_hline(aes(yintercept = mean(on_clt_raw_numeric)),
+             linetype = "solid") +
+  geom_hline(aes(yintercept = median(on_clt_raw_numeric)),
+             linetype = "dashed") +
+  scale_fill_distiller(palette = "YlOrBr", direction = 1) +
+  theme(axis.line = element_blank(),
+        axis.ticks.y = element_blank(),
+        axis.text.y = element_blank(),
+        axis.text = element_text(size = 16, colour = "grey25"),
+        legend.position = "none",
+        axis.title = element_blank(),
+        plot.margin = unit(c(0, 0, 0, 0), "cm"))
+
+# Create cowplot of both plots
+four_on_one = plot_grid(clt_on_raw_chloro, clt_on_raw_bar, rel_widths = c(1, 0.5), scale = c(1, 0.55))
+
+
+#------
+
+# create chloropleth - off road clt
+clt_off_raw_chloro = ggplot(chloropleth_dataset, 
+                           aes(fill = off_clt_raw_numeric)) + 
+  geom_sf(show.legend = F) +
+  scale_fill_distiller(type = "seq",
+                       palette = "YlOrBr", direction = 1) +
+  theme_void() +
+  theme(plot.margin = unit(c(0, 0, 0, 0), "cm"))
+
+# create Bar chart - off road clt
+clt_off_raw_bar = ggplot(chloropleth_dataset, 
+                        aes(x = reorder(Borough_number, -off_clt_raw_numeric), y = off_clt_raw_numeric, 
+                            fill = off_clt_raw_numeric)) +
+  geom_bar(stat = "identity", color = "black", size = 0.1) +
+  coord_flip() +
+  theme_classic() +
+  scale_y_continuous(limits = c(0, 120), expand = c(0,0), breaks = c(0, 60)) +
+  geom_hline(aes(yintercept = mean(off_clt_raw_numeric)),
+             linetype = "solid") +
+  geom_hline(aes(yintercept = median(off_clt_raw_numeric)),
+             linetype = "dashed") +
+  scale_fill_distiller(palette = "YlOrBr", direction = 1) +
+  theme(axis.line = element_blank(),
+        axis.ticks.y = element_blank(),
+        axis.text.y = element_blank(),
+        axis.text = element_text(size = 16, colour = "grey25"),
+        legend.position = "none",
+        axis.title = element_blank(),
+        plot.margin = unit(c(0, 0, 0, 0), "cm"))
+
+# Create cowplot of both plots
+four_off_one = plot_grid(clt_off_raw_chloro, clt_off_raw_bar, rel_widths = c(1, 0.5), scale = c(1, 0.55))
 
 
 ###########
@@ -559,7 +645,7 @@ three_two = plot_grid(cross_area_chloro, cross_area_bar, rel_widths = c(1, 0.5),
 # Cycle lanes and Tracks (length) - Area #
 ##########################################
 
-# create chloropleth
+# create chloropleth - all clt
 clt_area_chloro = ggplot(chloropleth_dataset, 
                         aes(fill = clt_area_numeric)) + 
   geom_sf(show.legend = F) +
@@ -568,7 +654,7 @@ clt_area_chloro = ggplot(chloropleth_dataset,
   theme_void() +
   theme(plot.margin = unit(c(0, 0, 0, 0), "cm"))
 
-# create Bar chart
+# create Bar chart - all clt
 clt_area_bar = ggplot(chloropleth_dataset, 
                      aes(x = reorder(Borough_number, -clt_area_numeric), y = clt_area_numeric, 
                          fill = clt_area_numeric)) +
@@ -593,6 +679,83 @@ clt_area_bar = ggplot(chloropleth_dataset,
 four_two = plot_grid(clt_area_chloro, clt_area_bar, rel_widths = c(1, 0.5), scale = c(1, 0.55))
 
 
+#-------------------------------
+# create chloropleth - on road clt
+on_clt_area_chloro = ggplot() + 
+  geom_sf(data = drop_city, aes(fill = on_clt_area_numeric), show.legend = F) +
+  geom_sf(data = city_chloropleth_dataset, aes(fill = on_clt_area_numeric), fill = "black") +
+  scale_fill_distiller(type = "seq",
+                       palette = "Blues",
+                       na.value = "light grey", direction = 1) +
+  theme_void() +
+  theme(plot.margin = unit(c(0, 0, 0, 0), "cm"))
+
+# create Bar chart - on_road clt
+drop_city_reorder = drop_city %>%
+  arrange(desc(on_clt_area_numeric)) %>%
+  mutate(Borough_number = (row_number() + 1))
+
+on_clt_area_bar = ggplot() +
+  geom_bar(data = city_chloropleth_dataset, aes(x = Borough_number, y = on_clt_area_numeric),
+           stat = "identity", color = "black", size = 0.1, fill = "black") +
+  scale_fill_distiller(palette = "Blues", direction = 1) +
+  geom_bar(data = drop_city_reorder, aes(x = Borough_number, y = on_clt_area_numeric, fill = on_clt_area_numeric),
+           stat = "identity", color = "black", size = 0.1) +
+  coord_flip() +
+  theme_classic() +
+  scale_y_continuous(limits = c(0, 8), expand = c(0,0), breaks = c(0, 4)) +
+  geom_hline(data = chloropleth_dataset, aes(yintercept = mean(on_clt_area_numeric)),
+             linetype = "solid") +
+  geom_hline(data = chloropleth_dataset, aes(yintercept = median(on_clt_area_numeric)),
+             linetype = "dashed") +
+  theme(axis.line = element_blank(),
+        axis.ticks.y = element_blank(),
+        axis.text.y = element_blank(),
+        axis.text = element_text(size = 16, colour = "grey25"),
+        legend.position = "none",
+        axis.title = element_blank(),
+        plot.margin = unit(c(0, 0, 0, 0), "cm"))
+
+# Create cowplot of both plots
+on_four_two = plot_grid(on_clt_area_chloro, on_clt_area_bar, rel_widths = c(1, 0.5), scale = c(1, 0.55))
+
+
+
+#-------------------------------
+# create chloropleth - off road clt
+off_clt_area_chloro = ggplot(chloropleth_dataset, 
+                         aes(fill = off_clt_area_numeric)) + 
+  geom_sf(show.legend = F) +
+  scale_fill_distiller(type = "seq",
+                       palette = "Blues", direction = 1) +
+  theme_void() +
+  theme(plot.margin = unit(c(0, 0, 0, 0), "cm"))
+
+# create Bar chart - all clt
+off_clt_area_bar = ggplot(chloropleth_dataset, 
+                      aes(x = reorder(Borough_number, -off_clt_area_numeric), y = off_clt_area_numeric, 
+                          fill = off_clt_area_numeric)) +
+  geom_bar(stat = "identity", color = "black", size = 0.1) +
+  coord_flip() +
+  theme_classic() +
+  scale_y_continuous(limits = c(0, 4), expand = c(0,0), breaks = c(0, 2)) +
+  geom_hline(aes(yintercept = mean(off_clt_area_numeric)),
+             linetype = "solid") +
+  geom_hline(aes(yintercept = median(off_clt_area_numeric)),
+             linetype = "dashed") +
+  scale_fill_distiller(palette = "Blues", direction = 1) +
+  theme(axis.line = element_blank(),
+        axis.ticks.y = element_blank(),
+        axis.text.y = element_blank(),
+        axis.text = element_text(size = 16, colour = "grey25"),
+        legend.position = "none",
+        axis.title = element_blank(),
+        plot.margin = unit(c(0, 0, 0, 0), "cm"))
+
+# Create cowplot of both plots
+off_four_two = plot_grid(off_clt_area_chloro, off_clt_area_bar, rel_widths = c(1, 0.5), scale = c(1, 0.55))
+
+
 ###########
 # Signals #
 ###########
@@ -607,7 +770,7 @@ sig_area_chloro = ggplot() +
   theme_void() +
   theme(plot.margin = unit(c(0, 0, 0, 0), "cm"))
 
-# Create nar chart
+# Create bar chart
 drop_city_reorder = drop_city %>%
   arrange(desc(Signals_by_area)) %>%
   mutate(Borough_number = (row_number() + 1))
