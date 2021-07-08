@@ -532,20 +532,34 @@ cl2_known_test %>%
 
 
 
+# testing ahead of d/w robin
+# line segment from st_planar
+# using barnet_speed_limits
+# n= 4810
+names(barnet_speeds_limits)
+summary(barnet_speeds_limits$st_lengths)
+unique(barnet_speeds_limits$st_lengths)
+barnet_speeds_limits$segment_length = st_length(barnet_speeds_limits$geometry)
+summary(barnet_speeds_limits$segment_length)
+# Min.   1st Qu.    Median      Mean   3rd Qu.      Max. 
+# 0.0976   50.4892  108.1255  170.5968  225.2357 2084.9481 
 
+library(stplanr)
+library(lwgeom)
+segmetize_test = st_segmentize(barnet_speeds_limits, units::set_units(250, "m"))
+names(segmetize_test)
+segmetize_test = lwgeom::st_subdivide(segmetize_test, 5) %>% sf::st_collection_extract("LINESTRING") # now have 12110 
+names(segmetize_test)
+mapview(segmetize_test, zcol = "speed_limit")
 
+barnet_intersects = st_join(barnet_cl_buffer, segmetize_test) # n = 306 as opposed to 325  Not made huge difference to how many need to manage
+segmetize_lon = st_segmentize(osm_speed_limits_tidy, units::set_units(250, "m")) #n = 71660
+segmetize_lon = lwgeom::st_subdivide(segmetize_lon, 5) %>% sf::st_collection_extract("LINESTRING") # now have 149503
 
-
-
-
-
-
-
-
-
+cl_sl_intersects = st_join(cl_buffer, segmetize_lon) # n was 45406 (buffering lanes and roads), now 43168 
+# but still large numbers that require a check.  
 
   
-         
 ##########################################################################################         
 barnet_20 = barnet_intersects %>%
   filter(speed_limit == "20mph")
