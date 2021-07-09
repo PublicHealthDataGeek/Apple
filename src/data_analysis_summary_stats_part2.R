@@ -7,7 +7,7 @@
 # This code generates the summary statistics used in Paper 1                   #
 # 1) Detailed examination of variables for each of the 5 safety datasets with 
 #     cross tabs
-# 2) Summary statistics and box plots for Borough level safety infrastructure
+# 2) Summary statistics for Borough level safety infrastructure
 # 3) Borough level data for safety infrastructure
 
 
@@ -675,7 +675,7 @@ write_csv2(calming_characteristics, file = "/home/bananafan/Downloads/calming_ch
 
 
 ###############################################################################
-#                       Summary stats and Box plot                            #
+#                       Summary stats at Borough level                       #
 #                                                                             #
 # - safety infrastructure at Borough level                                    #
  
@@ -684,9 +684,7 @@ write_csv2(calming_characteristics, file = "/home/bananafan/Downloads/calming_ch
 CID_count = readRDS(file = "/home/bananafan/Documents/PhD/Paper1/data/CID_count_by_borough")
 CID_length = readRDS(file = "/home/bananafan/Documents/PhD/Paper1/data/CID_length_by_borough_on_off")
 
-
-
-# Calculate summary statistics for asset type  
+# Join df  
 safe_cnt = CID_count %>%
   select(c(BOROUGH, ASL, Crossings, Signals, TrafficCalming))
 safe_ln = CID_length %>%
@@ -694,27 +692,33 @@ safe_ln = CID_length %>%
   drop_units()
 safe_df = left_join(safe_cnt, safe_ln, by = "BOROUGH")
 
-summary = safe_df %>%
-  summarise(across(.cols = -c(BOROUGH), list(min = min, max = max, median = median, 
-                                      Q1 = ~quantile(., probs = 0.25), 
-                                      Q3 = ~quantile(., probs = 0.75),
-                                      mean = mean, sd = sd)))
+# Functions to create summary data how I want it
+my.summary <- function(x,...){ 
+  c("Range" = paste0(round(min(x, ...), digits = 1), " - ", paste0(round(max(x,...), digits = 1))),
+    "Mean (SD)" = paste0(round(mean(x, ...), digits = 1), " (", paste0(round(sd(x, ...), digits = 1)), ")"),
+    "Median (IQR)" = paste0(round(median(x, ...), digits = 1), "  (", paste0(round((quantile(x, 0.25)), digits = 1), " - ",  
+                                                                             round((quantile(x, 0.75)), digits = 1)), ")"))
+} 
 
-summary = summary %>% pivot_longer(
-  everything(),
-  names_to = c("Asset", ".value"),
-  names_pattern = "(.*)_(.*)") %>%
-  mutate(across(.cols = c("mean", "sd"), round, 1))
+my.summary_clt <- function(x,...){ 
+  c("Range" = paste0(round(min(x, ...), digits = 1), " - ", paste0(round(max(x,...), digits = 1), " km")),
+    "Mean (SD)" = paste0(round(mean(x, ...), digits = 1), " km", " (", paste0(round(sd(x, ...), digits = 1)), " km)"),
+    "Median (IQR)" = paste0(round(median(x, ...), digits = 1), " km", "  (", paste0(round((quantile(x, 0.25)), digits = 1), " - ",  
+                                                                                    round((quantile(x, 0.75)), digits = 1)), " km)"))
+} 
 
-summary$Range = paste(summary$min, "-", summary$max)
-summary$MeanSD = paste(summary$mean, "(", summary$sd, ")")
-summary$MedianIQR = paste(summary$median, "(", summary$Q1, " - ", summary$Q3, ")")
+# Calculate summary statistics for asset type 
+borough_summary = data.frame(
+  Measure = c("Range", "Mean (SD)", "Median (IQR)"), 
+  ASL = my.summary(safe_df2$ASL),  
+  Crossings = my.summary(safe_df2$Crossings),
+  clt_total_length_km = my.summary_clt(safe_df2$clt_total_length_km),
+  length_km_onroad = my.summary_clt(safe_df2$length_km_onroad),
+  length_km_offroad = my.summary_clt(safe_df2$length_km_offroad),
+  Signals = my.summary(safe_df2$Signals),
+  TrafficCalming = my.summary(safe_df2$TrafficCalming))
 
-# create table of summary statistics
-borough_summary_table = data.table::transpose(summary, keep.names = "Summary_statistic", make.names = "Asset") %>%
-  filter(Summary_statistic == "Range" | Summary_statistic == "MeanSD" | Summary_statistic == "MedianIQR")
-
-
+borough_summary_transpose = t(borough_summary) # get in format suitable for paper
 
 
 
@@ -722,17 +726,16 @@ borough_summary_table = data.table::transpose(summary, keep.names = "Summary_sta
 #                       Borough level data and ranking                        #
 #                                                                             #
 # - safety infrastructure at Borough level  - table by Borough                #
-# - summary statistics
 
 # Load datasets - these datasets were created 2_3_2021 from TFL datasets downloaded 25/2/21
 CID_count = readRDS(file = "/home/bananafan/Documents/PhD/Paper1/data/CID_count_by_borough")
-CID_length = readRDS(file = "/home/bananafan/Documents/PhD/Paper1/data/CID_length_by_borough")
+CID_length = readRDS(file = "/home/bananafan/Documents/PhD/Paper1/data/CID_length_by_borough_on_off")
 
 # Get safety infrastructure in one dataset 
 safe_cnt = CID_count %>%
   select(c(BOROUGH, ASL, Crossings, Signals, TrafficCalming))
 safe_ln = CID_length %>%
-  select(BOROUGH, CycleLaneTrack_km) %>%
+  select(BOROUGH, clt_total_length_km, length_km_onroad, length_km_offroad) %>%
   drop_units()
 safe_df2 = left_join(safe_cnt, safe_ln, by = "BOROUGH")
 
@@ -749,7 +752,7 @@ safe_df2 = safe_df2 %>%
 # use rank(-.x) to get ranking so that borough with most assets has highest ranking
 safe_df2_rank = safe_df2 %>%
   mutate(across(.cols = c("ASL", "Crossings", "Signals", "TrafficCalming", 
-                          "CycleLaneTrack_km"),
+                          "clt_total_length_km", "length_km_onroad", "length_km_offroad"),
                 .fns = ~round(rank(-.x)), 
                 .names = "{.col}_count_rank")) # now 12 variables
 
@@ -758,41 +761,19 @@ safe_df2_rank$ASL = paste(safe_df2_rank$ASL, "(", safe_df2_rank$ASL_count_rank, 
 safe_df2_rank$Crossings = paste(safe_df2_rank$Crossings, "(", safe_df2_rank$Crossings_count_rank, ")")
 safe_df2_rank$Signals = paste(safe_df2_rank$Signals, "(", safe_df2_rank$Signals_count_rank, ")")
 safe_df2_rank$TrafficCalming = paste(safe_df2_rank$TrafficCalming, "(", safe_df2_rank$TrafficCalming_count_rank, ")")
-safe_df2_rank$CycleLaneTrack_km = paste(safe_df2_rank$CycleLaneTrack_km, "km (", safe_df2_rank$CycleLaneTrack_km_count_rank, ")")
+safe_df2_rank$clt_total_length_km = paste(safe_df2_rank$clt_total_length_km, "km (", safe_df2_rank$clt_total_length_km, ")")
+safe_df2_rank$length_km_onroad = paste(safe_df2_rank$length_km_onroad, "km (", safe_df2_rank$length_km_onroad, ")")
+safe_df2_rank$length_km_offroad = paste(safe_df2_rank$length_km_offroad, "km (", safe_df2_rank$length_km_offroad, ")")
 
 # Select columns I want to keep
 safe_borough_rank = safe_df2_rank %>%
   select(c("London", "BOROUGH", "ASL", "Crossings", "Signals", "TrafficCalming", 
-           "CycleLaneTrack_km")) %>%
+           "clt_total_length_km", "length_km_onroad", "length_km_offroad")) %>%
   arrange(London, by_group = TRUE)
 
 # Save dataset so can send to journal/have it in editable format
 write_csv2(safe_borough_rank, 
            file = "/home/bananafan/Documents/PhD/Paper1/output/summary_stats/borough_safety_table.csv")
-
-# Create summary statistics table
-
-my.summary <- function(x,...){ 
-  c("Range" = paste0(round(min(x, ...), digits = 1), " - ", paste0(round(max(x,...), digits = 1))),
-    "Mean (SD)" = paste0(round(mean(x, ...), digits = 1), " (", paste0(round(sd(x, ...), digits = 1)), ")"),
-    "Median (IQR)" = paste0(round(median(x, ...), digits = 1), "  (", paste0(round((quantile(x, 0.25)), digits = 1), " - ",  
-                                                                             round((quantile(x, 0.75)), digits = 1)), ")"))
-} 
-
-my.summary_clt <- function(x,...){ 
-  c("Range" = paste0(round(min(x, ...), digits = 1), " - ", paste0(round(max(x,...), digits = 1), " km")),
-    "Mean (SD)" = paste0(round(mean(x, ...), digits = 1), " km", " (", paste0(round(sd(x, ...), digits = 1)), " km)"),
-    "Median (IQR)" = paste0(round(median(x, ...), digits = 1), " km", "  (", paste0(round((quantile(x, 0.25)), digits = 1), " - ",  
-                                                                             round((quantile(x, 0.75)), digits = 1)), " km)"))
-} 
-
-borough_summary = data.frame(
-  Measure = c("Range", "Mean (SD)", "Median (IQR)"), 
-  ASL = my.summary(safe_df2$ASL),  
-  Crossings = my.summary(safe_df2$Crossings),
-  CycleLaneTrack_km = my.summary_clt(safe_df2$CycleLaneTrack_km),
-  Signals = my.summary(safe_df2$Signals),
-  TrafficCalming = my.summary(safe_df2$TrafficCalming))
 
 
 
