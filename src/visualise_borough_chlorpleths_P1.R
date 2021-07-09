@@ -8,7 +8,6 @@
 
 # Load packages
 library(tidyverse)
-library(tmap)
 library(sf)
 library(cowplot)
 
@@ -434,7 +433,7 @@ clt_on_raw_bar = ggplot(chloropleth_dataset,
         plot.margin = unit(c(0, 0, 0, 0), "cm"))
 
 # Create cowplot of both plots
-four_on_one = plot_grid(clt_on_raw_chloro, clt_on_raw_bar, rel_widths = c(1, 0.5), scale = c(1, 0.55))
+seven_one = plot_grid(clt_on_raw_chloro, clt_on_raw_bar, rel_widths = c(1, 0.5), scale = c(1, 0.55))
 
 
 #------
@@ -470,7 +469,7 @@ clt_off_raw_bar = ggplot(chloropleth_dataset,
         plot.margin = unit(c(0, 0, 0, 0), "cm"))
 
 # Create cowplot of both plots
-four_off_one = plot_grid(clt_off_raw_chloro, clt_off_raw_bar, rel_widths = c(1, 0.5), scale = c(1, 0.55))
+eight_one = plot_grid(clt_off_raw_chloro, clt_off_raw_bar, rel_widths = c(1, 0.5), scale = c(1, 0.55))
 
 
 ###########
@@ -717,7 +716,7 @@ on_clt_area_bar = ggplot() +
         plot.margin = unit(c(0, 0, 0, 0), "cm"))
 
 # Create cowplot of both plots
-on_four_two = plot_grid(on_clt_area_chloro, on_clt_area_bar, rel_widths = c(1, 0.5), scale = c(1, 0.55))
+seven_two = plot_grid(on_clt_area_chloro, on_clt_area_bar, rel_widths = c(1, 0.5), scale = c(1, 0.55))
 
 
 
@@ -753,7 +752,7 @@ off_clt_area_bar = ggplot(chloropleth_dataset,
         plot.margin = unit(c(0, 0, 0, 0), "cm"))
 
 # Create cowplot of both plots
-off_four_two = plot_grid(off_clt_area_chloro, off_clt_area_bar, rel_widths = c(1, 0.5), scale = c(1, 0.55))
+eight_two = plot_grid(off_clt_area_chloro, off_clt_area_bar, rel_widths = c(1, 0.5), scale = c(1, 0.55))
 
 
 ###########
@@ -938,7 +937,7 @@ three_three = plot_grid(cross_pop_chloro, cross_pop_bar, rel_widths = c(1, 0.5),
 # Cycle lanes and Tracks (length) - Population #
 ################################################
 
-# Create chloropleth
+# Create chloropleth - all clt
 clt_pop_chloro = ggplot() + 
   geom_sf(data = drop_city, aes(fill = clt_pop_numeric), show.legend = F) +
   geom_sf(data = city_chloropleth_dataset, aes(fill = clt_pop_numeric), fill = "black") +
@@ -947,7 +946,7 @@ clt_pop_chloro = ggplot() +
   theme_void() +
   theme(plot.margin = unit(c(0, 0, 0, 0), "cm"))
 
-# Create barchart
+# Create barchart - all clt
 drop_city_reorder = drop_city %>%
   arrange(desc(clt_pop_numeric)) %>%
   mutate(Borough_number = (row_number() + 1))  # this ensures that there is 'spare' bar space for the city one to drop into when plotted
@@ -973,8 +972,84 @@ clt_pop_bar = ggplot() +
         axis.title = element_blank(),
         plot.margin = unit(c(0, 0, 0, 0), "cm"))
 
-# Create cowplot of both plots
+# Create cowplot of both plots - all clt
 four_three = plot_grid(clt_pop_chloro, clt_pop_bar, rel_widths = c(1, 0.5), scale = c(1, 0.55))
+
+#-------------------------------------------------------------------
+
+# Create chloropleth - on road only clt
+on_clt_pop_chloro = ggplot() + 
+  geom_sf(data = drop_city, aes(fill = on_clt_pop_numeric), show.legend = F) +
+  geom_sf(data = city_chloropleth_dataset, aes(fill = on_clt_pop_numeric), fill = "black") +
+  scale_fill_distiller(type = "seq",
+                       palette = "Greens", direction = 1) +
+  theme_void() +
+  theme(plot.margin = unit(c(0, 0, 0, 0), "cm"))
+
+# Create barchart - on road only clt
+drop_city_reorder = drop_city %>%
+  arrange(desc(on_clt_pop_numeric)) %>%
+  mutate(Borough_number = (row_number() + 1))  # this ensures that there is 'spare' bar space for the city one to drop into when plotted
+
+on_clt_pop_bar = ggplot() +
+  geom_bar(data = city_chloropleth_dataset, aes(x = Borough_number, y = on_clt_pop_numeric),
+           stat = "identity", color = "black", size = 0.1, fill = "black") +
+  scale_fill_distiller(palette = "Greens", direction = 1) +
+  geom_bar(data = drop_city_reorder, aes(x = Borough_number, y = on_clt_pop_numeric, fill = on_clt_pop_numeric),
+           stat = "identity", color = "black", size = 0.1) +
+  coord_flip() +
+  theme_classic() +
+  scale_y_continuous(limits = c(0, 220), expand = c(0,0), breaks = c(0, 50)) +
+  geom_hline(data = chloropleth_dataset, aes(yintercept = mean(on_clt_pop_numeric)),
+             linetype = "solid") +
+  geom_hline(data = chloropleth_dataset, aes(yintercept = median(on_clt_pop_numeric)),
+             linetype = "dashed") +
+  theme(axis.line = element_blank(),
+        axis.ticks.y = element_blank(),
+        axis.text.y = element_blank(),
+        axis.text = element_text(size = 16, colour = "grey25"),
+        legend.position = "none",
+        axis.title = element_blank(),
+        plot.margin = unit(c(0, 0, 0, 0), "cm"))
+
+# Create cowplot of both plots - on road only clt
+seven_three = plot_grid(on_clt_pop_chloro, on_clt_pop_bar, rel_widths = c(1, 0.5), scale = c(1, 0.55))
+
+#-------------------------------------------------------------------
+
+# Create chloropleth - off road only clt
+off_clt_pop_chloro = ggplot() + 
+  geom_sf(data = chloropleth_dataset, aes(fill = off_clt_pop_numeric), show.legend = F) +
+  scale_fill_distiller(type = "seq",
+                       palette = "Greens", direction = 1) +
+  theme_void() +
+  theme(plot.margin = unit(c(0, 0, 0, 0), "cm"))
+
+# Create barchart - off road only clt
+off_clt_pop_bar = ggplot(chloropleth_dataset, 
+                         aes(x = reorder(Borough_number, -off_clt_pop_numeric), y = off_clt_pop_numeric, 
+                             fill = off_clt_pop_numeric)) +
+  geom_bar(stat = "identity", color = "black", size = 0.1, show.legend = F) +
+  scale_fill_distiller(palette = "Greens", direction = 1) +
+  coord_flip() +
+  theme_classic() +
+  scale_y_continuous(limits = c(0, 60), expand = c(0,0), breaks = c(0, 30)) +
+  geom_hline(data = chloropleth_dataset, aes(yintercept = mean(off_clt_pop_numeric)),
+             linetype = "solid") +
+  geom_hline(data = chloropleth_dataset, aes(yintercept = median(off_clt_pop_numeric)),
+             linetype = "dashed") +
+  theme(axis.line = element_blank(),
+        axis.ticks.y = element_blank(),
+        axis.text.y = element_blank(),
+        axis.text = element_text(size = 16, colour = "grey25"),
+        legend.position = "none",
+        axis.title = element_blank(),
+        plot.margin = unit(c(0, 0, 0, 0), "cm"))
+
+# Create cowplot of both plots - off road only clt
+eight_three = plot_grid(off_clt_pop_chloro, off_clt_pop_bar, rel_widths = c(1, 0.5), scale = c(1, 0.55))
+
+
 
 
 ########################
@@ -1146,7 +1221,7 @@ three_four = plot_grid(cross_pct_chloro, cross_pct_bar, rel_widths = c(1, 0.5), 
 # Cycle lanes and Tracks (length) - PCT - reds #
 ################################################
 
-# create chloropleth
+# create chloropleth - all clt
 clt_pct_chloro = ggplot(chloropleth_dataset, 
                           aes(fill = clt_pct_numeric)) + 
   geom_sf(show.legend = F) +
@@ -1156,7 +1231,7 @@ clt_pct_chloro = ggplot(chloropleth_dataset,
   theme_void() +
   theme(plot.margin = unit(c(0, 0, 0, 0), "cm"))
 
-# # create Bar chart
+# # create Bar chart - all clt
 clt_pct_bar = ggplot(chloropleth_dataset, 
                        aes(x = reorder(Borough_number, -clt_pct_numeric), y = clt_pct_numeric, 
                            fill = clt_pct_numeric)) +
@@ -1177,8 +1252,80 @@ clt_pct_bar = ggplot(chloropleth_dataset,
         axis.title = element_blank(),
         plot.margin = unit(c(0, 0, 0, 0), "cm"))
 
-# Create cowplot of both plots
+# Create cowplot of both plots - all clt
 four_four = plot_grid(clt_pct_chloro, clt_pct_bar, rel_widths = c(1, 0.5), scale = c(1, 0.55))
+
+#------------------------------------------------------------------
+
+# create chloropleth - on clt
+on_clt_pct_chloro = ggplot(chloropleth_dataset, 
+                        aes(fill = on_clt_pct_numeric)) + 
+  geom_sf(show.legend = F) +
+  scale_fill_distiller(type = "seq",
+                       palette = "Reds",
+                       na.value = "transparent", direction = 1) +
+  theme_void() +
+  theme(plot.margin = unit(c(0, 0, 0, 0), "cm"))
+
+# # create Bar chart - on clt
+on_clt_pct_bar = ggplot(chloropleth_dataset, 
+                     aes(x = reorder(Borough_number, -on_clt_pct_numeric), y = on_clt_pct_numeric, 
+                         fill = on_clt_pct_numeric)) +
+  geom_bar(stat = "identity", color = "black", size = 0.1) +
+  coord_flip() +
+  theme_classic() +
+  scale_y_continuous(limits = c(0, 80), expand = c(0,0), breaks = c(0, 40)) +
+  geom_hline(aes(yintercept = mean(on_clt_pct_numeric)),
+             linetype = "solid") +
+  geom_hline(aes(yintercept = median(on_clt_pct_numeric)),
+             linetype = "dashed") +
+  scale_fill_distiller(palette = "Reds", direction = 1) +
+  theme(axis.line = element_blank(),
+        axis.ticks.y = element_blank(),
+        axis.text.y = element_blank(),
+        axis.text = element_text(size = 16, colour = "grey25"),
+        legend.position = "none",
+        axis.title = element_blank(),
+        plot.margin = unit(c(0, 0, 0, 0), "cm"))
+
+# Create cowplot of both plots - on clt
+seven_four = plot_grid(on_clt_pct_chloro, on_clt_pct_bar, rel_widths = c(1, 0.5), scale = c(1, 0.55))
+
+#------------------------------------------------------------------
+
+# create chloropleth - off clt
+off_clt_pct_chloro = ggplot(chloropleth_dataset, 
+                           aes(fill = off_clt_pct_numeric)) + 
+  geom_sf(show.legend = F) +
+  scale_fill_distiller(type = "seq",
+                       palette = "Reds",
+                       na.value = "transparent", direction = 1) +
+  theme_void() +
+  theme(plot.margin = unit(c(0, 0, 0, 0), "cm"))
+
+# # create Bar chart - on clt
+off_clt_pct_bar = ggplot(chloropleth_dataset, 
+                        aes(x = reorder(Borough_number, -off_clt_pct_numeric), y = off_clt_pct_numeric, 
+                            fill = off_clt_pct_numeric)) +
+  geom_bar(stat = "identity", color = "black", size = 0.1) +
+  coord_flip() +
+  theme_classic() +
+  scale_y_continuous(limits = c(0, 165), expand = c(0,0), breaks = c(0, 80)) +
+  geom_hline(aes(yintercept = mean(off_clt_pct_numeric)),
+             linetype = "solid") +
+  geom_hline(aes(yintercept = median(off_clt_pct_numeric)),
+             linetype = "dashed") +
+  scale_fill_distiller(palette = "Reds", direction = 1) +
+  theme(axis.line = element_blank(),
+        axis.ticks.y = element_blank(),
+        axis.text.y = element_blank(),
+        axis.text = element_text(size = 16, colour = "grey25"),
+        legend.position = "none",
+        axis.title = element_blank(),
+        plot.margin = unit(c(0, 0, 0, 0), "cm"))
+
+# Create cowplot of both plots - on clt
+eight_four = plot_grid(off_clt_pct_chloro, off_clt_pct_bar, rel_widths = c(1, 0.5), scale = c(1, 0.55))
 
 
 ########################

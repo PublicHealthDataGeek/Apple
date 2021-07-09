@@ -5,12 +5,12 @@ e.g. 1_2_borough_area is for 1st row 2nd column
         1                   2                       3               4  
 1 |              |  Borough area       | Borough pop     |  Borough PCT
 2 |  Raw ASL     |  ASL/km^2           | ASL/pop         | ASL/pct
-2 |  Raw Crosings|  Cross/km^2         | Cross/pop       | Cross/pct     
-2 |  Raw CLT     |  CLT/km^2           | CLT/pop         | CLT/pct
-2 |  Raw Sig     |  Sig/km^2           | Sig/pop         | Sig/pct
-2 |  Raw TC      |  TC/km^2            | TC/pop          | TC/pct          |
+3 |  Raw Crosings|  Cross/km^2         | Cross/pop       | Cross/pct     
+4 |  Raw CLT     |  CLT/km^2           | CLT/pop         | CLT/pct
+5 |  Raw Sig     |  Sig/km^2           | Sig/pop         | Sig/pct
+6 |  Raw TC      |  TC/km^2            | TC/pop          | TC/pct          |
 ---------------------------------------------------------------------------
 
 
-
+Apart from on road clt which are labelled 7 and off road 8.  
 
