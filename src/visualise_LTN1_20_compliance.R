@@ -17,6 +17,16 @@
 # stepped are also labelled as segreg and only 5 are labelled as just stepped and they
 # look very similar to those that are segreg in the photos
 
+# Update on 9/7/21 - main code is now down to row 390 - below is all working out - may need some of the later stuff eg for appropriateness
+# need to rerun on barnet to check it all works ok. Before moving onto full London
+#? simplify number of variables earlier on? 
+# ? discard those I dont have osm data on? 
+# or ? figure them out if I want
+# ? rerun analysis on 2021 data to see what difference it makes eg new 20mph zones....  
+
+
+
+
 
 #Load packages
 library(osmextract)
@@ -238,21 +248,21 @@ barnet_borough = lon_lad_2020_bfe %>%
   filter(BOROUGH == "Barnet") # obtain boundaries of Barnet
 barnet_speeds_limits = st_intersection(osm_speed_limits_tidy, barnet_borough) # n = 4810, osm objects within Barnet borough
 
-# identifying how many roads have the same name
-grouped_name = barnet_speeds_limits %>%
-  st_drop_geometry() %>%
-  group_by(name) %>%
-  summarise(count = n()) %>%
-  arrange(desc(count))
-# 697 appear more than once. 
-
-# name                 count
-# <chr>                <int>
-# 1 Unknown                386
-# 2 North Circular Road     67
-# 3 High Road               44
-# 4 Watford Way             37
-# 5 Hendon Way              29
+# # identifying how many roads have the same name
+# grouped_name = barnet_speeds_limits %>%
+#   st_drop_geometry() %>%
+#   group_by(name) %>%
+#   summarise(count = n()) %>%
+#   arrange(desc(count))
+# # 697 appear more than once. 
+# 
+# # name                 count
+# # <chr>                <int>
+# # 1 Unknown                386
+# # 2 North Circular Road     67
+# # 3 High Road               44
+# # 4 Watford Way             37
+# # 5 Hendon Way              29
 
 
 
@@ -273,7 +283,7 @@ nrow(barnet_intersects_within) / nrow(barnet_cl) # 1.02 matches per CID cycleway
 summary(is.na(barnet_intersects_within$osm_id)) # 35 NA so 60 cycle lanes are totally within an osm sl and have a speed limit
 
 # Examining these observations that are not fully within an osm buffer
-barnet_sl_touching_cl = barnet_sl_buffer_73[barnet_cl, ]  # n = 137
+barnet_sl_touching_cl = barnet_sl_buffer_73[barnet_cl, ]  # n = 137, returns all speed limit buffers that touch cycle lanes
 mapview(barnet_sl_touching_cl) + barnet_cl
 # some are where side roads touch a main road
 # some are where osm users have covered parts of the same road but in small overlapping chunks.  
@@ -282,58 +292,187 @@ mapview(barnet_sl_touching_cl) + barnet_cl
 barnet_cl_unmatched_within = barnet_cl  %>%
   filter(FEATURE_ID %in% barnet_intersects_within$FEATURE_ID[is.na(barnet_intersects_within$speed_limit)]) # n= 35
 
-# Which osm buffers are these touching??
-barnet_sl_touching_cl_unmatched_within = barnet_sl_touching_cl[barnet_cl_unmatched_within, ] # n = 97
+# returns all speed limit buffers that touch cycle lanes where we dont have a speed limit
+barnet_sl_touching_cl_unmatched_within = barnet_sl_touching_cl[barnet_cl_unmatched_within, ] # 
+mapview(barnet_sl_touching_cl_unmatched_within) + barnet_cl_unmatched_within
 
-# How many of the unmatched cycle lanes are on the same roads? 
-barnet_sl_touching_cl_unmatched_within %>%
+# Barnet example
+nrow(barnet_sl_touching_cl_unmatched_within)  # 97
+grouped_sl = barnet_sl_touching_cl_unmatched_within %>% 
+  group_by(speed_limit) %>% 
+  summarise() # groups spatial data by speed limit, in this case all 20mph 30mph 40mph 50mph
+
+nrow(grouped_sl) # nrow = 4
+cl_sl = barnet_cl_unmatched_within[grouped_sl, ] # pulls out the unmatched cl that have a speed limit using spatial subsetting
+
+cl_sl_joined = st_join(cl_sl, grouped_sl, join = sf::st_within) # spatially joins unmatched cl data to osm speed limit data
+table(cl_sl_joined$speed_limit) # now there are 15 further CID obs that got speed limits
+nrow(cl_sl_joined) # nrow = 29
+
+# Now need to put these speed limits into the barnet data 
+test = barnet_intersects_within %>%
+  filter(is.na(osm_id)) # create dataframe of the barnet_intersects_within where osm_id (and speed limit are missing)
+
+# simplify df
+cl_sl_joined_simplified = cl_sl_joined %>% 
   st_drop_geometry() %>%
-  group_by(name) %>%
-  summarise(number_of_times_roadname_appears = n()) %>%
-  group_by(number_of_times_roadname_appears) %>%
-  summarise(count = n())
+  select(c(FEATURE_ID, speed_limit)) 
+test2 = left_join(test, cl_sl_joined_simplified, by = "FEATURE_ID")
+# a further 15 have speed limits....  
 
-# number_of_times_roadname_appears count
-# 1    28
-# 2    13
-# 3     2   Burnt Oak Broadway, Hillside Avenue
-# 4     4   Church Lane, Deansbrook Road, Friern Barnet Lane, The Hyde
-# 5     1   High Road
-# 6     1   West Hendon Broadway
-# 10    1  This is for road name = Uknown
+# simplify this df
+test3 = test2 %>%
+  select(c(FEATURE_ID, BOROUGH.x, geometry, type, Highest_separation, speed_limit.y)) %>%
+  rename(BOROUGH = BOROUGH.x) %>%
+  rename(speed_limit = speed_limit.y)
 
-# Do the speed limits match for each road name? 
-sl_match_road_name = barnet_sl_touching_cl_unmatched_within %>%
-  st_drop_geometry() %>%
-  group_by(name, speed_limit) %>% 
-  summarise(count = n()) # some names appear more than once eg Colindeep lane has a 30 and 40mph
+# get and tidy original df that need to join this too....
+# Use an spatial join where the cycle lane has to be entirely within the speed limit buffer
+names(barnet_intersects_within)
+barnet2 = barnet_intersects_within %>%
+  select(c(FEATURE_ID, BOROUGH.x, geometry, type, Highest_separation, speed_limit)) %>%
+  rename(BOROUGH = BOROUGH.x)
+summary(is.na(barnet2$speed_limit))  #35 NAs
+barnet3 = barnet2 %>%
+  filter(!is.na(speed_limit)) # drop the NAs
+join_test3_barnet3 = rbind(barnet3, test3) # 95 obs again 
+summary(is.na(join_test3_barnet3$speed_limit)) # now 20 NA
 
-count_na_fx <- function(x) sum(is.na(x))  # function that counts number of NAs in a row
-sl_match_road_name = sl_match_road_name %>%
+# convert speed limits to numeric 
+join_test3_barnet3_num  = join_test3_barnet3 %>%
   ungroup() %>%
-  select(c("name", "speed_limit")) %>%
-  pivot_wider(id_cols = c("name", "speed_limit"), 
-              names_from = speed_limit,
-              values_from = speed_limit,
-              names_glue = "{.value}_{speed_limit}",
-              values_fn = length) %>%
-  select(c("name", "speed_limit_20mph", "speed_limit_30mph", "speed_limit_40mph", "speed_limit_50mph")) %>% # may need to add  "speed_limit_NA" for other boroughs
-  mutate(count_nas = apply(., 1, count_na_fx)) %>%
-  mutate(single_speed_limit = case_when(count_nas == 3  ~ TRUE,
-                                        TRUE ~ FALSE))  # if there are 3 NAs and 1 speedlimit then set 'single_speed_limit' to TRUE, 
-# if there are <3 NAs then this means >1 speed limit so set to FALSE
+  mutate(numeric_speed_limit = case_when(speed_limit == "20mph" ~ "20",
+                                         speed_limit == "30mph" ~ "30",
+                                         speed_limit == "40mph" ~ "40",
+                                         speed_limit == "50mph" ~ "50",
+                                         speed_limit == "60mph" ~ "60",
+                                         speed_limit == "70mph" ~ "70",
+                                         (speed_limit == "NA") ~ "Unknown - no OSM data",
+                                         TRUE ~ "Unknown"))  # This now works!
 
-# How many roads have more that one speed limit? 3 roads
-nrow(sl_match_road_name %>% filter(single_speed_limit == FALSE)) # n = 3
-nrow(sl_match_road_name %>% filter(single_speed_limit == TRUE)) # n = 47
+# BELOW IS NOT WORKING _ NOT SURE WHY _ MAY RUN CORRECLTY WHEN RERUN ALL CODE - ? just need =>30 for segreg?  
+test_appropriateness = join_test3_barnet3_num %>%
+  mutate(seg_appro_speed_limit = case_when((speed_limit == 50) & (Highest_separation == "Segregated") ~ "TRUE",
+                                           (speed_limit == 40) & (Highest_separation == "Segregated") ~ "TRUE",
+                                           (speed_limit == 30) & (Highest_separation == "Segregated") ~ "TRUE",
+                                           (speed_limit == 30) & (Highest_separation == "Stepped/part segregation") ~ "TRUE",
+                                           (speed_limit <= 20) & (Highest_separation == "Segregated") ~ "TRUE",
+                                           (speed_limit <= 20) & (Highest_separation == "Stepped/part segregation") ~ "TRUE",
+                                           (speed_limit <= 20) & (Highest_separation == "Mandatory/Advisory cycle lane") ~ "TRUE",
+                                           (speed_limit <= 20) & (Highest_separation == "No separation") ~ "FALSE",
+                                           (speed_limit == "Unknown - no OSM data") ~ "Unknown - no OSM data",
+                                           TRUE ~ "FALSE"))
+barnet_cl2_unknown_na_test %>%
+  st_drop_geometry() %>%
+  count(seg_appro_speed_limit)
 
-# if we take the road names where there is a single speed limit and can we add those to the segments that dont have speed limits...
+
+###ONCE GET THIS SORTED _ NEED TO REUN ON WHOLE LONDON DATASET TO SEE HOW MANY I NEED TO MANUaLLY CORRECT OR ? I DROP THEM FROM THE ANALYSIS
 
 
 
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+# # How many of these new observations are not fully within an osm_id (ieNA) and therefore dont have a speed limit?
+# summary(is.na(barnet_intersects_within$osm_id)) # 35 NA so 60 cycle lanes are totally within an osm sl and have a speed limit
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# # Join features that have the same road name  - need to use this code to pull out the right bits to then do the minimal example
+# barnet_cl_unmatched_within = barnet_cl %>%
+#   filter(FEATURE_ID %in% barnet_intersects_within$FEATURE_ID[is.na(barnet_intersects_within$speed_limit)]) # n= 35
+# barnet_sl_touching_cl_unmatched_within = barnet_sl_touching_cl[barnet_cl_unmatched_within, ]
+# mapview(barnet_sl_touching_cl_unmatched_within) + barnet_cl_unmatched_within
+
+
+# # Which osm buffers are these touching??
+# barnet_sl_touching_cl_unmatched_within = barnet_sl_touching_cl[barnet_cl_unmatched_within, ] # n = 97
+# 
+# # How many of the unmatched cycle lanes are on the same roads? 
+# barnet_sl_touching_cl_unmatched_within %>%
+#   st_drop_geometry() %>%
+#   group_by(name) %>%
+#   summarise(number_of_times_roadname_appears = n()) %>%
+#   group_by(number_of_times_roadname_appears) %>%
+#   summarise(count = n())
+# 
+# # number_of_times_roadname_appears count
+# # 1    28
+# # 2    13
+# # 3     2   Burnt Oak Broadway, Hillside Avenue
+# # 4     4   Church Lane, Deansbrook Road, Friern Barnet Lane, The Hyde
+# # 5     1   High Road
+# # 6     1   West Hendon Broadway
+# # 10    1  This is for road name = Uknown
+# 
+# # Do the speed limits match for each road name? 
+# sl_match_road_name = barnet_sl_touching_cl_unmatched_within %>%
+#   st_drop_geometry() %>%
+#   group_by(name, speed_limit) %>% 
+#   summarise(count = n()) # some names appear more than once eg Colindeep lane has a 30 and 40mph
+# 
+# count_na_fx <- function(x) sum(is.na(x))  # function that counts number of NAs in a row
+# sl_match_road_name = sl_match_road_name %>%
+#   ungroup() %>%
+#   select(c("name", "speed_limit")) %>%
+#   pivot_wider(id_cols = c("name", "speed_limit"), 
+#               names_from = speed_limit,
+#               values_from = speed_limit,
+#               names_glue = "{.value}_{speed_limit}",
+#               values_fn = length) %>%
+#   select(c("name", "speed_limit_20mph", "speed_limit_30mph", "speed_limit_40mph", "speed_limit_50mph")) %>% # may need to add  "speed_limit_NA" for other boroughs
+#   mutate(count_nas = apply(., 1, count_na_fx)) %>%
+#   mutate(single_speed_limit = case_when(count_nas == 3  ~ TRUE,
+#                                         TRUE ~ FALSE))  # if there are 3 NAs and 1 speedlimit then set 'single_speed_limit' to TRUE, 
+# # if there are <3 NAs then this means >1 speed limit so set to FALSE
+# 
+# # How many roads have more that one speed limit? 3 roads
+# nrow(sl_match_road_name %>% filter(single_speed_limit == FALSE)) # n = 3
+# nrow(sl_match_road_name %>% filter(single_speed_limit == TRUE)) # n = 47
+# 
+# # if we take the road names where there is a single speed limit and can we add those to the segments that dont have speed limits...
+# 
+# #get list of road names with single speed limit
+# true_road_names = as.data.frame(pull(sl_match_road_name %>% filter(single_speed_limit == TRUE), name))
+# true_road_names = true_road_names %>% rename(t_road_name = "pull(sl_match_road_name %>% filter(single_speed_limit == TRUE), name)") 
+# 
+# for(i in true_road_names){
+#   print(i)
+# }
+# 
+# results(paste0("nrow(true_road_names)")) = data.frame(test = vector(mode = "character", length = 1))
+# 
+# 
+# for(i in true_road_names){
+#   print(i)
+# }
+# 
+# results <- data.frame(file_name = vector(mode = "character", length = length(data_files)))
 
 # Join features that have the same road name  - need to use this code to pull out the right bits to then do the minimal example
 barnet_cl_unmatched_within = barnet_cl %>%
@@ -355,6 +494,21 @@ cl_high_road = barnet_cl_unmatched_within[high_road, ] # pulls out the unmatched
 
 cl_high_road_joined = st_join(cl_high_road, high_road_joined, join = sf::st_within) # spatially joins CID data to road name  
 table(cl_high_road_joined$speed_limit) # now the two CID obs that are on High Road
+
+
+# Barnet example
+nrow(barnet_sl_touching_cl_unmatched_within)  # 97
+grouped_sl = barnet_sl_touching_cl_unmatched_within %>% 
+  group_by(speed_limit) %>% 
+  summarise() # groups spatial data by speed limit, in this case all 20mph 30mph 40mph 50mph
+
+nrow(grouped_sl) # nrow = 4
+cl_sl = barnet_cl_unmatched_within[grouped_sl, ] # pulls out the unmatched cl that have high road as the name using spatial subsetting
+
+cl_sl_joined = st_join(cl_sl, grouped_sl, join = sf::st_within) # spatially joins CID data to osm
+table(cl_sl_joined$speed_limit) # now the the CID obs that are on an osm road have now got speed limits
+nrow(cl_sl_joined) # nrow = 29
+
 
 
 
@@ -871,4 +1025,18 @@ highway_count = gl_osm_lines20 %>%
 #   summarise(count = n()) %>%
 #   print(n = Inf)  # 60365/71660 were NA
 
+for (i in 1:length(data_files)){
+  data <- read.csv(data_files[i])
+  count <- nrow(data)
+  results[i] <- count
+}
 
+
+results <- data.frame(file_name = vector(mode = "character", length = length(data_files)))
+count = vector(mode = "integer", length = length(data_files))
+for (i in 1:length(data_files)){
+  data <- read.csv(data_files[i])
+  count <- nrow(data)
+  results$file_name[i] <- data_files[i]  # puts the data file names in the result df column called file name
+  results$count[i] <- count  # puts the count data (number of rows of data in each datafile in the results df column count)
+}
